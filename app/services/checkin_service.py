@@ -8,6 +8,7 @@ Fluxo (seções 4 e 6 do planejamento):
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,7 +34,11 @@ async def process_checkin(
     session: AsyncSession, patient: Patient, payload: CheckInCreate
 ) -> CheckIn:
     engine = _build_engine()
-    assessment = engine.assess(payload.structured_responses, payload.free_text)
+    # O analisador de texto livre pode chamar um LLM (I/O bloqueante); roda numa
+    # thread para não bloquear o event loop. As regras determinísticas são leves.
+    assessment = await asyncio.to_thread(
+        engine.assess, payload.structured_responses, payload.free_text
+    )
 
     checkin = CheckIn(
         patient_id=patient.id,

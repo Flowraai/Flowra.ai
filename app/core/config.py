@@ -31,8 +31,12 @@ class Settings(BaseSettings):
 
     # Módulo de IA (análise do texto/áudio livre)
     free_text_analyzer: str = "keyword"  # keyword | llm
+    # Endpoint compatível com a API OpenAI (chat completions). Funciona com
+    # OpenAI, Azure OpenAI, Gemini (endpoint compat), Groq, OpenRouter, locais...
+    llm_base_url: str = "https://api.openai.com/v1"
     llm_api_key: str | None = None
-    llm_model: str | None = None
+    llm_model: str = "gpt-4o-mini"
+    llm_timeout_seconds: int = 20
 
     # CORS
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])

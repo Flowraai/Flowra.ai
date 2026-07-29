@@ -130,12 +130,20 @@ canal nunca derruba o check-in.
 
 O destino é o e-mail do médico responsável. 🔴 vira notificação urgente; 🟠, de rotina.
 
-### IA no texto/áudio livre
+### IA no texto livre
 
 O contrato é `FreeTextAnalyzer.analyze(text) -> FreeTextResult`. O padrão do MVP é o
-`KeywordFreeTextAnalyzer` (determinístico, auditável, roda sem chave). Para usar um LLM
-(interpretação + transcrição de áudio), implemente `LLMFreeTextAnalyzer` e configure
-`FREE_TEXT_ANALYZER=llm`.
+`KeywordFreeTextAnalyzer` (determinístico, auditável, roda sem chave).
+
+Para usar um **LLM**, configure `FREE_TEXT_ANALYZER=llm` e aponte para qualquer endpoint
+**compatível com a API OpenAI** (`LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`) — funciona
+com OpenAI, Azure, Gemini (endpoint compat), Groq, OpenRouter, modelos locais, etc. O
+resultado do LLM é **combinado de forma conservadora** com o determinístico (mantém o
+maior risco), e qualquer erro/ausência de chave faz cair no determinístico (nunca
+silencia um sinal). A chamada roda numa thread para não bloquear o event loop.
+
+> Áudio (upload + transcrição/speech-to-text) ainda não está implementado — o campo
+> `audio_url` existe, mas o pipeline de áudio fica para uma próxima etapa.
 
 ## Compliance (não deixar para depois)
 
@@ -156,12 +164,13 @@ pytest            # motor de risco, texto livre e smoke da API (sem banco)
 
 ## Próximos passos (backend)
 
-- Upload/transcrição de áudio (speech-to-text) e integração do `LLMFreeTextAnalyzer`.
+- Upload/transcrição de áudio (speech-to-text) para alimentar o campo livre.
 - Onboarding do paciente: entrega do link/token via WhatsApp/app.
 - Segurança extra: refresh token, reset de senha, rate limiting.
 - Ajuste fino dos limiares de risco com médico consultor (Fase 2).
 - Endpoints de exportação/relatório para o painel.
 
 Já entregue: migração inicial versionada + CI (lint, migração e testes com Postgres);
-testes de integração ponta a ponta; infraestrutura de notificação plugável com registro
-de entrega.
+testes de integração ponta a ponta; notificação plugável com registro de entrega;
+análise do texto livre por LLM (endpoint compatível com OpenAI) combinada de forma
+conservadora com o determinístico.
