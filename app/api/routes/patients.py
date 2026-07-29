@@ -5,8 +5,8 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_doctor
@@ -26,6 +26,7 @@ from app.schemas.checkin import CheckInRead
 from app.schemas.patient import (
     PatientCreate,
     PatientCreated,
+    PatientExport,
     PatientPanelItem,
     PatientRead,
     PatientTokenRead,
@@ -148,6 +149,63 @@ async def get_patient(
     session: AsyncSession = Depends(get_db),
 ) -> Patient:
     return await _get_owned_patient(session, doctor, patient_id)
+
+
+@router.get("/{patient_id}/export", response_model=PatientExport)
+async def export_patient_data(
+    patient_id: uuid.UUID,
+    doctor: Doctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db),
+) -> PatientExport:
+    """Portabilidade LGPD: exporta todos os dados do paciente (paciente + histórico)."""
+    patient = await _get_owned_patient(session, doctor, patient_id)
+    checkins = (
+        await session.execute(
+            select(CheckIn).where(CheckIn.patient_id == patient_id).order_by(CheckIn.created_at)
+        )
+    ).scalars().all()
+    alerts = (
+        await session.execute(
+            select(Alert).where(Alert.patient_id == patient_id).order_by(Alert.created_at)
+        )
+    ).scalars().all()
+
+    await audit.record(
+        session,
+        action=AuditAction.PATIENT_EXPORTED,
+        actor=f"doctor:{doctor.id}",
+        entity_type="patient",
+        entity_id=patient_id,
+    )
+    return PatientExport(
+        exported_at=datetime.now(timezone.utc),
+        patient=PatientRead.model_validate(patient),
+        checkins=[CheckInRead.model_validate(c) for c in checkins],
+        alerts=[AlertRead.model_validate(a) for a in alerts],
+    )
+
+
+@router.delete("/{patient_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_patient(
+    patient_id: uuid.UUID,
+    doctor: Doctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db),
+) -> Response:
+    """Direito de eliminação (LGPD): apaga o paciente e seus dados de saúde.
+
+    Cascata no banco remove check-ins, alertas e notificações. O log de auditoria
+    é preservado (referencia apenas IDs — proteção jurídica da plataforma/médico).
+    """
+    patient = await _get_owned_patient(session, doctor, patient_id)
+    await session.execute(delete(Patient).where(Patient.id == patient.id))
+    await audit.record(
+        session,
+        action=AuditAction.PATIENT_DELETED,
+        actor=f"doctor:{doctor.id}",
+        entity_type="patient",
+        entity_id=patient_id,
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/{patient_id}/checkins", response_model=list[CheckInRead])

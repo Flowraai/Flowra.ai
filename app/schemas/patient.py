@@ -8,6 +8,8 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import RiskLevel
+from app.schemas.alert import AlertRead
+from app.schemas.checkin import CheckInRead
 
 
 class PatientCreate(BaseModel):
@@ -59,3 +61,12 @@ class PatientPanelItem(BaseModel):
 
 class PatientTokenRead(BaseModel):
     access_token: str
+
+
+class PatientExport(BaseModel):
+    """Portabilidade LGPD: todos os dados do paciente em um pacote."""
+
+    exported_at: datetime
+    patient: PatientRead
+    checkins: list[CheckInRead]
+    alerts: list[AlertRead]

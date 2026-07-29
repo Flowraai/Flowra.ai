@@ -89,6 +89,8 @@ Perfil **médico** (JWT — `Authorization: Bearer <token>`):
 | POST | `/api/v1/patients` | Cadastra paciente (exige consentimento LGPD); retorna o **token do paciente uma única vez** |
 | GET  | `/api/v1/patients` | **Painel**: pacientes ordenados por risco |
 | GET  | `/api/v1/patients/{id}` | Detalhe do paciente |
+| GET  | `/api/v1/patients/{id}/export` | Exporta todos os dados do paciente (portabilidade LGPD) |
+| DELETE | `/api/v1/patients/{id}` | Apaga o paciente e seus dados de saúde (eliminação LGPD) |
 | GET  | `/api/v1/patients/{id}/checkins` | Histórico de check-ins |
 | POST | `/api/v1/patients/{id}/rotate-token` | Gera novo token do paciente |
 | POST | `/api/v1/patients/scan-inactivity` | Gera alertas de não-adesão (pacientes sem check-in) |
@@ -163,7 +165,10 @@ silencia um sinal). A chamada roda numa thread para não bloquear o event loop.
 
 - **LGPD** — dado de saúde é categoria sensível: consentimento explícito é exigido no
   cadastro do paciente (`consent_given`), IDs são UUID (não enumeráveis), e o token do
-  paciente é armazenado apenas como hash. Em produção, habilite **criptografia em
+  paciente é armazenado apenas como hash. **Direitos do titular**: exportação
+  (`GET /patients/{id}/export`, portabilidade) e eliminação (`DELETE /patients/{id}`) —
+  a exclusão remove paciente/check-ins/alertas/notificações por cascata e **preserva o
+  log de auditoria** (referencia só IDs). Em produção, habilite **criptografia em
   repouso** no provedor de banco e mantenha **isolamento** em relação à Flowra AI (CRM).
 - **Auditoria** — `audit_logs` registra check-ins, cálculos de risco, alertas gerados e
   ações do médico (proteção jurídica para a plataforma e para o médico).
@@ -192,7 +197,8 @@ protocolo (tipos, escalas, opções, obrigatoriedade e campos inesperados → 42
 hardening de autenticação (rate limiting no login, refresh token com rotação e
 reset de senha com revogação de sessões); risco por tendência ("padrão de piora")
 combinado ao risco pontual; detecção de não-adesão (paciente sem check-in) com
-alerta idempotente, endpoint e job para cron.
+alerta idempotente, endpoint e job para cron; direitos do titular LGPD
+(exportação e eliminação de dados, com auditoria preservada).
 
 > Nota: o rate limiting é em memória (uma instância). Para múltiplas
 > instâncias/workers, trocar por um backend compartilhado (ex.: Redis) mantendo
