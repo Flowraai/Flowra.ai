@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,6 +37,8 @@ async def _get_owned_alert(
 @router.get("", response_model=list[AlertRead])
 async def list_alerts(
     status_filter: AlertStatus | None = None,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     doctor: Doctor = Depends(get_current_doctor),
     session: AsyncSession = Depends(get_db),
 ) -> list[Alert]:
@@ -47,7 +49,7 @@ async def list_alerts(
     )
     if status_filter is not None:
         query = query.where(Alert.status == status_filter)
-    query = query.order_by(Alert.created_at.desc())
+    query = query.order_by(Alert.created_at.desc()).limit(limit).offset(offset)
     result = await session.execute(query)
     return list(result.scalars().all())
 
