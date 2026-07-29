@@ -2,26 +2,37 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from app.core.config import settings
 
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 # --- Senhas (perfil médico) ---
+def _prehash_password(plain_password: str) -> bytes:
+    """Normaliza a senha para caber no limite de 72 bytes do bcrypt.
+
+    sha256 + base64 permite senhas de qualquer tamanho sem truncamento silencioso.
+    """
+    digest = hashlib.sha256(plain_password.encode("utf-8")).digest()
+    return base64.b64encode(digest)
+
+
 def hash_password(plain_password: str) -> str:
-    return _pwd_context.hash(plain_password)
+    return bcrypt.hashpw(_prehash_password(plain_password), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return _pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(_prehash_password(plain_password), hashed_password.encode("utf-8"))
+    except ValueError:
+        return False
 
 
 # --- Token de acesso do paciente ---
