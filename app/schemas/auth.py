@@ -12,6 +12,8 @@ class DoctorRegister(BaseModel):
     specialty: str = Field(default="psiquiatria", max_length=120)
     clinic: str | None = Field(default=None, max_length=255)
     council_id: str | None = Field(default=None, max_length=60)
+    # Destino das notificações de alerta (se vazio, usa o e-mail de login).
+    notification_email: EmailStr | None = None
 
 
 class LoginRequest(BaseModel):

@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
 
+    # Onboarding do paciente (link do app/PWA enviado ao contato do paciente)
+    patient_app_url_base: str | None = None
+
     # Notificações ao médico (alertas)
     notification_channels: list[str] = Field(default_factory=lambda: ["log"])
     # SMTP (canal email)

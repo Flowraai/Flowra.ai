@@ -30,6 +30,8 @@ class Doctor(UUIDMixin, TimestampMixin, Base):
     clinic: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Registro no conselho (ex.: CRM) — relevante para rastreabilidade clínica.
     council_id: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    # Destino das notificações de alerta (se vazio, usa o e-mail de login).
+    notification_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="doctor")
     patients: Mapped[list["Patient"]] = relationship(

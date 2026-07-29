@@ -93,7 +93,9 @@ Perfil **médico** (JWT — `Authorization: Bearer <token>`):
 | DELETE | `/api/v1/patients/{id}` | Apaga o paciente e seus dados de saúde (eliminação LGPD) |
 | GET  | `/api/v1/patients/{id}/checkins` | Histórico de check-ins |
 | POST | `/api/v1/patients/{id}/rotate-token` | Gera novo token do paciente |
+| POST | `/api/v1/patients/{id}/resend-onboarding` | Gera novo token e reenvia o link de acesso ao paciente |
 | POST | `/api/v1/patients/scan-inactivity` | Gera alertas de não-adesão (pacientes sem check-in) |
+| POST | `/api/v1/notifications/test` | Envia notificação de teste (valida os canais do médico) |
 | GET  | `/api/v1/protocols/active` | Protocolo psiquiátrico ativo |
 | GET  | `/api/v1/alerts` | Lista de alertas (filtro por status) |
 | PATCH| `/api/v1/alerts/{id}` | Atualiza status do alerta |
@@ -144,7 +146,15 @@ canal nunca derruba o check-in.
 - `webhook` — POST `{target, subject, body}` para `NOTIFICATION_WEBHOOK_URL`
   (ponte para WhatsApp/push).
 
-O destino é o e-mail do médico responsável. 🔴 vira notificação urgente; 🟠, de rotina.
+O destino é o `notification_email` do médico (se definido no cadastro) ou o e-mail de
+login. 🔴 vira notificação urgente; 🟠, de rotina. `POST /notifications/test` envia uma
+mensagem de teste pelos canais ativos e retorna o resultado por canal — útil para
+validar SMTP/webhook em produção sem esperar um alerta.
+
+**Onboarding do paciente**: ao cadastrar (se houver `contact`), o Flowra Care envia
+automaticamente o link de acesso ao paciente pelos canais configurados
+(`PATIENT_APP_URL_BASE` monta o link do app). `POST /patients/{id}/resend-onboarding`
+gera um novo token e reenvia o link.
 
 ### IA no texto livre
 
