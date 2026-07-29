@@ -21,7 +21,7 @@ from app.models.alert import Alert
 from app.models.enums import AlertStatus, AlertUrgency, AuditAction, RiskLevel
 from app.models.patient import Patient
 from app.services import audit
-from app.services.notifications import dispatch_alert, doctor_notification_target
+from app.services.notifications import dispatch_alert, doctor_notification_contacts
 
 
 def days_since_checkin(patient: Patient, now: datetime | None = None) -> int | None:
@@ -95,8 +95,8 @@ async def scan_inactivity(
             entity_id=alert.id,
             metadata={"kind": "inactivity", "days": days},
         )
-        target = await doctor_notification_target(session, patient)
-        await dispatch_alert(session, alert=alert, patient=patient, target=target)
+        email, phone = await doctor_notification_contacts(session, patient)
+        await dispatch_alert(session, alert=alert, patient=patient, email=email, phone=phone)
         created.append(alert)
 
     return created

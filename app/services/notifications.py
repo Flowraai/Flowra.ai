@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.alert import Alert
 from app.models.doctor import Doctor
-from app.models.enums import AlertUrgency, AuditAction, NotificationStatus
+from app.models.enums import AlertUrgency, AuditAction, NotificationChannel, NotificationStatus
 from app.models.notification import Notification
 from app.models.patient import Patient
 from app.models.user import User
@@ -23,16 +23,31 @@ from app.services.notification_channels import get_active_channels
 logger = logging.getLogger("flowra_care.notifications")
 
 
-async def doctor_notification_target(session: AsyncSession, patient: Patient) -> str:
-    """Destino da notificação do médico: notification_email, senão e-mail de login."""
+async def doctor_notification_contacts(
+    session: AsyncSession, patient: Patient
+) -> tuple[str, str | None]:
+    """Contatos do médico responsável: (e-mail, telefone). E-mail sempre tem fallback."""
+    email = f"doctor:{patient.doctor_id}"
+    phone: str | None = None
     doctor = await session.get(Doctor, patient.doctor_id)
     if doctor is not None:
+        phone = doctor.notification_phone
         if doctor.notification_email:
-            return doctor.notification_email
-        user = await session.get(User, doctor.user_id)
-        if user is not None and user.email:
-            return user.email
-    return f"doctor:{patient.doctor_id}"
+            email = doctor.notification_email
+        else:
+            user = await session.get(User, doctor.user_id)
+            if user is not None and user.email:
+                email = user.email
+    return email, phone
+
+
+def target_for_channel(
+    channel_type: NotificationChannel, email: str, phone: str | None
+) -> str | None:
+    """WhatsApp usa telefone; os demais canais usam o e-mail."""
+    if channel_type is NotificationChannel.WHATSAPP:
+        return phone
+    return email
 
 
 async def send_plain(target: str, subject: str, body: str) -> None:
@@ -62,30 +77,35 @@ def _render(alert: Alert, patient: Patient) -> tuple[str, str]:
 
 
 async def dispatch_alert(
-    session: AsyncSession, *, alert: Alert, patient: Patient, target: str
+    session: AsyncSession, *, alert: Alert, patient: Patient, email: str, phone: str | None = None
 ) -> list[Notification]:
     subject, body = _render(alert, patient)
     records: list[Notification] = []
 
     for channel in get_active_channels():
+        target = target_for_channel(channel.channel_type, email, phone)
         notification = Notification(
             alert_id=alert.id,
             channel=channel.channel_type,
-            target=target,
+            target=target or "",
             status=NotificationStatus.QUEUED,
         )
         session.add(notification)
-        try:
-            await channel.send(target=target, subject=subject, body=body)
-            notification.status = NotificationStatus.SENT
-            notification.sent_at = datetime.now(timezone.utc)
-        except Exception as exc:  # noqa: BLE001 — falha de canal não pode quebrar o fluxo
+        if not target:
             notification.status = NotificationStatus.FAILED
-            notification.error = str(exc)[:500]
-            logger.error(
-                "Falha ao notificar via %s (paciente=%s): %s",
-                channel.channel_type.value, patient.id, exc,
-            )
+            notification.error = "sem contato do médico para este canal"
+        else:
+            try:
+                await channel.send(target=target, subject=subject, body=body)
+                notification.status = NotificationStatus.SENT
+                notification.sent_at = datetime.now(timezone.utc)
+            except Exception as exc:  # noqa: BLE001 — falha de canal não quebra o fluxo
+                notification.status = NotificationStatus.FAILED
+                notification.error = str(exc)[:500]
+                logger.error(
+                    "Falha ao notificar via %s (paciente=%s): %s",
+                    channel.channel_type.value, patient.id, exc,
+                )
         records.append(notification)
 
     await session.flush()
@@ -95,9 +115,6 @@ async def dispatch_alert(
         actor="system",
         entity_type="alert",
         entity_id=alert.id,
-        metadata={
-            "target": target,
-            "results": {n.channel.value: n.status.value for n in records},
-        },
+        metadata={"results": {n.channel.value: n.status.value for n in records}},
     )
     return records

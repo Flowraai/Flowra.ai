@@ -73,10 +73,67 @@ class WebhookChannel:
             resp.raise_for_status()
 
 
+class WhatsAppChannel:
+    """WhatsApp via Meta Cloud API. `target` é um telefone (E.164/dígitos).
+
+    Fora de uma janela de serviço de 24h, a Meta exige uma **template aprovada**:
+    configure WHATSAPP_TEMPLATE_NAME. Sem template, envia texto livre (só funciona
+    dentro da janela de 24h — útil para respostas/testes).
+    """
+
+    channel_type = NotificationChannel.WHATSAPP
+
+    async def send(self, *, target: str, subject: str, body: str) -> None:
+        if not (settings.whatsapp_phone_number_id and settings.whatsapp_access_token):
+            raise RuntimeError(
+                "WhatsApp não configurado (defina WHATSAPP_PHONE_NUMBER_ID e "
+                "WHATSAPP_ACCESS_TOKEN)."
+            )
+        await self._post(self.build_payload(target, subject, body))
+
+    @staticmethod
+    def build_payload(target: str, subject: str, body: str) -> dict:
+        to = "".join(ch for ch in target if ch.isdigit())
+        if settings.whatsapp_template_name:
+            return {
+                "messaging_product": "whatsapp",
+                "to": to,
+                "type": "template",
+                "template": {
+                    "name": settings.whatsapp_template_name,
+                    "language": {"code": settings.whatsapp_template_lang},
+                    "components": [
+                        {"type": "body", "parameters": [{"type": "text", "text": body}]}
+                    ],
+                },
+            }
+        text = f"{subject}\n\n{body}" if subject else body
+        return {
+            "messaging_product": "whatsapp",
+            "to": to,
+            "type": "text",
+            "text": {"body": text},
+        }
+
+    async def _post(self, payload: dict) -> None:
+        url = (
+            f"https://graph.facebook.com/{settings.whatsapp_api_version}"
+            f"/{settings.whatsapp_phone_number_id}/messages"
+        )
+        async with httpx.AsyncClient(timeout=15) as http:
+            resp = await http.post(
+                url,
+                headers={"Authorization": f"Bearer {settings.whatsapp_access_token}"},
+                json=payload,
+            )
+            resp.raise_for_status()
+
+
 _REGISTRY: dict[str, type[Channel]] = {
     NotificationChannel.LOG.value: LogChannel,
     NotificationChannel.EMAIL.value: EmailChannel,
     NotificationChannel.WEBHOOK.value: WebhookChannel,
+    NotificationChannel.WHATSAPP.value: WhatsAppChannel,
 }
 
 

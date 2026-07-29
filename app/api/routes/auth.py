@@ -77,6 +77,7 @@ async def register_doctor(
             clinic=payload.clinic,
             council_id=payload.council_id,
             notification_email=payload.notification_email,
+            notification_phone=payload.notification_phone,
         )
     )
 
@@ -169,5 +170,6 @@ async def me(
         clinic=doctor.clinic,
         council_id=doctor.council_id,
         notification_email=doctor.notification_email,
+        notification_phone=doctor.notification_phone,
         email=user.email,  # type: ignore[union-attr]
     )

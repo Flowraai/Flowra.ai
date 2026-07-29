@@ -67,8 +67,14 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_from: str | None = None
     smtp_use_tls: bool = True
-    # Webhook (ponte para WhatsApp/push, etc.)
+    # Webhook (ponte genérica)
     notification_webhook_url: str | None = None
+    # WhatsApp (Meta Cloud API)
+    whatsapp_phone_number_id: str | None = None
+    whatsapp_access_token: str | None = None
+    whatsapp_api_version: str = "v21.0"
+    whatsapp_template_name: str | None = None  # obrigatório fora da janela de 24h
+    whatsapp_template_lang: str = "pt_BR"
 
     @field_validator("cors_origins", "notification_channels", mode="before")
     @classmethod

@@ -16,6 +16,7 @@ class DoctorRead(BaseModel):
     clinic: str | None = None
     council_id: str | None = None
     notification_email: str | None = None
+    notification_phone: str | None = None
 
 
 class DoctorProfile(DoctorRead):
