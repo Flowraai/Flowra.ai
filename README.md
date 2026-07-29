@@ -97,7 +97,7 @@ Perfil **paciente** (token opaco — header `X-Patient-Token: <token>`):
 | Método | Rota | Descrição |
 |---|---|---|
 | GET  | `/api/v1/patient/protocol` | Perguntas do dia para renderizar |
-| POST | `/api/v1/patient/checkins` | Envia o check-in diário |
+| POST | `/api/v1/patient/checkins` | Envia o check-in diário (respostas validadas contra o protocolo) |
 
 ## Índice de risco
 
@@ -173,4 +173,5 @@ pytest            # motor de risco, texto livre e smoke da API (sem banco)
 Já entregue: migração inicial versionada + CI (lint, migração e testes com Postgres);
 testes de integração ponta a ponta; notificação plugável com registro de entrega;
 análise do texto livre por LLM (endpoint compatível com OpenAI) combinada de forma
-conservadora com o determinístico.
+conservadora com o determinístico; validação das respostas do check-in contra o
+protocolo (tipos, escalas, opções, obrigatoriedade e campos inesperados → 422).
