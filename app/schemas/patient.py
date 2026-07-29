@@ -53,6 +53,8 @@ class PatientPanelItem(BaseModel):
     current_risk: RiskLevel
     last_checkin_at: datetime | None = None
     open_alerts: int = 0
+    days_since_checkin: int | None = None
+    inactive: bool = False
 
 
 class PatientTokenRead(BaseModel):

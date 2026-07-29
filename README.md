@@ -91,6 +91,7 @@ Perfil **médico** (JWT — `Authorization: Bearer <token>`):
 | GET  | `/api/v1/patients/{id}` | Detalhe do paciente |
 | GET  | `/api/v1/patients/{id}/checkins` | Histórico de check-ins |
 | POST | `/api/v1/patients/{id}/rotate-token` | Gera novo token do paciente |
+| POST | `/api/v1/patients/scan-inactivity` | Gera alertas de não-adesão (pacientes sem check-in) |
 | GET  | `/api/v1/protocols/active` | Protocolo psiquiátrico ativo |
 | GET  | `/api/v1/alerts` | Lista de alertas (filtro por status) |
 | PATCH| `/api/v1/alerts/{id}` | Atualiza status do alerta |
@@ -118,6 +119,16 @@ e do texto livre.
 Regras e limiares ficam em `app/risk/engine.py` (`RiskThresholds`) e as palavras-chave
 do texto livre em `app/risk/free_text.py`. **Ambos devem ser revisados com um médico
 consultor antes do piloto** (Fase 2).
+
+**Risco por tendência** (`app/risk/trend.py`): além do risco pontual de cada check-in,
+a janela recente é analisada para detectar "padrão de piora" — risco elevado sustentado,
+humor em queda e não-adesão repetida. O índice do paciente (`current_risk`) é o **maior**
+entre o risco do check-in atual e o da tendência.
+
+**Não-adesão** (`app/services/inactivity_service.py`): pacientes ativos sem check-in há
+`INACTIVITY_ALERT_DAYS` dias geram um alerta de rotina (idempotente). Dispare por
+`POST /patients/scan-inactivity` (médico) ou pelo job `python -m app.scripts.scan_inactivity`
+(cron). O painel expõe `days_since_checkin` e `inactive` por paciente.
 
 ### Notificações ao médico
 
@@ -179,7 +190,9 @@ análise do texto livre por LLM (endpoint compatível com OpenAI) combinada de f
 conservadora com o determinístico; validação das respostas do check-in contra o
 protocolo (tipos, escalas, opções, obrigatoriedade e campos inesperados → 422);
 hardening de autenticação (rate limiting no login, refresh token com rotação e
-reset de senha com revogação de sessões).
+reset de senha com revogação de sessões); risco por tendência ("padrão de piora")
+combinado ao risco pontual; detecção de não-adesão (paciente sem check-in) com
+alerta idempotente, endpoint e job para cron.
 
 > Nota: o rate limiting é em memória (uma instância). Para múltiplas
 > instâncias/workers, trocar por um backend compartilhado (ex.: Redis) mantendo

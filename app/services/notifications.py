@@ -12,13 +12,25 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.alert import Alert
+from app.models.doctor import Doctor
 from app.models.enums import AlertUrgency, AuditAction, NotificationStatus
 from app.models.notification import Notification
 from app.models.patient import Patient
+from app.models.user import User
 from app.services import audit
 from app.services.notification_channels import get_active_channels
 
 logger = logging.getLogger("flowra_care.notifications")
+
+
+async def doctor_notification_target(session: AsyncSession, patient: Patient) -> str:
+    """E-mail do médico responsável (destino da notificação); fallback estável."""
+    doctor = await session.get(Doctor, patient.doctor_id)
+    if doctor is not None:
+        user = await session.get(User, doctor.user_id)
+        if user is not None and user.email:
+            return user.email
+    return f"doctor:{patient.doctor_id}"
 
 
 async def send_plain(target: str, subject: str, body: str) -> None:

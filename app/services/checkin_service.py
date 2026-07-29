@@ -11,19 +11,20 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timezone
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.models.alert import Alert
 from app.models.checkin import CheckIn
-from app.models.doctor import Doctor
 from app.models.enums import AlertUrgency, AuditAction, RiskLevel
 from app.models.patient import Patient
-from app.models.user import User
 from app.risk.engine import PsychiatricRiskEngine
 from app.risk.free_text import get_free_text_analyzer
+from app.risk.trend import CheckInPoint, assess_trend
 from app.schemas.checkin import CheckInCreate
 from app.services import audit
-from app.services.notifications import dispatch_alert
+from app.services.notifications import dispatch_alert, doctor_notification_target
 
 
 def _build_engine() -> PsychiatricRiskEngine:
@@ -53,8 +54,14 @@ async def process_checkin(
     session.add(checkin)
     await session.flush()  # garante checkin.id para o alerta e a auditoria
 
+    # Risco por tendência: combina o risco pontual (deste check-in) com o padrão
+    # dos check-ins recentes, mantendo o MAIOR risco (conservador).
+    trend = await _assess_trend(session, patient, checkin, assessment.level)
+    combined_level = assessment.level.escalate(trend.level)
+    combined_reasons = assessment.reasons + trend.reasons
+
     # Atualiza o índice de risco atual do paciente (denormalizado p/ o painel).
-    patient.current_risk = assessment.level
+    patient.current_risk = combined_level
     patient.last_checkin_at = datetime.now(timezone.utc)
 
     await audit.record(
@@ -70,23 +77,28 @@ async def process_checkin(
         actor="system",
         entity_type="checkin",
         entity_id=checkin.id,
-        metadata={"level": assessment.level.value, "reasons": assessment.reasons},
+        metadata={
+            "checkin_level": assessment.level.value,
+            "trend_level": trend.level.value,
+            "combined_level": combined_level.value,
+            "reasons": combined_reasons,
+        },
     )
 
-    # Alerta apenas quando o risco exige atenção do médico (🟠 ou 🔴).
-    if assessment.level.order >= RiskLevel.ORANGE.order:
+    # Alerta apenas quando o risco (pontual ou de tendência) exige atenção (🟠/🔴).
+    if combined_level.order >= RiskLevel.ORANGE.order:
         urgency = (
             AlertUrgency.IMMEDIATE
-            if assessment.level is RiskLevel.RED
+            if combined_level is RiskLevel.RED
             else AlertUrgency.ROUTINE
         )
         alert = Alert(
             patient_id=patient.id,
             checkin_id=checkin.id,
-            level=assessment.level,
+            level=combined_level,
             urgency=urgency,
-            reason="; ".join(assessment.reasons) or "risco elevado no check-in",
-            reasons_detail=assessment.reasons,
+            reason="; ".join(combined_reasons) or "risco elevado no check-in",
+            reasons_detail=combined_reasons,
         )
         session.add(alert)
         await session.flush()
@@ -100,17 +112,25 @@ async def process_checkin(
             metadata={"level": alert.level.value, "urgency": urgency.value},
         )
 
-        target = await _doctor_notification_target(session, patient)
+        target = await doctor_notification_target(session, patient)
         await dispatch_alert(session, alert=alert, patient=patient, target=target)
 
     return checkin
 
 
-async def _doctor_notification_target(session: AsyncSession, patient: Patient) -> str:
-    """E-mail do médico responsável (destino da notificação); fallback estável."""
-    doctor = await session.get(Doctor, patient.doctor_id)
-    if doctor is not None:
-        user = await session.get(User, doctor.user_id)
-        if user is not None and user.email:
-            return user.email
-    return f"doctor:{patient.doctor_id}"
+async def _assess_trend(
+    session: AsyncSession, patient: Patient, current: CheckIn, current_level: RiskLevel
+):
+    """Monta a janela recente (atual + anteriores) e avalia a tendência."""
+    current_point = CheckInPoint(level=current_level, responses=current.structured_responses or {})
+    result = await session.execute(
+        select(CheckIn)
+        .where(CheckIn.patient_id == patient.id, CheckIn.id != current.id)
+        .order_by(CheckIn.created_at.desc())
+        .limit(max(settings.risk_trend_window - 1, 0))
+    )
+    previous = [
+        CheckInPoint(level=c.risk_level, responses=c.structured_responses or {})
+        for c in result.scalars().all()
+    ]
+    return assess_trend([current_point, *previous])

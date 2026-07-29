@@ -21,6 +21,7 @@ from app.models.doctor import Doctor
 from app.models.enums import AlertStatus, AuditAction
 from app.models.patient import Patient
 from app.models.protocol import Protocol
+from app.schemas.alert import AlertRead
 from app.schemas.checkin import CheckInRead
 from app.schemas.patient import (
     PatientCreate,
@@ -30,6 +31,7 @@ from app.schemas.patient import (
     PatientTokenRead,
 )
 from app.services import audit
+from app.services.inactivity_service import days_since_checkin, is_inactive, scan_inactivity
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
@@ -116,6 +118,7 @@ async def list_patients(
     )
     open_counts = {pid: count for pid, count in counts_result.all()}
 
+    now = datetime.now(timezone.utc)
     items = [
         PatientPanelItem(
             id=p.id,
@@ -123,6 +126,8 @@ async def list_patients(
             current_risk=p.current_risk,
             last_checkin_at=p.last_checkin_at,
             open_alerts=open_counts.get(p.id, 0),
+            days_since_checkin=days_since_checkin(p, now),
+            inactive=is_inactive(p, now),
         )
         for p in patients
     ]
@@ -179,3 +184,12 @@ async def rotate_patient_token(
         entity_id=patient.id,
     )
     return PatientTokenRead(access_token=token)
+
+
+@router.post("/scan-inactivity", response_model=list[AlertRead])
+async def scan_patient_inactivity(
+    doctor: Doctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db),
+) -> list[Alert]:
+    """Gera alertas de não-adesão para os pacientes deste médico sem check-in recente."""
+    return await scan_inactivity(session, doctor_id=doctor.id)
