@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: flowra
+      POSTGRES_PASSWORD: flowra
+      POSTGRES_DB: flowra_care
+    ports:
+      - "5432:5432"
+    volumes:
+      - flowra_care_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flowra -d flowra_care"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://flowra:flowra@db:5432/flowra_care
+      JWT_SECRET_KEY: dev-secret-nao-use-em-producao
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "python -m app.scripts.init_db &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+volumes:
+  flowra_care_pgdata:

@@ -1,0 +1,57 @@
+"""Configuração central da aplicação, carregada de variáveis de ambiente / .env."""
+
+from __future__ import annotations
+
+from functools import lru_cache
+
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        case_sensitive=False,
+    )
+
+    # Aplicação
+    app_name: str = "Flowra Care"
+    environment: str = "development"
+    debug: bool = True
+
+    # Banco de dados
+    database_url: str = "postgresql+asyncpg://flowra:flowra@localhost:5432/flowra_care"
+
+    # Autenticação (perfil médico — JWT)
+    jwt_secret_key: str = "troque-este-segredo-em-producao"
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 480
+
+    # Módulo de IA (análise do texto/áudio livre)
+    free_text_analyzer: str = "keyword"  # keyword | llm
+    llm_api_key: str | None = None
+    llm_model: str | None = None
+
+    # CORS
+    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _split_cors(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return value
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.lower() == "production"
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+
+
+settings = get_settings()
