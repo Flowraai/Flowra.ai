@@ -24,9 +24,11 @@ logger = logging.getLogger("flowra_care.notifications")
 
 
 async def doctor_notification_target(session: AsyncSession, patient: Patient) -> str:
-    """E-mail do médico responsável (destino da notificação); fallback estável."""
+    """Destino da notificação do médico: notification_email, senão e-mail de login."""
     doctor = await session.get(Doctor, patient.doctor_id)
     if doctor is not None:
+        if doctor.notification_email:
+            return doctor.notification_email
         user = await session.get(User, doctor.user_id)
         if user is not None and user.email:
             return user.email

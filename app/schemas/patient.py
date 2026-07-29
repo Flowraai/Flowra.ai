@@ -63,6 +63,14 @@ class PatientTokenRead(BaseModel):
     access_token: str
 
 
+class PatientOnboarding(BaseModel):
+    """Resultado do (re)envio de onboarding: token novo, link e se houve envio."""
+
+    access_token: str
+    onboarding_link: str
+    sent: bool
+
+
 class PatientExport(BaseModel):
     """Portabilidade LGPD: todos os dados do paciente em um pacote."""
 

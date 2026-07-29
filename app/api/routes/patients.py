@@ -27,12 +27,14 @@ from app.schemas.patient import (
     PatientCreate,
     PatientCreated,
     PatientExport,
+    PatientOnboarding,
     PatientPanelItem,
     PatientRead,
     PatientTokenRead,
 )
 from app.services import audit
 from app.services.inactivity_service import days_since_checkin, is_inactive, scan_inactivity
+from app.services.onboarding_service import build_onboarding_link, send_onboarding
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
@@ -92,6 +94,9 @@ async def create_patient(
         entity_id=patient.id,
         metadata={"consent_version": payload.consent_version},
     )
+
+    # Entrega o acesso ao paciente automaticamente (best-effort; não bloqueia o cadastro).
+    await send_onboarding(session, patient, token)
 
     base = PatientRead.model_validate(patient).model_dump()
     return PatientCreated(**base, access_token=token)
@@ -242,6 +247,29 @@ async def rotate_patient_token(
         entity_id=patient.id,
     )
     return PatientTokenRead(access_token=token)
+
+
+@router.post("/{patient_id}/resend-onboarding", response_model=PatientOnboarding)
+async def resend_onboarding(
+    patient_id: uuid.UUID,
+    doctor: Doctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db),
+) -> PatientOnboarding:
+    """Gera um novo token de acesso e reenvia o link de onboarding ao paciente."""
+    patient = await _get_owned_patient(session, doctor, patient_id)
+    token = generate_patient_token()
+    patient.access_token_hash = hash_patient_token(token)
+    await audit.record(
+        session,
+        action=AuditAction.PATIENT_TOKEN_ROTATED,
+        actor=f"doctor:{doctor.id}",
+        entity_type="patient",
+        entity_id=patient.id,
+    )
+    sent = await send_onboarding(session, patient, token)
+    return PatientOnboarding(
+        access_token=token, onboarding_link=build_onboarding_link(token), sent=sent
+    )
 
 
 @router.post("/scan-inactivity", response_model=list[AlertRead])
