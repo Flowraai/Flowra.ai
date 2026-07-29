@@ -68,10 +68,23 @@ class QuestionType(str, enum.Enum):
     FREE_TEXT = "free_text"  # texto/áudio livre
 
 
+class NotificationChannel(str, enum.Enum):
+    LOG = "log"          # registra em log (default, sempre disponível)
+    EMAIL = "email"      # e-mail via SMTP
+    WEBHOOK = "webhook"  # POST para um endpoint (ex.: ponte de WhatsApp/push)
+
+
+class NotificationStatus(str, enum.Enum):
+    QUEUED = "queued"
+    SENT = "sent"
+    FAILED = "failed"
+
+
 class AuditAction(str, enum.Enum):
     CHECKIN_SUBMITTED = "checkin_submitted"
     RISK_CALCULATED = "risk_calculated"
     ALERT_CREATED = "alert_created"
     ALERT_STATUS_CHANGED = "alert_status_changed"
+    ALERT_NOTIFICATION_SENT = "alert_notification_sent"
     PATIENT_CREATED = "patient_created"
     PATIENT_TOKEN_ROTATED = "patient_token_rotated"

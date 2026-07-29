@@ -37,11 +37,23 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
 
-    @field_validator("cors_origins", mode="before")
+    # Notificações ao médico (alertas)
+    notification_channels: list[str] = Field(default_factory=lambda: ["log"])
+    # SMTP (canal email)
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str | None = None
+    smtp_use_tls: bool = True
+    # Webhook (ponte para WhatsApp/push, etc.)
+    notification_webhook_url: str | None = None
+
+    @field_validator("cors_origins", "notification_channels", mode="before")
     @classmethod
-    def _split_cors(cls, value: object) -> object:
+    def _split_csv(cls, value: object) -> object:
         if isinstance(value, str):
-            return [origin.strip() for origin in value.split(",") if origin.strip()]
+            return [item.strip() for item in value.split(",") if item.strip()]
         return value
 
     @property

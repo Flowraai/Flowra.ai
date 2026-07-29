@@ -1,34 +1,77 @@
-"""Serviço de notificações — alerta o médico quando o risco exige atenção.
+"""Serviço de notificações — alerta o médico e registra cada entrega.
 
-MVP: registra a notificação (log) e deixa o alerta persistido para o painel.
-Integrações reais (e-mail/push/WhatsApp) implementam a mesma interface.
+Roteia o alerta para os canais configurados, persiste um `Notification` por
+tentativa (auditável) e nunca deixa a falha de um canal derrubar o check-in.
 """
 
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.alert import Alert
-from app.models.enums import AlertUrgency
+from app.models.enums import AlertUrgency, AuditAction, NotificationStatus
+from app.models.notification import Notification
 from app.models.patient import Patient
+from app.services import audit
+from app.services.notification_channels import get_active_channels
 
 logger = logging.getLogger("flowra_care.notifications")
 
 
-class NotificationService:
-    async def notify_doctor(self, alert: Alert, patient: Patient) -> None:
-        urgency_label = (
-            "IMEDIATO" if alert.urgency is AlertUrgency.IMMEDIATE else "não urgente"
-        )
-        logger.warning(
-            "Alerta %s (%s) — paciente=%s risco=%s motivo=%s",
-            urgency_label,
-            alert.urgency.value,
-            patient.id,
-            alert.level.value,
-            alert.reason,
-        )
-        # TODO (fase 1/2): enviar e-mail/push conforme urgência; registrar entrega.
+def _render(alert: Alert, patient: Patient) -> tuple[str, str]:
+    prefix = "🔴 URGENTE" if alert.urgency is AlertUrgency.IMMEDIATE else "🟠 Acompanhamento"
+    subject = f"[Flowra Care] {prefix} — paciente {patient.name}"
+    body = (
+        f"Paciente: {patient.name}\n"
+        f"Nível de risco: {alert.level.value}\n"
+        f"Urgência: {alert.urgency.value}\n"
+        f"Motivo(s): {alert.reason}\n\n"
+        "Acesse o painel para revisar o caso.\n"
+        "Lembrete: a priorização é apoio à decisão e não substitui o julgamento clínico."
+    )
+    return subject, body
 
 
-notification_service = NotificationService()
+async def dispatch_alert(
+    session: AsyncSession, *, alert: Alert, patient: Patient, target: str
+) -> list[Notification]:
+    subject, body = _render(alert, patient)
+    records: list[Notification] = []
+
+    for channel in get_active_channels():
+        notification = Notification(
+            alert_id=alert.id,
+            channel=channel.channel_type,
+            target=target,
+            status=NotificationStatus.QUEUED,
+        )
+        session.add(notification)
+        try:
+            await channel.send(target=target, subject=subject, body=body)
+            notification.status = NotificationStatus.SENT
+            notification.sent_at = datetime.now(timezone.utc)
+        except Exception as exc:  # noqa: BLE001 — falha de canal não pode quebrar o fluxo
+            notification.status = NotificationStatus.FAILED
+            notification.error = str(exc)[:500]
+            logger.error(
+                "Falha ao notificar via %s (paciente=%s): %s",
+                channel.channel_type.value, patient.id, exc,
+            )
+        records.append(notification)
+
+    await session.flush()
+    await audit.record(
+        session,
+        action=AuditAction.ALERT_NOTIFICATION_SENT,
+        actor="system",
+        entity_type="alert",
+        entity_id=alert.id,
+        metadata={
+            "target": target,
+            "results": {n.channel.value: n.status.value for n in records},
+        },
+    )
+    return records

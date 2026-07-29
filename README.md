@@ -116,6 +116,20 @@ Regras e limiares ficam em `app/risk/engine.py` (`RiskThresholds`) e as palavras
 do texto livre em `app/risk/free_text.py`. **Ambos devem ser revisados com um médico
 consultor antes do piloto** (Fase 2).
 
+### Notificações ao médico
+
+Quando um check-in gera 🟠/🔴, o alerta é despachado para os **canais configurados**
+(`NOTIFICATION_CHANNELS`) e **cada entrega é registrada** na tabela `notifications`
+(auditável): canal, destino, status (`queued`/`sent`/`failed`) e erro. A falha de um
+canal nunca derruba o check-in.
+
+- `log` (default) — sempre disponível, roda sem configuração.
+- `email` — SMTP (defina `SMTP_HOST`/`SMTP_FROM` e afins).
+- `webhook` — POST `{target, subject, body}` para `NOTIFICATION_WEBHOOK_URL`
+  (ponte para WhatsApp/push).
+
+O destino é o e-mail do médico responsável. 🔴 vira notificação urgente; 🟠, de rotina.
+
 ### IA no texto/áudio livre
 
 O contrato é `FreeTextAnalyzer.analyze(text) -> FreeTextResult`. O padrão do MVP é o
@@ -142,8 +156,12 @@ pytest            # motor de risco, texto livre e smoke da API (sem banco)
 
 ## Próximos passos (backend)
 
-- Migração inicial versionada (Alembic autogenerate) e pipeline de CI.
-- Upload/transcrição de áudio e integração do `LLMFreeTextAnalyzer`.
-- Entrega real de notificações (e-mail/push/WhatsApp) por urgência.
+- Upload/transcrição de áudio (speech-to-text) e integração do `LLMFreeTextAnalyzer`.
+- Onboarding do paciente: entrega do link/token via WhatsApp/app.
+- Segurança extra: refresh token, reset de senha, rate limiting.
 - Ajuste fino dos limiares de risco com médico consultor (Fase 2).
 - Endpoints de exportação/relatório para o painel.
+
+Já entregue: migração inicial versionada + CI (lint, migração e testes com Postgres);
+testes de integração ponta a ponta; infraestrutura de notificação plugável com registro
+de entrega.

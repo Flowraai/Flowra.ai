@@ -14,13 +14,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.alert import Alert
 from app.models.checkin import CheckIn
+from app.models.doctor import Doctor
 from app.models.enums import AlertUrgency, AuditAction, RiskLevel
 from app.models.patient import Patient
+from app.models.user import User
 from app.risk.engine import PsychiatricRiskEngine
 from app.risk.free_text import get_free_text_analyzer
 from app.schemas.checkin import CheckInCreate
 from app.services import audit
-from app.services.notifications import notification_service
+from app.services.notifications import dispatch_alert
 
 
 def _build_engine() -> PsychiatricRiskEngine:
@@ -92,6 +94,18 @@ async def process_checkin(
             entity_id=alert.id,
             metadata={"level": alert.level.value, "urgency": urgency.value},
         )
-        await notification_service.notify_doctor(alert, patient)
+
+        target = await _doctor_notification_target(session, patient)
+        await dispatch_alert(session, alert=alert, patient=patient, target=target)
 
     return checkin
+
+
+async def _doctor_notification_target(session: AsyncSession, patient: Patient) -> str:
+    """E-mail do médico responsável (destino da notificação); fallback estável."""
+    doctor = await session.get(Doctor, patient.doctor_id)
+    if doctor is not None:
+        user = await session.get(User, doctor.user_id)
+        if user is not None and user.email:
+            return user.email
+    return f"doctor:{patient.doctor_id}"
