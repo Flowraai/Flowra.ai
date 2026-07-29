@@ -9,7 +9,7 @@ partida e DEVEM ser revisados com um médico consultor antes do piloto.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from app.models.enums import QuestionType
 

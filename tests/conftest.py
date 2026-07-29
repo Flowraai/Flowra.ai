@@ -1,0 +1,64 @@
+"""Fixtures de teste.
+
+Os testes de integração precisam de um Postgres alcançável via DATABASE_URL.
+Quando não houver banco, eles são **pulados** (skip) — os testes de unidade
+(motor de risco, texto livre, smoke da API) continuam rodando sem banco.
+"""
+
+from __future__ import annotations
+
+import httpx
+import pytest
+import pytest_asyncio
+from sqlalchemy import text
+
+from app.db.base import Base
+from app.db.session import AsyncSessionLocal, engine
+from app.main import app
+from app.scripts.seed_protocol import seed_psychiatry_protocol
+
+# Tabelas com dados mutáveis, limpas entre cada teste (protocolos permanecem).
+_MUTABLE_TABLES = ["alerts", "checkins", "audit_logs", "patients", "doctors", "users"]
+
+
+async def _db_reachable() -> bool:
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        return True
+    except Exception:
+        return False
+
+
+@pytest_asyncio.fixture
+async def client() -> httpx.AsyncClient:
+    """Cliente HTTP contra a app, com banco limpo e protocolo populado.
+
+    Pula o teste se não houver Postgres disponível.
+    """
+    # O pytest-asyncio usa um event loop por teste; o pool do engine async fica
+    # preso ao loop anterior. Descartar o pool força conexões novas no loop atual.
+    await engine.dispose()
+
+    if not await _db_reachable():
+        pytest.skip(
+            "Postgres indisponível — defina DATABASE_URL para rodar os testes de integração."
+        )
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    async with AsyncSessionLocal() as session:
+        await session.execute(text(f"TRUNCATE {', '.join(_MUTABLE_TABLES)} CASCADE"))
+        await session.commit()
+
+    async with AsyncSessionLocal() as session:
+        await seed_psychiatry_protocol(session)
+        await session.commit()
+
+    transport = httpx.ASGITransport(app=app)
+    try:
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as http_client:
+            yield http_client
+    finally:
+        await engine.dispose()
