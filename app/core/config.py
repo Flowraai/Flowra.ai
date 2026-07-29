@@ -27,7 +27,17 @@ class Settings(BaseSettings):
     # Autenticação (perfil médico — JWT)
     jwt_secret_key: str = "troque-este-segredo-em-producao"
     jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 480
+    access_token_expire_minutes: int = 60
+    refresh_token_expire_days: int = 30
+    password_reset_expire_minutes: int = 30
+    # Base do link de redefinição de senha (painel). Se vazio, envia só o token.
+    password_reset_url_base: str | None = None
+
+    # Rate limiting (janela deslizante em memória) dos endpoints sensíveis
+    login_rate_limit_attempts: int = 5
+    login_rate_limit_window_seconds: int = 60
+    register_rate_limit_attempts: int = 10
+    password_reset_rate_limit_attempts: int = 5
 
     # Módulo de IA (análise do texto/áudio livre)
     free_text_analyzer: str = "keyword"  # keyword | llm

@@ -21,6 +21,18 @@ from app.services.notification_channels import get_active_channels
 logger = logging.getLogger("flowra_care.notifications")
 
 
+async def send_plain(target: str, subject: str, body: str) -> None:
+    """Envia uma mensagem avulsa (ex.: e-mail de reset de senha) pelos canais ativos.
+
+    Não persiste registro (não é um alerta); falha de canal apenas é logada.
+    """
+    for channel in get_active_channels():
+        try:
+            await channel.send(target=target, subject=subject, body=body)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Falha ao enviar mensagem via %s: %s", channel.channel_type.value, exc)
+
+
 def _render(alert: Alert, patient: Patient) -> tuple[str, str]:
     prefix = "🔴 URGENTE" if alert.urgency is AlertUrgency.IMMEDIATE else "🟠 Acompanhamento"
     subject = f"[Flowra Care] {prefix} — paciente {patient.name}"

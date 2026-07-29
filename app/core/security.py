@@ -35,15 +35,19 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return False
 
 
-# --- Token de acesso do paciente ---
-# O paciente não usa senha no MVP: recebe um token opaco (via app/WhatsApp/link).
-# Guardamos apenas o hash do token no banco; o token em claro é exibido uma única vez.
-def generate_patient_token() -> str:
+# --- Tokens opacos (paciente, refresh, reset de senha) ---
+# Guardamos apenas o hash no banco; o token em claro é exibido uma única vez.
+def generate_opaque_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-def hash_patient_token(token: str) -> str:
+def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+# Aliases mantidos por clareza no domínio do paciente.
+generate_patient_token = generate_opaque_token
+hash_patient_token = hash_token
 
 
 # --- JWT (perfil médico) ---

@@ -12,10 +12,19 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import text
 
+from app.core.rate_limit import SlidingWindowRateLimiter
 from app.db.base import Base
 from app.db.session import AsyncSessionLocal, engine
 from app.main import app
 from app.scripts.seed_protocol import seed_psychiatry_protocol
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiters():
+    """Zera o estado dos rate limiters em memória entre os testes."""
+    SlidingWindowRateLimiter.reset_all()
+    yield
+    SlidingWindowRateLimiter.reset_all()
 
 # Tabelas com dados mutáveis, limpas entre cada teste (protocolos permanecem).
 _MUTABLE_TABLES = ["alerts", "checkins", "audit_logs", "patients", "doctors", "users"]

@@ -6,6 +6,7 @@ enxerguem todas as tabelas.
 
 from app.models.alert import Alert
 from app.models.audit import AuditLog
+from app.models.auth_tokens import PasswordResetToken, RefreshToken
 from app.models.checkin import CheckIn
 from app.models.doctor import Doctor
 from app.models.enums import (
@@ -29,9 +30,11 @@ __all__ = [
     "CheckIn",
     "Doctor",
     "Notification",
+    "PasswordResetToken",
     "Patient",
     "Protocol",
     "ProtocolQuestion",
+    "RefreshToken",
     "User",
     "AlertStatus",
     "AlertUrgency",

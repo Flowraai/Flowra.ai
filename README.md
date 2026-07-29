@@ -80,8 +80,11 @@ Perfil **médico** (JWT — `Authorization: Bearer <token>`):
 
 | Método | Rota | Descrição |
 |---|---|---|
-| POST | `/api/v1/auth/register` | Cadastra médico, retorna token |
-| POST | `/api/v1/auth/login` | Login, retorna token |
+| POST | `/api/v1/auth/register` | Cadastra médico, retorna access + refresh token |
+| POST | `/api/v1/auth/login` | Login (rate-limited), retorna access + refresh token |
+| POST | `/api/v1/auth/refresh` | Renova a sessão (rotaciona o refresh token) |
+| POST | `/api/v1/auth/forgot-password` | Solicita redefinição (resposta genérica) |
+| POST | `/api/v1/auth/reset-password` | Redefine a senha via token (revoga sessões) |
 | GET  | `/api/v1/auth/me` | Perfil do médico |
 | POST | `/api/v1/patients` | Cadastra paciente (exige consentimento LGPD); retorna o **token do paciente uma única vez** |
 | GET  | `/api/v1/patients` | **Painel**: pacientes ordenados por risco |
@@ -174,4 +177,10 @@ Já entregue: migração inicial versionada + CI (lint, migração e testes com 
 testes de integração ponta a ponta; notificação plugável com registro de entrega;
 análise do texto livre por LLM (endpoint compatível com OpenAI) combinada de forma
 conservadora com o determinístico; validação das respostas do check-in contra o
-protocolo (tipos, escalas, opções, obrigatoriedade e campos inesperados → 422).
+protocolo (tipos, escalas, opções, obrigatoriedade e campos inesperados → 422);
+hardening de autenticação (rate limiting no login, refresh token com rotação e
+reset de senha com revogação de sessões).
+
+> Nota: o rate limiting é em memória (uma instância). Para múltiplas
+> instâncias/workers, trocar por um backend compartilhado (ex.: Redis) mantendo
+> a mesma interface em `app/core/rate_limit.py`.
