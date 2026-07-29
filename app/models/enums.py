@@ -69,9 +69,10 @@ class QuestionType(str, enum.Enum):
 
 
 class NotificationChannel(str, enum.Enum):
-    LOG = "log"          # registra em log (default, sempre disponível)
-    EMAIL = "email"      # e-mail via SMTP
-    WEBHOOK = "webhook"  # POST para um endpoint (ex.: ponte de WhatsApp/push)
+    LOG = "log"            # registra em log (default, sempre disponível)
+    EMAIL = "email"        # e-mail via SMTP
+    WEBHOOK = "webhook"    # POST para um endpoint (ponte genérica)
+    WHATSAPP = "whatsapp"  # WhatsApp via Meta Cloud API
 
 
 class NotificationStatus(str, enum.Enum):

@@ -32,6 +32,8 @@ class Doctor(UUIDMixin, TimestampMixin, Base):
     council_id: Mapped[str | None] = mapped_column(String(60), nullable=True)
     # Destino das notificações de alerta (se vazio, usa o e-mail de login).
     notification_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Telefone (E.164) para notificações via WhatsApp.
+    notification_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="doctor")
     patients: Mapped[list["Patient"]] = relationship(

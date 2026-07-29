@@ -143,8 +143,14 @@ canal nunca derruba o check-in.
 
 - `log` (default) — sempre disponível, roda sem configuração.
 - `email` — SMTP (defina `SMTP_HOST`/`SMTP_FROM` e afins).
-- `webhook` — POST `{target, subject, body}` para `NOTIFICATION_WEBHOOK_URL`
-  (ponte para WhatsApp/push).
+- `webhook` — POST `{target, subject, body}` para `NOTIFICATION_WEBHOOK_URL` (ponte genérica).
+- `whatsapp` — Meta Cloud API (`WHATSAPP_PHONE_NUMBER_ID`/`WHATSAPP_ACCESS_TOKEN`).
+  Destino é **telefone**; fora da janela de 24h a Meta exige uma template aprovada
+  (`WHATSAPP_TEMPLATE_NAME`).
+
+O destino é resolvido **por canal**: WhatsApp usa o telefone (`Doctor.notification_phone`
+para alertas; `contact` do paciente para onboarding); os demais canais usam e-mail. Se o
+contato exigido por um canal não existir, aquela entrega é registrada como `failed`.
 
 As listas do painel (`/patients`, `/patients/{id}/checkins`, `/alerts`) aceitam
 `limit`/`offset` para paginação (com limites máximos por rota).

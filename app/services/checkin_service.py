@@ -24,7 +24,7 @@ from app.risk.free_text import get_free_text_analyzer
 from app.risk.trend import CheckInPoint, assess_trend
 from app.schemas.checkin import CheckInCreate
 from app.services import audit
-from app.services.notifications import dispatch_alert, doctor_notification_target
+from app.services.notifications import dispatch_alert, doctor_notification_contacts
 
 
 def _build_engine() -> PsychiatricRiskEngine:
@@ -112,8 +112,8 @@ async def process_checkin(
             metadata={"level": alert.level.value, "urgency": urgency.value},
         )
 
-        target = await doctor_notification_target(session, patient)
-        await dispatch_alert(session, alert=alert, patient=patient, target=target)
+        email, phone = await doctor_notification_contacts(session, patient)
+        await dispatch_alert(session, alert=alert, patient=patient, email=email, phone=phone)
 
     return checkin
 

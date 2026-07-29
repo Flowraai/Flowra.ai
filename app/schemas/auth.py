@@ -14,6 +14,8 @@ class DoctorRegister(BaseModel):
     council_id: str | None = Field(default=None, max_length=60)
     # Destino das notificações de alerta (se vazio, usa o e-mail de login).
     notification_email: EmailStr | None = None
+    # Telefone (E.164) para notificações via WhatsApp.
+    notification_phone: str | None = Field(default=None, max_length=30)
 
 
 class LoginRequest(BaseModel):
