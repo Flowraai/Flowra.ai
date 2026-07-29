@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -104,6 +104,8 @@ async def create_patient(
 
 @router.get("", response_model=list[PatientPanelItem])
 async def list_patients(
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     doctor: Doctor = Depends(get_current_doctor),
     session: AsyncSession = Depends(get_db),
 ) -> list[PatientPanelItem]:
@@ -144,7 +146,7 @@ async def list_patients(
             i.last_checkin_at or datetime.min.replace(tzinfo=timezone.utc),
         )
     )
-    return items
+    return items[offset : offset + limit]
 
 
 @router.get("/{patient_id}", response_model=PatientRead)
@@ -216,7 +218,8 @@ async def delete_patient(
 @router.get("/{patient_id}/checkins", response_model=list[CheckInRead])
 async def patient_checkins(
     patient_id: uuid.UUID,
-    limit: int = 30,
+    limit: int = Query(30, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     doctor: Doctor = Depends(get_current_doctor),
     session: AsyncSession = Depends(get_db),
 ) -> list[CheckIn]:
@@ -225,7 +228,8 @@ async def patient_checkins(
         select(CheckIn)
         .where(CheckIn.patient_id == patient_id)
         .order_by(CheckIn.created_at.desc())
-        .limit(min(limit, 200))
+        .limit(limit)
+        .offset(offset)
     )
     return list(result.scalars().all())
 

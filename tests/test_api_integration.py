@@ -10,6 +10,9 @@ from __future__ import annotations
 
 import httpx
 
+from app.models.enums import RiskLevel
+from tests.factories import insert_checkin
+
 STABLE = {
     "mood": 8, "anxiety": 2, "slept_well": "sim", "sleep_hours": 8,
     "medication_taken": "sim", "crisis": "nao", "side_effects": "nao",
@@ -164,7 +167,8 @@ async def test_checkin_history(client: httpx.AsyncClient):
     headers = await _register_doctor(client)
     patient = await _create_patient(client, headers)
     ph = {"X-Patient-Token": patient["access_token"]}
-    await client.post("/api/v1/patient/checkins", headers=ph, json={"structured_responses": STABLE})
+    # check-in de ontem (verde) + check-in de hoje (crítico) — um por dia.
+    await insert_checkin(patient["id"], risk_level=RiskLevel.GREEN, days_ago=1)
     await client.post("/api/v1/patient/checkins", headers=ph, json={"structured_responses": CRITICAL})
 
     history = (await client.get(f"/api/v1/patients/{patient['id']}/checkins", headers=headers)).json()

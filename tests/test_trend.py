@@ -7,6 +7,7 @@ import httpx
 from app.models.enums import RiskLevel
 from app.protocol import psychiatry as P
 from app.risk.trend import CheckInPoint, assess_trend
+from tests.factories import insert_checkin
 
 
 def _p(level: RiskLevel, mood: int | None = None, medication: str | None = None) -> CheckInPoint:
@@ -55,13 +56,13 @@ def test_repeated_nonadherence_is_orange():
 
 
 # ---------- Integração ----------
-async def _patient(client: httpx.AsyncClient) -> tuple[dict, str]:
+async def _patient(client: httpx.AsyncClient) -> tuple[dict, dict]:
     r = await client.post("/api/v1/auth/register", json={
         "email": "dra.ana@clinica.com", "password": "senhaforte123", "name": "Dra. Ana"})
     headers = {"Authorization": f"Bearer {r.json()['access_token']}"}
     p = await client.post("/api/v1/patients", headers=headers,
                           json={"name": "João", "consent_given": True})
-    return headers, p.json()["access_token"]
+    return headers, p.json()
 
 
 def _responses(mood: int) -> dict:
@@ -72,14 +73,17 @@ def _responses(mood: int) -> dict:
 
 
 async def test_declining_mood_escalates_patient_risk(client: httpx.AsyncClient):
-    headers, token = await _patient(client)
-    ph = {"X-Patient-Token": token}
+    headers, patient = await _patient(client)
 
-    # Três check-ins com humor caindo (8 -> 7 -> 6); cada um é verde isoladamente.
-    for mood in (8, 7, 6):
-        r = await client.post("/api/v1/patient/checkins", headers=ph,
-                              json={"structured_responses": _responses(mood)})
-        assert r.status_code == 201
+    # Check-ins anteriores (dias passados) com humor mais alto, cada um verde.
+    await insert_checkin(patient["id"], responses=_responses(8), days_ago=2)
+    await insert_checkin(patient["id"], responses=_responses(7), days_ago=1)
+
+    # Check-in de hoje (humor 6): verde isoladamente, mas fecha o padrão de queda.
+    r = await client.post("/api/v1/patient/checkins",
+                          headers={"X-Patient-Token": patient["access_token"]},
+                          json={"structured_responses": _responses(6)})
+    assert r.status_code == 201
 
     # O paciente fica laranja pela TENDÊNCIA, mesmo com o último check-in verde.
     panel = (await client.get("/api/v1/patients", headers=headers)).json()

@@ -5,12 +5,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_patient
 from app.db.session import get_db
+from app.models.checkin import CheckIn
 from app.models.patient import Patient
 from app.models.protocol import Protocol
 from app.protocol.validation import validate_responses
@@ -50,6 +51,24 @@ async def submit_checkin(
     session: AsyncSession = Depends(get_db),
 ) -> CheckInResult:
     """Envio do check-in diário do paciente (< 1 min)."""
+    # Idempotência: um check-in por dia (limite do dia em UTC). Evita duplicatas que
+    # distorceriam tendência e não-adesão; reenvios recebem 409.
+    now = datetime.now(timezone.utc)
+    start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    already = await session.scalar(
+        select(
+            exists().where(
+                CheckIn.patient_id == patient.id,
+                CheckIn.created_at >= start_of_day,
+            )
+        )
+    )
+    if already:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Você já registrou seu check-in hoje.",
+        )
+
     # Valida as respostas contra o protocolo ativo antes de calcular o risco.
     if patient.active_protocol_id is None:
         raise HTTPException(

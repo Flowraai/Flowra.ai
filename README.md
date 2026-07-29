@@ -105,7 +105,7 @@ Perfil **paciente** (token opaco — header `X-Patient-Token: <token>`):
 | Método | Rota | Descrição |
 |---|---|---|
 | GET  | `/api/v1/patient/protocol` | Perguntas do dia para renderizar |
-| POST | `/api/v1/patient/checkins` | Envia o check-in diário (respostas validadas contra o protocolo) |
+| POST | `/api/v1/patient/checkins` | Envia o check-in diário (validado; **um por dia** — 2º envio no mesmo dia → 409) |
 
 ## Índice de risco
 
@@ -145,6 +145,9 @@ canal nunca derruba o check-in.
 - `email` — SMTP (defina `SMTP_HOST`/`SMTP_FROM` e afins).
 - `webhook` — POST `{target, subject, body}` para `NOTIFICATION_WEBHOOK_URL`
   (ponte para WhatsApp/push).
+
+As listas do painel (`/patients`, `/patients/{id}/checkins`, `/alerts`) aceitam
+`limit`/`offset` para paginação (com limites máximos por rota).
 
 O destino é o `notification_email` do médico (se definido no cadastro) ou o e-mail de
 login. 🔴 vira notificação urgente; 🟠, de rotina. `POST /notifications/test` envia uma
