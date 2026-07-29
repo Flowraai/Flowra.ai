@@ -19,8 +19,9 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.execute("ALTER TYPE audit_action ADD VALUE IF NOT EXISTS 'patient_exported'")
-    op.execute("ALTER TYPE audit_action ADD VALUE IF NOT EXISTS 'patient_deleted'")
+    # O SQLAlchemy grava enums pelo NOME do membro (maiúsculo).
+    op.execute("ALTER TYPE audit_action ADD VALUE IF NOT EXISTS 'PATIENT_EXPORTED'")
+    op.execute("ALTER TYPE audit_action ADD VALUE IF NOT EXISTS 'PATIENT_DELETED'")
 
 
 def downgrade() -> None:
