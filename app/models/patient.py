@@ -31,6 +31,12 @@ class Patient(UUIDMixin, TimestampMixin, Base):
     contact: Mapped[str | None] = mapped_column(String(255), nullable=True)
     birth_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
     doctor_id: Mapped[uuid.UUID] = mapped_column(
         PgUUID(as_uuid=True),
         ForeignKey("doctors.id", ondelete="CASCADE"),

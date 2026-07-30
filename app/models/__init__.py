@@ -17,11 +17,13 @@ from app.models.enums import (
     NotificationStatus,
     QuestionType,
     RiskLevel,
+    TenantKind,
     UserRole,
 )
 from app.models.notification import Notification
 from app.models.patient import Patient
 from app.models.protocol import Protocol, ProtocolQuestion
+from app.models.tenant import Tenant
 from app.models.user import User
 
 __all__ = [
@@ -35,6 +37,7 @@ __all__ = [
     "Protocol",
     "ProtocolQuestion",
     "RefreshToken",
+    "Tenant",
     "User",
     "AlertStatus",
     "AlertUrgency",
@@ -43,5 +46,6 @@ __all__ = [
     "NotificationStatus",
     "QuestionType",
     "RiskLevel",
+    "TenantKind",
     "UserRole",
 ]

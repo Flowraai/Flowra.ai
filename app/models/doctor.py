@@ -25,6 +25,12 @@ class Doctor(UUIDMixin, TimestampMixin, Base):
         unique=True,
         nullable=False,
     )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     specialty: Mapped[str] = mapped_column(String(120), default="psiquiatria", nullable=False)
     clinic: Mapped[str | None] = mapped_column(String(255), nullable=True)

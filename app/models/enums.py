@@ -12,6 +12,13 @@ class UserRole(str, enum.Enum):
     ADMIN = "admin"
 
 
+class TenantKind(str, enum.Enum):
+    """Tipo do tenant (conta): clínica ou profissional autônomo."""
+
+    CLINIC = "clinic"
+    SOLO = "solo"
+
+
 class RiskLevel(str, enum.Enum):
     """Índice de risco do paciente (🟢🟡🟠🔴)."""
 
