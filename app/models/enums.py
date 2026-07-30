@@ -88,6 +88,7 @@ class AuditAction(str, enum.Enum):
     ALERT_STATUS_CHANGED = "alert_status_changed"
     ALERT_NOTIFICATION_SENT = "alert_notification_sent"
     PATIENT_CREATED = "patient_created"
+    PATIENT_UPDATED = "patient_updated"
     PATIENT_TOKEN_ROTATED = "patient_token_rotated"
     PATIENT_ONBOARDING_SENT = "patient_onboarding_sent"
     PATIENT_EXPORTED = "patient_exported"

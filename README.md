@@ -86,9 +86,11 @@ Perfil **médico** (JWT — `Authorization: Bearer <token>`):
 | POST | `/api/v1/auth/forgot-password` | Solicita redefinição (resposta genérica) |
 | POST | `/api/v1/auth/reset-password` | Redefine a senha via token (revoga sessões) |
 | GET  | `/api/v1/auth/me` | Perfil do médico |
+| PATCH | `/api/v1/auth/me` | Edita o perfil do médico (clínica, contatos de notificação, etc.) |
 | POST | `/api/v1/patients` | Cadastra paciente (exige consentimento LGPD); retorna o **token do paciente uma única vez** |
 | GET  | `/api/v1/patients` | **Painel**: pacientes ordenados por risco |
 | GET  | `/api/v1/patients/{id}` | Detalhe do paciente |
+| PATCH | `/api/v1/patients/{id}` | Edita paciente e ativa/desativa (`is_active`) |
 | GET  | `/api/v1/patients/{id}/export` | Exporta todos os dados do paciente (portabilidade LGPD) |
 | DELETE | `/api/v1/patients/{id}` | Apaga o paciente e seus dados de saúde (eliminação LGPD) |
 | GET  | `/api/v1/patients/{id}/checkins` | Histórico de check-ins |
@@ -104,6 +106,7 @@ Perfil **paciente** (token opaco — header `X-Patient-Token: <token>`):
 
 | Método | Rota | Descrição |
 |---|---|---|
+| GET  | `/api/v1/patient/today` | Estado do dia (já fez o check-in?) para o app |
 | GET  | `/api/v1/patient/protocol` | Perguntas do dia para renderizar |
 | POST | `/api/v1/patient/checkins` | Envia o check-in diário (validado; **um por dia** — 2º envio no mesmo dia → 409) |
 

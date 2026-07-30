@@ -23,6 +23,21 @@ class PatientCreate(BaseModel):
     consent_version: str | None = Field(default=None, max_length=30)
 
 
+class PatientUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    contact: str | None = Field(default=None, max_length=255)
+    birth_date: datetime | None = None
+    is_active: bool | None = None
+
+
+class PatientToday(BaseModel):
+    """Estado do dia para o app do paciente (neutro — não expõe risco)."""
+
+    patient_name: str
+    checked_in_today: bool
+    last_checkin_at: datetime | None = None
+
+
 class PatientRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

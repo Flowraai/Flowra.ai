@@ -31,6 +31,7 @@ from app.schemas.patient import (
     PatientPanelItem,
     PatientRead,
     PatientTokenRead,
+    PatientUpdate,
 )
 from app.services import audit
 from app.services.inactivity_service import days_since_checkin, is_inactive, scan_inactivity
@@ -156,6 +157,36 @@ async def get_patient(
     session: AsyncSession = Depends(get_db),
 ) -> Patient:
     return await _get_owned_patient(session, doctor, patient_id)
+
+
+@router.patch("/{patient_id}", response_model=PatientRead)
+async def update_patient(
+    patient_id: uuid.UUID,
+    payload: PatientUpdate,
+    doctor: Doctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db),
+) -> Patient:
+    """Edita dados do paciente e ativa/desativa (is_active)."""
+    patient = await _get_owned_patient(session, doctor, patient_id)
+    data = payload.model_dump(exclude_unset=True)
+    if data.get("name") is not None:
+        patient.name = data["name"]
+    if "contact" in data:
+        patient.contact = data["contact"]
+    if "birth_date" in data:
+        patient.birth_date = data["birth_date"]
+    if data.get("is_active") is not None:
+        patient.is_active = data["is_active"]
+
+    await audit.record(
+        session,
+        action=AuditAction.PATIENT_UPDATED,
+        actor=f"doctor:{doctor.id}",
+        entity_type="patient",
+        entity_id=patient.id,
+        metadata={"fields": sorted(data.keys())},
+    )
+    return patient
 
 
 @router.get("/{patient_id}/export", response_model=PatientExport)

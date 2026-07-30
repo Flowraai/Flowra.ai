@@ -25,7 +25,7 @@ from app.schemas.auth import (
     ResetPasswordRequest,
     TokenPair,
 )
-from app.schemas.doctor import DoctorProfile
+from app.schemas.doctor import DoctorProfile, DoctorUpdate
 from app.services import auth_service
 from app.services.notifications import send_plain
 
@@ -163,6 +163,24 @@ async def me(
     doctor: Doctor = Depends(get_current_doctor), session: AsyncSession = Depends(get_db)
 ) -> DoctorProfile:
     user = await session.get(User, doctor.user_id)
+    return _doctor_profile(doctor, user.email)  # type: ignore[union-attr]
+
+
+@router.patch("/me", response_model=DoctorProfile)
+async def update_me(
+    payload: DoctorUpdate,
+    doctor: Doctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db),
+) -> DoctorProfile:
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        if field == "name" and value is None:
+            continue  # nome não pode ser nulo
+        setattr(doctor, field, value)
+    user = await session.get(User, doctor.user_id)
+    return _doctor_profile(doctor, user.email)  # type: ignore[union-attr]
+
+
+def _doctor_profile(doctor: Doctor, email: str) -> DoctorProfile:
     return DoctorProfile(
         id=doctor.id,
         name=doctor.name,
@@ -171,5 +189,5 @@ async def me(
         council_id=doctor.council_id,
         notification_email=doctor.notification_email,
         notification_phone=doctor.notification_phone,
-        email=user.email,  # type: ignore[union-attr]
+        email=email,
     )
