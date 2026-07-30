@@ -16,10 +16,37 @@ from app.models.patient import Patient
 from app.models.protocol import Protocol
 from app.protocol.validation import validate_responses
 from app.schemas.checkin import CheckInCreate, CheckInResult
+from app.schemas.patient import PatientToday
 from app.schemas.protocol import ProtocolRead
 from app.services.checkin_service import process_checkin
 
 router = APIRouter(prefix="/patient", tags=["patient-app"])
+
+
+def _start_of_day_utc() -> datetime:
+    now = datetime.now(timezone.utc)
+    return now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+@router.get("/today", response_model=PatientToday)
+async def today(
+    patient: Patient = Depends(get_current_patient),
+    session: AsyncSession = Depends(get_db),
+) -> PatientToday:
+    """Estado do dia: o app usa para mostrar o formulário ou o 'check-in feito'."""
+    checked_in = await session.scalar(
+        select(
+            exists().where(
+                CheckIn.patient_id == patient.id,
+                CheckIn.created_at >= _start_of_day_utc(),
+            )
+        )
+    )
+    return PatientToday(
+        patient_name=patient.name,
+        checked_in_today=bool(checked_in),
+        last_checkin_at=patient.last_checkin_at,
+    )
 
 
 @router.get("/protocol", response_model=ProtocolRead)
@@ -53,13 +80,11 @@ async def submit_checkin(
     """Envio do check-in diário do paciente (< 1 min)."""
     # Idempotência: um check-in por dia (limite do dia em UTC). Evita duplicatas que
     # distorceriam tendência e não-adesão; reenvios recebem 409.
-    now = datetime.now(timezone.utc)
-    start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
     already = await session.scalar(
         select(
             exists().where(
                 CheckIn.patient_id == patient.id,
-                CheckIn.created_at >= start_of_day,
+                CheckIn.created_at >= _start_of_day_utc(),
             )
         )
     )
