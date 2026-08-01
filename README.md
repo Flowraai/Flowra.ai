@@ -183,6 +183,15 @@ silencia um sinal). A chamada roda numa thread para não bloquear o event loop.
 > Áudio (upload + transcrição/speech-to-text) ainda não está implementado — o campo
 > `audio_url` existe, mas o pipeline de áudio fica para uma próxima etapa.
 
+## Multi-tenant (fundação)
+
+Toda conta é um **tenant** (`tenants`): uma **clínica** (quando há nome de clínica no
+cadastro) ou um **profissional autônomo** (`solo`). Médicos e pacientes carregam
+`tenant_id`, e o tenant tem um `config` (JSONB) para configuração por conta. Neste
+primeiro passo a **visibilidade continua por médico** — o `tenant_id` fica assentado
+como base para os próximos módulos (config por tenant, compartilhamento por clínica,
+papéis). O tenant aparece em `/auth/me` (`tenant_id`, `tenant_name`).
+
 ## Compliance (não deixar para depois)
 
 - **LGPD** — dado de saúde é categoria sensível: consentimento explícito é exigido no

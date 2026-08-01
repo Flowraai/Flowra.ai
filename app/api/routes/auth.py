@@ -14,7 +14,8 @@ from app.core.rate_limit import rate_limit
 from app.core.security import hash_password, verify_password
 from app.db.session import get_db
 from app.models.doctor import Doctor
-from app.models.enums import UserRole
+from app.models.enums import TenantKind, UserRole
+from app.models.tenant import Tenant
 from app.models.user import User
 from app.schemas.auth import (
     DoctorRegister,
@@ -67,11 +68,20 @@ async def register_doctor(
         role=UserRole.DOCTOR,
     )
     session.add(user)
+
+    # Cada cadastro cria um tenant (a conta): clínica se houver nome de clínica,
+    # senão profissional autônomo (solo).
+    tenant = Tenant(
+        name=payload.clinic or payload.name,
+        kind=TenantKind.CLINIC if payload.clinic else TenantKind.SOLO,
+    )
+    session.add(tenant)
     await session.flush()
 
     session.add(
         Doctor(
             user_id=user.id,
+            tenant_id=tenant.id,
             name=payload.name,
             specialty=payload.specialty,
             clinic=payload.clinic,
@@ -162,8 +172,7 @@ async def reset_password(
 async def me(
     doctor: Doctor = Depends(get_current_doctor), session: AsyncSession = Depends(get_db)
 ) -> DoctorProfile:
-    user = await session.get(User, doctor.user_id)
-    return _doctor_profile(doctor, user.email)  # type: ignore[union-attr]
+    return await _profile_response(session, doctor)
 
 
 @router.patch("/me", response_model=DoctorProfile)
@@ -176,18 +185,21 @@ async def update_me(
         if field == "name" and value is None:
             continue  # nome não pode ser nulo
         setattr(doctor, field, value)
+    return await _profile_response(session, doctor)
+
+
+async def _profile_response(session: AsyncSession, doctor: Doctor) -> DoctorProfile:
     user = await session.get(User, doctor.user_id)
-    return _doctor_profile(doctor, user.email)  # type: ignore[union-attr]
-
-
-def _doctor_profile(doctor: Doctor, email: str) -> DoctorProfile:
+    tenant = await session.get(Tenant, doctor.tenant_id)
     return DoctorProfile(
         id=doctor.id,
+        tenant_id=doctor.tenant_id,
+        tenant_name=tenant.name if tenant else None,
         name=doctor.name,
         specialty=doctor.specialty,
         clinic=doctor.clinic,
         council_id=doctor.council_id,
         notification_email=doctor.notification_email,
         notification_phone=doctor.notification_phone,
-        email=email,
+        email=user.email if user else "",
     )

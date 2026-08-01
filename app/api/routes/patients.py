@@ -78,6 +78,7 @@ async def create_patient(
         name=payload.name,
         contact=payload.contact,
         birth_date=payload.birth_date,
+        tenant_id=doctor.tenant_id,
         doctor_id=doctor.id,
         active_protocol_id=protocol.id if protocol else None,
         access_token_hash=hash_patient_token(token),

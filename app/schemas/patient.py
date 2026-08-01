@@ -42,6 +42,7 @@ class PatientRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    tenant_id: uuid.UUID
     name: str
     contact: str | None = None
     birth_date: datetime | None = None

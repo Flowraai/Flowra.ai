@@ -11,6 +11,7 @@ class DoctorRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    tenant_id: uuid.UUID
     name: str
     specialty: str
     clinic: str | None = None
@@ -21,6 +22,7 @@ class DoctorRead(BaseModel):
 
 class DoctorProfile(DoctorRead):
     email: EmailStr
+    tenant_name: str | None = None
 
 
 class DoctorUpdate(BaseModel):
