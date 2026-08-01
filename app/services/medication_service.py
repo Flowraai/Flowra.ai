@@ -10,13 +10,22 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, time, timedelta, timezone
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.enums import MedicationIntakeStatus
+from app.core.config import settings
+from app.models.alert import Alert
+from app.models.enums import (
+    AlertStatus,
+    AlertUrgency,
+    AuditAction,
+    MedicationIntakeStatus,
+    RiskLevel,
+)
 from app.models.medication import MedicationIntake, MedicationPlan
 from app.models.patient import Patient
-from app.services.notifications import send_plain
+from app.services import audit
+from app.services.notifications import dispatch_alert, doctor_notification_contacts, send_plain
 
 
 def _day_bounds(now: datetime) -> tuple[datetime, datetime]:
@@ -90,6 +99,70 @@ async def generate_today_intakes(
         .order_by(MedicationIntake.scheduled_for)
     )
     return [(i, plan_by_id[i.plan_id]) for i in result.scalars().all() if i.plan_id in plan_by_id]
+
+
+async def maybe_alert_missed_streak(session: AsyncSession, plan: MedicationPlan) -> Alert | None:
+    """Alerta o médico quando o paciente falta N doses seguidas de um plano.
+
+    Considera apenas doses já resolvidas (não 'pending'); 'taken'/'later' quebram a
+    sequência. Alerta uma única vez, no momento em que a sequência atinge N.
+    """
+    n = settings.medication_missed_alert_streak
+    recent = list(
+        (
+            await session.execute(
+                select(MedicationIntake)
+                .where(
+                    MedicationIntake.plan_id == plan.id,
+                    MedicationIntake.status != MedicationIntakeStatus.PENDING,
+                )
+                .order_by(MedicationIntake.scheduled_for.desc())
+                .limit(n)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if len(recent) < n or any(i.status is not MedicationIntakeStatus.MISSED for i in recent):
+        return None
+
+    # Dedup: só um alerta em aberto de faltas por plano (até o médico resolvê-lo).
+    marker = f"medication_plan:{plan.id}"
+    already_open = await session.scalar(
+        select(Alert.id).where(
+            Alert.patient_id == plan.patient_id,
+            Alert.status != AlertStatus.RESOLVED,
+            Alert.reasons_detail.contains([marker]),
+        )
+    )
+    if already_open is not None:
+        return None
+
+    patient = await session.get(Patient, plan.patient_id)
+    if patient is None:
+        return None
+    reason = f"Não tomou {plan.name} {n} vezes seguidas"
+    alert = Alert(
+        patient_id=patient.id,
+        checkin_id=None,
+        level=RiskLevel.ORANGE,
+        urgency=AlertUrgency.ROUTINE,
+        reason=reason,
+        reasons_detail=[reason, f"medication_plan:{plan.id}"],
+    )
+    session.add(alert)
+    await session.flush()
+    await audit.record(
+        session,
+        action=AuditAction.ALERT_CREATED,
+        actor="system",
+        entity_type="alert",
+        entity_id=alert.id,
+        metadata={"kind": "medication_missed_streak", "plan_id": str(plan.id), "streak": n},
+    )
+    email, phone = await doctor_notification_contacts(session, patient)
+    await dispatch_alert(session, alert=alert, patient=patient, email=email, phone=phone)
+    return alert
 
 
 def _reminder_message(plan: MedicationPlan) -> tuple[str, str]:
@@ -191,15 +264,34 @@ async def scan_due_medications(session: AsyncSession) -> dict:
         reminders += 1
 
     # 3. Marca como 'não tomou' as doses pendentes de dias anteriores.
-    result = await session.execute(
-        update(MedicationIntake)
-        .where(
-            MedicationIntake.status == MedicationIntakeStatus.PENDING,
-            MedicationIntake.scheduled_for < start_today,
+    overdue = list(
+        (
+            await session.execute(
+                select(MedicationIntake).where(
+                    MedicationIntake.status == MedicationIntakeStatus.PENDING,
+                    MedicationIntake.scheduled_for < start_today,
+                )
+            )
         )
-        .values(status=MedicationIntakeStatus.MISSED)
+        .scalars()
+        .all()
     )
-    return {"reminders": reminders, "marked_missed": result.rowcount or 0}
+    for intake in overdue:
+        intake.status = MedicationIntakeStatus.MISSED
+    await session.flush()
+
+    # 4. Alerta o médico quando há N faltas seguidas em um plano.
+    missed_alerts = 0
+    for plan_id in {i.plan_id for i in overdue}:
+        plan = plan_by_id.get(plan_id) or await session.get(MedicationPlan, plan_id)
+        if plan is not None and await maybe_alert_missed_streak(session, plan):
+            missed_alerts += 1
+
+    return {
+        "reminders": reminders,
+        "marked_missed": len(overdue),
+        "missed_alerts": missed_alerts,
+    }
 
 
 async def adherence_summary(

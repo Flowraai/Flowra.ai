@@ -13,7 +13,8 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import get_current_patient
 from app.db.session import get_db
 from app.models.checkin import CheckIn
-from app.models.medication import MedicationIntake
+from app.models.enums import MedicationIntakeStatus
+from app.models.medication import MedicationIntake, MedicationPlan
 from app.models.patient import Patient
 from app.models.protocol import Protocol
 from app.protocol.validation import validate_responses
@@ -26,7 +27,7 @@ from app.schemas.medication import (
 from app.schemas.patient import PatientToday
 from app.schemas.protocol import ProtocolRead
 from app.services.checkin_service import process_checkin
-from app.services.medication_service import generate_today_intakes
+from app.services.medication_service import generate_today_intakes, maybe_alert_missed_streak
 
 router = APIRouter(prefix="/patient", tags=["patient-app"])
 
@@ -171,4 +172,12 @@ async def respond_intake(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tomada não encontrada.")
     intake.status = payload.status
     intake.responded_at = datetime.now(timezone.utc)
+    await session.flush()
+
+    # "Não tomei" pode fechar uma sequência de faltas → alerta ao médico.
+    if payload.status is MedicationIntakeStatus.MISSED:
+        plan = await session.get(MedicationPlan, intake.plan_id)
+        if plan is not None:
+            await maybe_alert_missed_streak(session, plan)
+
     return intake

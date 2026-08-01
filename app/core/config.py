@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     # Risco por tendência e não-adesão
     risk_trend_window: int = 5          # nº de check-ins recentes considerados
     inactivity_alert_days: int = 2      # dias sem check-in que disparam alerta
+    medication_missed_alert_streak: int = 3  # faltas seguidas que disparam alerta
 
     # Módulo de IA (análise do texto/áudio livre)
     free_text_analyzer: str = "keyword"  # keyword | llm

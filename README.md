@@ -142,7 +142,9 @@ entre o risco do check-in atual e o da tendência.
 o plano (nome/dose/horários/duração); o agendador `python -m app.scripts.scan_medications`
 (cron) cria as doses que venceram, envia o lembrete pelos canais e marca como "não tomou"
 as doses pendentes de dias anteriores. O app do paciente lista as doses do dia e responde
-✓/⏰/❌. A adesão é resumida em `/patients/{id}/medications/adherence`.
+✓/⏰/❌. A adesão é resumida em `/patients/{id}/medications/adherence`. Quando o paciente
+falta **N doses seguidas** (`MEDICATION_MISSED_ALERT_STREAK`, default 3), é gerado um alerta
+🟠 ao médico — uma vez por plano até ser resolvido.
 
 **Não-adesão** (`app/services/inactivity_service.py`): pacientes ativos sem check-in há
 `INACTIVITY_ALERT_DAYS` dias geram um alerta de rotina (idempotente). Dispare por
