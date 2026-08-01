@@ -12,12 +12,14 @@ from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_patient
 from app.db.session import get_db
+from app.models.appointment import Appointment
 from app.models.checkin import CheckIn
-from app.models.enums import MedicationIntakeStatus
+from app.models.enums import AppointmentStatus, MedicationIntakeStatus
 from app.models.medication import MedicationIntake, MedicationPlan
 from app.models.patient import Patient
 from app.models.protocol import Protocol
 from app.protocol.validation import validate_responses
+from app.schemas.appointment import AppointmentRead
 from app.schemas.checkin import CheckInCreate, CheckInResult
 from app.schemas.medication import (
     MedicationDoseToday,
@@ -181,3 +183,41 @@ async def respond_intake(
             await maybe_alert_missed_streak(session, plan)
 
     return intake
+
+
+@router.get("/appointments", response_model=list[AppointmentRead])
+async def my_appointments(
+    patient: Patient = Depends(get_current_patient),
+    session: AsyncSession = Depends(get_db),
+) -> list[Appointment]:
+    """Próximas consultas do paciente (agendadas/confirmadas)."""
+    result = await session.execute(
+        select(Appointment)
+        .where(
+            Appointment.patient_id == patient.id,
+            Appointment.status.in_(
+                (AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED)
+            ),
+            Appointment.scheduled_at >= datetime.now(timezone.utc),
+        )
+        .order_by(Appointment.scheduled_at)
+    )
+    return list(result.scalars().all())
+
+
+@router.post("/appointments/{appointment_id}/confirm", response_model=AppointmentRead)
+async def confirm_appointment(
+    appointment_id: uuid.UUID,
+    patient: Patient = Depends(get_current_patient),
+    session: AsyncSession = Depends(get_db),
+) -> Appointment:
+    """Paciente confirma a presença na consulta."""
+    appt = await session.get(Appointment, appointment_id)
+    if appt is None or appt.patient_id != patient.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Consulta não encontrada.")
+    if appt.status is AppointmentStatus.CANCELLED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Consulta cancelada não pode ser confirmada."
+        )
+    appt.status = AppointmentStatus.CONFIRMED
+    return appt
