@@ -8,6 +8,7 @@ from app.api.routes import (
     alerts,
     appointments,
     auth,
+    devices,
     exams,
     health,
     medications,
@@ -31,6 +32,7 @@ v1.include_router(medications.router)
 v1.include_router(appointments.router)
 v1.include_router(exams.router)
 v1.include_router(prescriptions.router)
+v1.include_router(devices.router)
 v1.include_router(patient_app.router)
 
 api_router.include_router(v1)

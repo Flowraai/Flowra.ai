@@ -87,6 +87,8 @@ Perfil **médico** (JWT — `Authorization: Bearer <token>`):
 | POST | `/api/v1/auth/reset-password` | Redefine a senha via token (revoga sessões) |
 | GET  | `/api/v1/auth/me` | Perfil do médico |
 | PATCH | `/api/v1/auth/me` | Edita o perfil do médico (clínica, contatos de notificação, etc.) |
+| POST | `/api/v1/devices` | Registra device token (push) do médico |
+| POST | `/api/v1/notifications/test-push` | Envia push de teste aos dispositivos do médico |
 | POST | `/api/v1/patients` | Cadastra paciente (exige consentimento LGPD); retorna o **token do paciente uma única vez** |
 | GET  | `/api/v1/patients` | **Painel**: pacientes ordenados por risco |
 | GET  | `/api/v1/patients/{id}` | Detalhe do paciente |
@@ -121,6 +123,7 @@ Perfil **paciente** (token opaco — header `X-Patient-Token: <token>`):
 
 | Método | Rota | Descrição |
 |---|---|---|
+| POST | `/api/v1/patient/devices` | Registra device token (push) do paciente |
 | GET  | `/api/v1/patient/today` | Estado do dia (já fez o check-in?) para o app |
 | GET  | `/api/v1/patient/medications/today` | Doses de medicação de hoje |
 | POST | `/api/v1/patient/medications/intakes/{id}/respond` | Responde a uma dose (✓/⏰/❌) |
@@ -184,6 +187,12 @@ canal nunca derruba o check-in.
 - `whatsapp` — Meta Cloud API (`WHATSAPP_PHONE_NUMBER_ID`/`WHATSAPP_ACCESS_TOKEN`).
   Destino é **telefone**; fora da janela de 24h a Meta exige uma template aprovada
   (`WHATSAPP_TEMPLATE_NAME`).
+
+**Push (app)**: paciente e médico registram device tokens (`POST /patient/devices` /
+`POST /devices`); o envio resolve os tokens do destinatário e usa o provedor
+(`PUSH_PROVIDER`): `log` (default, dev) ou `expo` (Expo Push — RN/Expo, entrega a
+FCM/APNs). Para PWA, basta um provedor Web Push. `POST /notifications/test-push` valida
+a config. A ligação do push nos lembretes/alertas é o próximo follow-up.
 
 O destino é resolvido **por canal**: WhatsApp usa o telefone (`Doctor.notification_phone`
 para alertas; `contact` do paciente para onboarding); os demais canais usam e-mail. Se o
