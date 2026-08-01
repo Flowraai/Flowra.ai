@@ -152,6 +152,10 @@ as doses pendentes de dias anteriores. O app do paciente lista as doses do dia e
 falta **N doses seguidas** (`MEDICATION_MISSED_ALERT_STREAK`, default 3), é gerado um alerta
 🟠 ao médico — uma vez por plano até ser resolvido.
 
+**Lembrete de consulta**: `python -m app.scripts.scan_appointments` (cron) avisa o
+paciente das consultas dentro da janela de antecedência (`APPOINTMENT_REMINDER_HOURS`,
+default 24h). Idempotente.
+
 **Não-adesão** (`app/services/inactivity_service.py`): pacientes ativos sem check-in há
 `INACTIVITY_ALERT_DAYS` dias geram um alerta de rotina (idempotente). Dispare por
 `POST /patients/scan-inactivity` (médico) ou pelo job `python -m app.scripts.scan_inactivity`
