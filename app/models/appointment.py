@@ -41,3 +41,7 @@ class Appointment(UUIDMixin, TimestampMixin, Base):
     )
     location: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Quando o lembrete "consulta amanhã" foi enviado (evita reenvio).
+    reminder_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
