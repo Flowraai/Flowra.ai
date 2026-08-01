@@ -15,12 +15,14 @@ from app.db.session import get_db
 from app.models.appointment import Appointment
 from app.models.checkin import CheckIn
 from app.models.enums import AppointmentStatus, MedicationIntakeStatus
+from app.models.exam import Exam
 from app.models.medication import MedicationIntake, MedicationPlan
 from app.models.patient import Patient
 from app.models.protocol import Protocol
 from app.protocol.validation import validate_responses
 from app.schemas.appointment import AppointmentRead
 from app.schemas.checkin import CheckInCreate, CheckInResult
+from app.schemas.exam import ExamRead
 from app.schemas.medication import (
     MedicationDoseToday,
     MedicationIntakeRead,
@@ -221,3 +223,15 @@ async def confirm_appointment(
         )
     appt.status = AppointmentStatus.CONFIRMED
     return appt
+
+
+@router.get("/exams", response_model=list[ExamRead])
+async def my_exams(
+    patient: Patient = Depends(get_current_patient),
+    session: AsyncSession = Depends(get_db),
+) -> list[Exam]:
+    """Exames do paciente (solicitados e disponíveis)."""
+    result = await session.execute(
+        select(Exam).where(Exam.patient_id == patient.id).order_by(Exam.created_at.desc())
+    )
+    return list(result.scalars().all())
