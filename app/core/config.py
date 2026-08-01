@@ -77,6 +77,9 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = True
     # Webhook (ponte genérica)
     notification_webhook_url: str | None = None
+    # Push (app): log (default, dev) | expo (Expo Push, RN/Expo)
+    push_provider: str = "log"
+    expo_access_token: str | None = None  # opcional (Expo)
     # WhatsApp (Meta Cloud API)
     whatsapp_phone_number_id: str | None = None
     whatsapp_access_token: str | None = None

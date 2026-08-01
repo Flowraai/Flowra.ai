@@ -8,12 +8,31 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_doctor
 from app.db.session import get_db
 from app.models.doctor import Doctor
+from app.models.enums import DeviceOwnerType
 from app.models.user import User
+from app.schemas.device import PushTestResult
 from app.schemas.notification import NotificationTestResult
 from app.services.notification_channels import get_active_channels
 from app.services.notifications import target_for_channel
+from app.services.push_service import send_push
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
+
+
+@router.post("/test-push", response_model=PushTestResult)
+async def test_push(
+    doctor: Doctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db),
+) -> PushTestResult:
+    """Envia um push de teste para os dispositivos registrados do médico."""
+    result = await send_push(
+        session,
+        owner_type=DeviceOwnerType.DOCTOR,
+        owner_id=doctor.id,
+        title="[Flowra Care] Teste de push",
+        body="Se você recebeu, o push está funcionando.",
+    )
+    return PushTestResult(**result)
 
 
 @router.post("/test", response_model=NotificationTestResult)

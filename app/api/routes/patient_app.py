@@ -14,7 +14,12 @@ from app.api.deps import get_current_patient
 from app.db.session import get_db
 from app.models.appointment import Appointment
 from app.models.checkin import CheckIn
-from app.models.enums import AppointmentStatus, MedicationIntakeStatus, PrescriptionStatus
+from app.models.enums import (
+    AppointmentStatus,
+    DeviceOwnerType,
+    MedicationIntakeStatus,
+    PrescriptionStatus,
+)
 from app.models.exam import Exam
 from app.models.medication import MedicationIntake, MedicationPlan
 from app.models.patient import Patient
@@ -23,8 +28,10 @@ from app.models.protocol import Protocol
 from app.protocol.validation import validate_responses
 from app.schemas.appointment import AppointmentRead
 from app.schemas.checkin import CheckInCreate, CheckInResult
+from app.schemas.device import DeviceRegister, DeviceTokenRead
 from app.schemas.exam import ExamRead
 from app.schemas.prescription import PrescriptionRead
+from app.services.push_service import register_device, unregister_device
 from app.schemas.medication import (
     MedicationDoseToday,
     MedicationIntakeRead,
@@ -266,3 +273,26 @@ async def my_prescription(
     if presc is None or presc.patient_id != patient.id or presc.status is not PrescriptionStatus.ISSUED:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Receita não encontrada.")
     return presc
+
+
+@router.post("/devices", response_model=DeviceTokenRead, status_code=status.HTTP_201_CREATED)
+async def register_patient_device(
+    payload: DeviceRegister,
+    patient: Patient = Depends(get_current_patient),
+    session: AsyncSession = Depends(get_db),
+) -> DeviceTokenRead:
+    """Registra o device token do paciente para receber push."""
+    device = await register_device(
+        session, owner_type=DeviceOwnerType.PATIENT, owner_id=patient.id,
+        token=payload.token, platform=payload.platform,
+    )
+    return DeviceTokenRead.model_validate(device)
+
+
+@router.post("/devices/unregister", status_code=status.HTTP_204_NO_CONTENT)
+async def unregister_patient_device(
+    payload: DeviceRegister,
+    patient: Patient = Depends(get_current_patient),
+    session: AsyncSession = Depends(get_db),
+) -> None:
+    await unregister_device(session, payload.token)

@@ -27,7 +27,12 @@ def _reset_rate_limiters():
     SlidingWindowRateLimiter.reset_all()
 
 # Tabelas com dados mutáveis, limpas entre cada teste (protocolos permanecem).
-_MUTABLE_TABLES = ["alerts", "checkins", "audit_logs", "patients", "doctors", "users"]
+# device_tokens e tenants não têm FK que casque a partir das demais, então entram
+# explicitamente; o CASCADE cuida das tabelas filhas (checkins, medicação, etc.).
+_MUTABLE_TABLES = [
+    "alerts", "checkins", "audit_logs", "device_tokens",
+    "patients", "doctors", "users", "tenants",
+]
 
 
 async def _db_reachable() -> bool:

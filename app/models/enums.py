@@ -19,6 +19,13 @@ class TenantKind(str, enum.Enum):
     SOLO = "solo"
 
 
+class DeviceOwnerType(str, enum.Enum):
+    """Dono de um device token de push."""
+
+    PATIENT = "patient"
+    DOCTOR = "doctor"
+
+
 class RiskLevel(str, enum.Enum):
     """Índice de risco do paciente (🟢🟡🟠🔴)."""
 
