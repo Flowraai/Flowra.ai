@@ -67,6 +67,18 @@ class AlertStatus(str, enum.Enum):
     RESOLVED = "resolved"          # tratado/encerrado
 
 
+class AppointmentKind(str, enum.Enum):
+    CONSULTATION = "consultation"  # consulta
+    RETURN = "return"              # retorno
+
+
+class AppointmentStatus(str, enum.Enum):
+    SCHEDULED = "scheduled"    # agendada
+    CONFIRMED = "confirmed"    # confirmada pelo paciente
+    CANCELLED = "cancelled"    # cancelada
+    COMPLETED = "completed"    # realizada
+
+
 class MedicationIntakeStatus(str, enum.Enum):
     PENDING = "pending"  # lembrete gerado, aguardando resposta
     TAKEN = "taken"      # ✓ tomei

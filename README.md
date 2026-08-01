@@ -103,6 +103,10 @@ Perfil **médico** (JWT — `Authorization: Bearer <token>`):
 | GET  | `/api/v1/patients/{id}/medications` | Lista planos de medicação do paciente |
 | PATCH | `/api/v1/medications/{plan_id}` | Edita/desativa um plano |
 | GET  | `/api/v1/patients/{id}/medications/adherence` | Resumo de adesão à medicação |
+| POST | `/api/v1/patients/{id}/appointments` | Agenda consulta/retorno |
+| GET  | `/api/v1/patients/{id}/appointments` | Consultas do paciente |
+| GET  | `/api/v1/appointments/upcoming` | Próximas consultas do médico |
+| PATCH | `/api/v1/appointments/{id}` | Reagenda/cancela/conclui uma consulta |
 | GET  | `/api/v1/alerts` | Lista de alertas (filtro por status) |
 | PATCH| `/api/v1/alerts/{id}` | Atualiza status do alerta |
 
@@ -113,6 +117,8 @@ Perfil **paciente** (token opaco — header `X-Patient-Token: <token>`):
 | GET  | `/api/v1/patient/today` | Estado do dia (já fez o check-in?) para o app |
 | GET  | `/api/v1/patient/medications/today` | Doses de medicação de hoje |
 | POST | `/api/v1/patient/medications/intakes/{id}/respond` | Responde a uma dose (✓/⏰/❌) |
+| GET  | `/api/v1/patient/appointments` | Próximas consultas do paciente |
+| POST | `/api/v1/patient/appointments/{id}/confirm` | Confirma presença na consulta |
 | GET  | `/api/v1/patient/protocol` | Perguntas do dia para renderizar |
 | POST | `/api/v1/patient/checkins` | Envia o check-in diário (validado; **um por dia** — 2º envio no mesmo dia → 409) |
 

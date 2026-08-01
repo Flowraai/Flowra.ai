@@ -5,6 +5,7 @@ enxerguem todas as tabelas.
 """
 
 from app.models.alert import Alert
+from app.models.appointment import Appointment
 from app.models.audit import AuditLog
 from app.models.auth_tokens import PasswordResetToken, RefreshToken
 from app.models.checkin import CheckIn
@@ -12,6 +13,8 @@ from app.models.doctor import Doctor
 from app.models.enums import (
     AlertStatus,
     AlertUrgency,
+    AppointmentKind,
+    AppointmentStatus,
     AuditAction,
     MedicationIntakeStatus,
     NotificationChannel,
@@ -30,6 +33,7 @@ from app.models.user import User
 
 __all__ = [
     "Alert",
+    "Appointment",
     "AuditLog",
     "CheckIn",
     "Doctor",
@@ -45,6 +49,8 @@ __all__ = [
     "User",
     "AlertStatus",
     "AlertUrgency",
+    "AppointmentKind",
+    "AppointmentStatus",
     "AuditAction",
     "MedicationIntakeStatus",
     "NotificationChannel",
