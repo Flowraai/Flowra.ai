@@ -99,6 +99,10 @@ Perfil **médico** (JWT — `Authorization: Bearer <token>`):
 | POST | `/api/v1/patients/scan-inactivity` | Gera alertas de não-adesão (pacientes sem check-in) |
 | POST | `/api/v1/notifications/test` | Envia notificação de teste (valida os canais do médico) |
 | GET  | `/api/v1/protocols/active` | Protocolo psiquiátrico ativo |
+| POST | `/api/v1/patients/{id}/medications` | Cria plano de medicação (nome, dose, horários, duração) |
+| GET  | `/api/v1/patients/{id}/medications` | Lista planos de medicação do paciente |
+| PATCH | `/api/v1/medications/{plan_id}` | Edita/desativa um plano |
+| GET  | `/api/v1/patients/{id}/medications/adherence` | Resumo de adesão à medicação |
 | GET  | `/api/v1/alerts` | Lista de alertas (filtro por status) |
 | PATCH| `/api/v1/alerts/{id}` | Atualiza status do alerta |
 
@@ -107,6 +111,8 @@ Perfil **paciente** (token opaco — header `X-Patient-Token: <token>`):
 | Método | Rota | Descrição |
 |---|---|---|
 | GET  | `/api/v1/patient/today` | Estado do dia (já fez o check-in?) para o app |
+| GET  | `/api/v1/patient/medications/today` | Doses de medicação de hoje |
+| POST | `/api/v1/patient/medications/intakes/{id}/respond` | Responde a uma dose (✓/⏰/❌) |
 | GET  | `/api/v1/patient/protocol` | Perguntas do dia para renderizar |
 | POST | `/api/v1/patient/checkins` | Envia o check-in diário (validado; **um por dia** — 2º envio no mesmo dia → 409) |
 

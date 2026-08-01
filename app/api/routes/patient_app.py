@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -12,13 +13,20 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import get_current_patient
 from app.db.session import get_db
 from app.models.checkin import CheckIn
+from app.models.medication import MedicationIntake
 from app.models.patient import Patient
 from app.models.protocol import Protocol
 from app.protocol.validation import validate_responses
 from app.schemas.checkin import CheckInCreate, CheckInResult
+from app.schemas.medication import (
+    MedicationDoseToday,
+    MedicationIntakeRead,
+    MedicationIntakeRespond,
+)
 from app.schemas.patient import PatientToday
 from app.schemas.protocol import ProtocolRead
 from app.services.checkin_service import process_checkin
+from app.services.medication_service import generate_today_intakes
 
 router = APIRouter(prefix="/patient", tags=["patient-app"])
 
@@ -128,3 +136,39 @@ async def submit_checkin(
         received_at=checkin.created_at or datetime.now(timezone.utc),
         message="Check-in recebido. Obrigado por responder hoje.",
     )
+
+
+@router.get("/medications/today", response_model=list[MedicationDoseToday])
+async def medications_today(
+    patient: Patient = Depends(get_current_patient),
+    session: AsyncSession = Depends(get_db),
+) -> list[MedicationDoseToday]:
+    """Lembretes de medicação de hoje (gera as tomadas do dia sob demanda)."""
+    doses = await generate_today_intakes(session, patient)
+    return [
+        MedicationDoseToday(
+            intake_id=intake.id,
+            plan_id=plan.id,
+            name=plan.name,
+            dose=plan.dose,
+            scheduled_for=intake.scheduled_for,
+            status=intake.status,
+        )
+        for intake, plan in doses
+    ]
+
+
+@router.post("/medications/intakes/{intake_id}/respond", response_model=MedicationIntakeRead)
+async def respond_intake(
+    intake_id: uuid.UUID,
+    payload: MedicationIntakeRespond,
+    patient: Patient = Depends(get_current_patient),
+    session: AsyncSession = Depends(get_db),
+) -> MedicationIntake:
+    """Paciente responde a uma tomada: ✓ tomei / ⏰ depois / ❌ não tomei."""
+    intake = await session.get(MedicationIntake, intake_id)
+    if intake is None or intake.patient_id != patient.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tomada não encontrada.")
+    intake.status = payload.status
+    intake.responded_at = datetime.now(timezone.utc)
+    return intake
