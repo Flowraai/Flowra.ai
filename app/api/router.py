@@ -8,6 +8,7 @@ from app.api.routes import (
     alerts,
     auth,
     health,
+    medications,
     notifications,
     patient_app,
     patients,
@@ -23,6 +24,7 @@ v1.include_router(patients.router)
 v1.include_router(protocols.router)
 v1.include_router(alerts.router)
 v1.include_router(notifications.router)
+v1.include_router(medications.router)
 v1.include_router(patient_app.router)
 
 api_router.include_router(v1)

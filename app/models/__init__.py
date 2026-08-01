@@ -13,6 +13,7 @@ from app.models.enums import (
     AlertStatus,
     AlertUrgency,
     AuditAction,
+    MedicationIntakeStatus,
     NotificationChannel,
     NotificationStatus,
     QuestionType,
@@ -20,6 +21,7 @@ from app.models.enums import (
     TenantKind,
     UserRole,
 )
+from app.models.medication import MedicationIntake, MedicationPlan
 from app.models.notification import Notification
 from app.models.patient import Patient
 from app.models.protocol import Protocol, ProtocolQuestion
@@ -31,6 +33,8 @@ __all__ = [
     "AuditLog",
     "CheckIn",
     "Doctor",
+    "MedicationIntake",
+    "MedicationPlan",
     "Notification",
     "PasswordResetToken",
     "Patient",
@@ -42,6 +46,7 @@ __all__ = [
     "AlertStatus",
     "AlertUrgency",
     "AuditAction",
+    "MedicationIntakeStatus",
     "NotificationChannel",
     "NotificationStatus",
     "QuestionType",

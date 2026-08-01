@@ -67,6 +67,13 @@ class AlertStatus(str, enum.Enum):
     RESOLVED = "resolved"          # tratado/encerrado
 
 
+class MedicationIntakeStatus(str, enum.Enum):
+    PENDING = "pending"  # lembrete gerado, aguardando resposta
+    TAKEN = "taken"      # ✓ tomei
+    LATER = "later"      # ⏰ vou tomar depois
+    MISSED = "missed"    # ❌ não tomei
+
+
 class QuestionType(str, enum.Enum):
     SCALE = "scale"          # escala numérica (ex.: 0-10)
     INTEGER = "integer"      # inteiro livre (ex.: horas de sono)
