@@ -107,6 +107,9 @@ Perfil **médico** (JWT — `Authorization: Bearer <token>`):
 | GET  | `/api/v1/patients/{id}/appointments` | Consultas do paciente |
 | GET  | `/api/v1/appointments/upcoming` | Próximas consultas do médico |
 | PATCH | `/api/v1/appointments/{id}` | Reagenda/cancela/conclui uma consulta |
+| POST | `/api/v1/patients/{id}/exams` | Registra um exame do paciente |
+| GET  | `/api/v1/patients/{id}/exams` | Lista exames do paciente |
+| PATCH | `/api/v1/exams/{id}` | Atualiza exame (ao ficar disponível, avisa o paciente) |
 | GET  | `/api/v1/alerts` | Lista de alertas (filtro por status) |
 | PATCH| `/api/v1/alerts/{id}` | Atualiza status do alerta |
 
@@ -119,6 +122,7 @@ Perfil **paciente** (token opaco — header `X-Patient-Token: <token>`):
 | POST | `/api/v1/patient/medications/intakes/{id}/respond` | Responde a uma dose (✓/⏰/❌) |
 | GET  | `/api/v1/patient/appointments` | Próximas consultas do paciente |
 | POST | `/api/v1/patient/appointments/{id}/confirm` | Confirma presença na consulta |
+| GET  | `/api/v1/patient/exams` | Exames do paciente (solicitados/disponíveis) |
 | GET  | `/api/v1/patient/protocol` | Perguntas do dia para renderizar |
 | POST | `/api/v1/patient/checkins` | Envia o check-in diário (validado; **um por dia** — 2º envio no mesmo dia → 409) |
 

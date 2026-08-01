@@ -67,6 +67,11 @@ class AlertStatus(str, enum.Enum):
     RESOLVED = "resolved"          # tratado/encerrado
 
 
+class ExamStatus(str, enum.Enum):
+    REQUESTED = "requested"    # solicitado
+    AVAILABLE = "available"    # resultado disponível
+
+
 class AppointmentKind(str, enum.Enum):
     CONSULTATION = "consultation"  # consulta
     RETURN = "return"              # retorno

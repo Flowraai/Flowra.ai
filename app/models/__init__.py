@@ -10,12 +10,14 @@ from app.models.audit import AuditLog
 from app.models.auth_tokens import PasswordResetToken, RefreshToken
 from app.models.checkin import CheckIn
 from app.models.doctor import Doctor
+from app.models.exam import Exam
 from app.models.enums import (
     AlertStatus,
     AlertUrgency,
     AppointmentKind,
     AppointmentStatus,
     AuditAction,
+    ExamStatus,
     MedicationIntakeStatus,
     NotificationChannel,
     NotificationStatus,
@@ -37,6 +39,7 @@ __all__ = [
     "AuditLog",
     "CheckIn",
     "Doctor",
+    "Exam",
     "MedicationIntake",
     "MedicationPlan",
     "Notification",
@@ -52,6 +55,7 @@ __all__ = [
     "AppointmentKind",
     "AppointmentStatus",
     "AuditAction",
+    "ExamStatus",
     "MedicationIntakeStatus",
     "NotificationChannel",
     "NotificationStatus",
