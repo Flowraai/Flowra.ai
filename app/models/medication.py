@@ -69,6 +69,8 @@ class MedicationIntake(UUIDMixin, TimestampMixin, Base):
         default=MedicationIntakeStatus.PENDING, nullable=False,
     )
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Quando o lembrete foi enviado (evita reenvio pelo agendador).
+    reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     plan: Mapped["MedicationPlan"] = relationship(back_populates="intakes")
 

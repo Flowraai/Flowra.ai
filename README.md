@@ -138,6 +138,12 @@ a janela recente é analisada para detectar "padrão de piora" — risco elevado
 humor em queda e não-adesão repetida. O índice do paciente (`current_risk`) é o **maior**
 entre o risco do check-in atual e o da tendência.
 
+**Lembretes de medicação** (`app/services/medication_service.py`): o médico configura
+o plano (nome/dose/horários/duração); o agendador `python -m app.scripts.scan_medications`
+(cron) cria as doses que venceram, envia o lembrete pelos canais e marca como "não tomou"
+as doses pendentes de dias anteriores. O app do paciente lista as doses do dia e responde
+✓/⏰/❌. A adesão é resumida em `/patients/{id}/medications/adherence`.
+
 **Não-adesão** (`app/services/inactivity_service.py`): pacientes ativos sem check-in há
 `INACTIVITY_ALERT_DAYS` dias geram um alerta de rotina (idempotente). Dispare por
 `POST /patients/scan-inactivity` (médico) ou pelo job `python -m app.scripts.scan_inactivity`
