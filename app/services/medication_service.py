@@ -26,6 +26,7 @@ from app.models.medication import MedicationIntake, MedicationPlan
 from app.models.patient import Patient
 from app.services import audit
 from app.services.notifications import dispatch_alert, doctor_notification_contacts, send_plain
+from app.services.push_service import push_to_patient
 
 
 def _day_bounds(now: datetime) -> tuple[datetime, datetime]:
@@ -257,9 +258,11 @@ async def scan_due_medications(session: AsyncSession) -> dict:
     for intake in due:
         patient = patients.get(intake.patient_id)
         plan = plan_by_id.get(intake.plan_id)
-        if patient is not None and patient.contact and plan is not None:
+        if plan is not None:
             subject, body = _reminder_message(plan)
-            await send_plain(target=patient.contact, subject=subject, body=body)
+            if patient is not None and patient.contact:
+                await send_plain(target=patient.contact, subject=subject, body=body)
+            await push_to_patient(session, intake.patient_id, subject, body)
         intake.reminded_at = now
         reminders += 1
 

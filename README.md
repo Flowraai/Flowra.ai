@@ -192,7 +192,9 @@ canal nunca derruba o check-in.
 `POST /devices`); o envio resolve os tokens do destinatário e usa o provedor
 (`PUSH_PROVIDER`): `log` (default, dev) ou `expo` (Expo Push — RN/Expo, entrega a
 FCM/APNs). Para PWA, basta um provedor Web Push. `POST /notifications/test-push` valida
-a config. A ligação do push nos lembretes/alertas é o próximo follow-up.
+a config. O push já está **ligado** aos pontos de notificação: alerta ao médico,
+lembrete de medicação, lembrete de consulta, exame disponível e nova receita — cada um
+envia push (para quem tem device registrado) além dos canais log/email/whatsapp.
 
 O destino é resolvido **por canal**: WhatsApp usa o telefone (`Doctor.notification_phone`
 para alertas; `contact` do paciente para onboarding); os demais canais usam e-mail. Se o

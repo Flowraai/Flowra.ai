@@ -71,3 +71,21 @@ async def send_push(
     results = await get_push_provider().send(tokens, title, body)
     sent = sum(1 for v in results.values() if v == "sent")
     return {"sent": sent, "results": results}
+
+
+async def push_to_patient(
+    session: AsyncSession, patient_id: uuid.UUID, title: str, body: str
+) -> None:
+    """Envia push aos dispositivos do paciente (no-op se não houver device)."""
+    await send_push(
+        session, owner_type=DeviceOwnerType.PATIENT, owner_id=patient_id, title=title, body=body
+    )
+
+
+async def push_to_doctor(
+    session: AsyncSession, doctor_id: uuid.UUID, title: str, body: str
+) -> None:
+    """Envia push aos dispositivos do médico (no-op se não houver device)."""
+    await send_push(
+        session, owner_type=DeviceOwnerType.DOCTOR, owner_id=doctor_id, title=title, body=body
+    )

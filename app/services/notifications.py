@@ -19,6 +19,7 @@ from app.models.patient import Patient
 from app.models.user import User
 from app.services import audit
 from app.services.notification_channels import get_active_channels
+from app.services.push_service import push_to_doctor
 
 logger = logging.getLogger("flowra_care.notifications")
 
@@ -107,6 +108,9 @@ async def dispatch_alert(
                     channel.channel_type.value, patient.id, exc,
                 )
         records.append(notification)
+
+    # Push ao médico (além dos canais), para quem tiver device registrado.
+    await push_to_doctor(session, patient.doctor_id, subject, body)
 
     await session.flush()
     await audit.record(

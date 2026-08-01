@@ -18,6 +18,7 @@ from app.models.prescription import Prescription
 from app.schemas.prescription import PrescriptionCreate, PrescriptionRead
 from app.services.notifications import send_plain
 from app.services.prescription_provider import get_prescription_provider
+from app.services.push_service import push_to_patient
 
 router = APIRouter(tags=["prescriptions"])
 
@@ -111,13 +112,12 @@ async def issue_prescription(
     presc.pdf_url = pdf_url
     presc.issued_at = datetime.now(timezone.utc)
 
+    subject = "[Flowra Care] Nova receita"
+    body = "Seu médico emitiu uma nova receita. Abra o app para acessá-la."
     patient = await session.get(Patient, presc.patient_id)
     if patient is not None and patient.contact:
-        await send_plain(
-            target=patient.contact,
-            subject="[Flowra Care] Nova receita",
-            body="Seu médico emitiu uma nova receita. Abra o app para acessá-la.",
-        )
+        await send_plain(target=patient.contact, subject=subject, body=body)
+    await push_to_patient(session, presc.patient_id, subject, body)
     return presc
 
 
