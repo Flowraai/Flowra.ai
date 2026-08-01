@@ -14,15 +14,17 @@ from app.api.deps import get_current_patient
 from app.db.session import get_db
 from app.models.appointment import Appointment
 from app.models.checkin import CheckIn
-from app.models.enums import AppointmentStatus, MedicationIntakeStatus
+from app.models.enums import AppointmentStatus, MedicationIntakeStatus, PrescriptionStatus
 from app.models.exam import Exam
 from app.models.medication import MedicationIntake, MedicationPlan
 from app.models.patient import Patient
+from app.models.prescription import Prescription
 from app.models.protocol import Protocol
 from app.protocol.validation import validate_responses
 from app.schemas.appointment import AppointmentRead
 from app.schemas.checkin import CheckInCreate, CheckInResult
 from app.schemas.exam import ExamRead
+from app.schemas.prescription import PrescriptionRead
 from app.schemas.medication import (
     MedicationDoseToday,
     MedicationIntakeRead,
@@ -235,3 +237,32 @@ async def my_exams(
         select(Exam).where(Exam.patient_id == patient.id).order_by(Exam.created_at.desc())
     )
     return list(result.scalars().all())
+
+
+@router.get("/prescriptions", response_model=list[PrescriptionRead])
+async def my_prescriptions(
+    patient: Patient = Depends(get_current_patient),
+    session: AsyncSession = Depends(get_db),
+) -> list[Prescription]:
+    """Receitas emitidas do paciente (histórico)."""
+    result = await session.execute(
+        select(Prescription)
+        .where(
+            Prescription.patient_id == patient.id,
+            Prescription.status == PrescriptionStatus.ISSUED,
+        )
+        .order_by(Prescription.issued_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+@router.get("/prescriptions/{prescription_id}", response_model=PrescriptionRead)
+async def my_prescription(
+    prescription_id: uuid.UUID,
+    patient: Patient = Depends(get_current_patient),
+    session: AsyncSession = Depends(get_db),
+) -> Prescription:
+    presc = await session.get(Prescription, prescription_id)
+    if presc is None or presc.patient_id != patient.id or presc.status is not PrescriptionStatus.ISSUED:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Receita não encontrada.")
+    return presc
