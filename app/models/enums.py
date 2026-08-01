@@ -67,6 +67,12 @@ class AlertStatus(str, enum.Enum):
     RESOLVED = "resolved"          # tratado/encerrado
 
 
+class PrescriptionStatus(str, enum.Enum):
+    DRAFT = "draft"          # rascunho (ainda não emitida)
+    ISSUED = "issued"        # emitida (via provedor)
+    CANCELLED = "cancelled"  # cancelada
+
+
 class ExamStatus(str, enum.Enum):
     REQUESTED = "requested"    # solicitado
     AVAILABLE = "available"    # resultado disponível

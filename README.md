@@ -110,6 +110,10 @@ Perfil **médico** (JWT — `Authorization: Bearer <token>`):
 | POST | `/api/v1/patients/{id}/exams` | Registra um exame do paciente |
 | GET  | `/api/v1/patients/{id}/exams` | Lista exames do paciente |
 | PATCH | `/api/v1/exams/{id}` | Atualiza exame (ao ficar disponível, avisa o paciente) |
+| POST | `/api/v1/patients/{id}/prescriptions` | Cria rascunho de receita |
+| POST | `/api/v1/prescriptions/{id}/issue` | Emite a receita (provedor) e avisa o paciente |
+| POST | `/api/v1/prescriptions/{id}/renew` | Renova (novo rascunho a partir de uma receita) |
+| POST | `/api/v1/prescriptions/{id}/cancel` | Cancela a receita |
 | GET  | `/api/v1/alerts` | Lista de alertas (filtro por status) |
 | PATCH| `/api/v1/alerts/{id}` | Atualiza status do alerta |
 
@@ -123,6 +127,8 @@ Perfil **paciente** (token opaco — header `X-Patient-Token: <token>`):
 | GET  | `/api/v1/patient/appointments` | Próximas consultas do paciente |
 | POST | `/api/v1/patient/appointments/{id}/confirm` | Confirma presença na consulta |
 | GET  | `/api/v1/patient/exams` | Exames do paciente (solicitados/disponíveis) |
+| GET  | `/api/v1/patient/prescriptions` | Receitas emitidas do paciente |
+| GET  | `/api/v1/patient/prescriptions/{id}` | Detalhe de uma receita emitida |
 | GET  | `/api/v1/patient/protocol` | Perguntas do dia para renderizar |
 | POST | `/api/v1/patient/checkins` | Envia o check-in diário (validado; **um por dia** — 2º envio no mesmo dia → 409) |
 
@@ -219,6 +225,15 @@ cadastro) ou um **profissional autônomo** (`solo`). Médicos e pacientes carreg
 primeiro passo a **visibilidade continua por médico** — o `tenant_id` fica assentado
 como base para os próximos módulos (config por tenant, compartilhamento por clínica,
 papéis). O tenant aparece em `/auth/me` (`tenant_id`, `tenant_name`).
+
+## Receita (emissão delegada)
+
+A emissão de receita com **valor legal** (assinatura ICP-Brasil, regras de controlado —
+Portaria 344/98) é responsabilidade de uma **plataforma certificada**. O backend modela
+a prescrição e delega a emissão a um provedor plugável (`app/services/prescription_provider.py`):
+`internal` (default — registra sem valor legal, para MVP/testes) ou `certified` (integra a
+plataforma certificada; requer `PRESCRIPTION_API_BASE_URL`/`PRESCRIPTION_API_KEY`). Ao emitir,
+o paciente é avisado e a receita passa a aparecer no histórico dele.
 
 ## Compliance (não deixar para depois)
 

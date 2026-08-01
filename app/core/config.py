@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     medication_missed_alert_streak: int = 3  # faltas seguidas que disparam alerta
     appointment_reminder_hours: int = 24     # antecedência do lembrete de consulta
 
+    # Receita: provedor de emissão. internal (registro sem valor legal, default) |
+    # certified (plataforma certificada com ICP-Brasil — requer credenciais).
+    prescription_provider: str = "internal"
+    prescription_api_base_url: str | None = None
+    prescription_api_key: str | None = None
+
     # Módulo de IA (análise do texto/áudio livre)
     free_text_analyzer: str = "keyword"  # keyword | llm
     # Endpoint compatível com a API OpenAI (chat completions). Funciona com
