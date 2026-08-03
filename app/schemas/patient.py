@@ -79,6 +79,14 @@ class PatientTokenRead(BaseModel):
     access_token: str
 
 
+class PatientSummary(BaseModel):
+    """Resumo da situação do paciente para o painel (LLM ou determinístico)."""
+
+    summary: str
+    generated_by: str  # llm | deterministic
+    context: dict
+
+
 class PatientOnboarding(BaseModel):
     """Resultado do (re)envio de onboarding: token novo, link e se houve envio."""
 

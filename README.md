@@ -93,6 +93,7 @@ Perfil **médico** (JWT — `Authorization: Bearer <token>`):
 | GET  | `/api/v1/patients` | **Painel**: pacientes ordenados por risco |
 | GET  | `/api/v1/patients/{id}` | Detalhe do paciente |
 | PATCH | `/api/v1/patients/{id}` | Edita paciente e ativa/desativa (`is_active`) |
+| GET  | `/api/v1/patients/{id}/summary` | Resumo do paciente por IA (fallback determinístico) |
 | GET  | `/api/v1/patients/{id}/export` | Exporta todos os dados do paciente (portabilidade LGPD) |
 | DELETE | `/api/v1/patients/{id}` | Apaga o paciente e seus dados de saúde (eliminação LGPD) |
 | GET  | `/api/v1/patients/{id}/checkins` | Histórico de check-ins |
@@ -227,6 +228,11 @@ silencia um sinal). A chamada roda numa thread para não bloquear o event loop.
 
 > Áudio (upload + transcrição/speech-to-text) ainda não está implementado — o campo
 > `audio_url` existe, mas o pipeline de áudio fica para uma próxima etapa.
+
+**Resumo do paciente** (`GET /patients/{id}/summary`): reúne o contexto (risco,
+check-ins recentes, adesão, alertas, próxima consulta) e produz um resumo para o
+painel. Com LLM configurado, gera texto natural; sem chave, cai num resumo
+determinístico (sempre disponível). A IA não diagnostica.
 
 ## Multi-tenant (fundação)
 
