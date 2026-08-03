@@ -117,6 +117,8 @@ Perfil **médico** (JWT — `Authorization: Bearer <token>`):
 | POST | `/api/v1/prescriptions/{id}/issue` | Emite a receita (provedor) e avisa o paciente |
 | POST | `/api/v1/prescriptions/{id}/renew` | Renova (novo rascunho a partir de uma receita) |
 | POST | `/api/v1/prescriptions/{id}/cancel` | Cancela a receita |
+| POST | `/api/v1/patients/{id}/messages` | Envia mensagem ao paciente (chat) |
+| GET  | `/api/v1/patients/{id}/messages` | Thread do chat com o paciente |
 | GET  | `/api/v1/alerts` | Lista de alertas (filtro por status) |
 | PATCH| `/api/v1/alerts/{id}` | Atualiza status do alerta |
 
@@ -133,6 +135,8 @@ Perfil **paciente** (token opaco — header `X-Patient-Token: <token>`):
 | GET  | `/api/v1/patient/exams` | Exames do paciente (solicitados/disponíveis) |
 | GET  | `/api/v1/patient/prescriptions` | Receitas emitidas do paciente |
 | GET  | `/api/v1/patient/prescriptions/{id}` | Detalhe de uma receita emitida |
+| POST | `/api/v1/patient/messages` | Envia mensagem ao médico (chat) |
+| GET  | `/api/v1/patient/messages` | Thread do chat com o médico |
 | GET  | `/api/v1/patient/protocol` | Perguntas do dia para renderizar |
 | POST | `/api/v1/patient/checkins` | Envia o check-in diário (validado; **um por dia** — 2º envio no mesmo dia → 409) |
 
