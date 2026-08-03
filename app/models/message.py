@@ -16,7 +16,7 @@ from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDMixin
-from app.models.enums import MessageSender
+from app.models.enums import MessageSender, MessageThread
 
 
 class Message(UUIDMixin, TimestampMixin, Base):
@@ -33,6 +33,10 @@ class Message(UUIDMixin, TimestampMixin, Base):
     doctor_id: Mapped[uuid.UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("doctors.id", ondelete="CASCADE"),
         index=True, nullable=False,
+    )
+    thread: Mapped[MessageThread] = mapped_column(
+        Enum(MessageThread, name="message_thread"),
+        default=MessageThread.CARE, nullable=False,
     )
     sender: Mapped[MessageSender] = mapped_column(
         Enum(MessageSender, name="message_sender"), nullable=False

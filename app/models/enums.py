@@ -34,6 +34,13 @@ class MessageSender(str, enum.Enum):
     AI = "ai"
 
 
+class MessageThread(str, enum.Enum):
+    """Thread do chat: cuidado (paciente↔médico) ou IA (paciente↔IA)."""
+
+    CARE = "care"
+    AI = "ai"
+
+
 class RiskLevel(str, enum.Enum):
     """Índice de risco do paciente (🟢🟡🟠🔴)."""
 
