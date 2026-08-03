@@ -17,6 +17,7 @@ from app.models.exam import Exam
 from app.models.patient import Patient
 from app.schemas.exam import ExamCreate, ExamRead, ExamUpdate
 from app.services.notifications import send_plain
+from app.services.push_service import push_to_patient
 
 router = APIRouter(tags=["exams"])
 
@@ -87,15 +88,14 @@ async def update_exam(
         if exam.available_at is None:
             exam.available_at = datetime.now(timezone.utc)
         if exam.notified_at is None:
+            subject = "[Flowra Care] Resultado de exame disponível"
+            body = (
+                f"O resultado do seu exame ({exam.name}) já está disponível.\n\n"
+                "Abra o app para visualizar."
+            )
             patient = await session.get(Patient, exam.patient_id)
             if patient is not None and patient.contact:
-                await send_plain(
-                    target=patient.contact,
-                    subject="[Flowra Care] Resultado de exame disponível",
-                    body=(
-                        f"O resultado do seu exame ({exam.name}) já está disponível.\n\n"
-                        "Abra o app para visualizar."
-                    ),
-                )
+                await send_plain(target=patient.contact, subject=subject, body=body)
+            await push_to_patient(session, exam.patient_id, subject, body)
             exam.notified_at = datetime.now(timezone.utc)
     return exam

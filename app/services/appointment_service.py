@@ -18,6 +18,7 @@ from app.models.appointment import Appointment
 from app.models.enums import AppointmentStatus
 from app.models.patient import Patient
 from app.services.notifications import send_plain
+from app.services.push_service import push_to_patient
 
 _OPEN = (AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED)
 
@@ -65,9 +66,10 @@ async def scan_appointment_reminders(session: AsyncSession) -> dict:
     sent = 0
     for appt in appts:
         patient = patients.get(appt.patient_id)
+        subject, body = _message(appt)
         if patient is not None and patient.contact:
-            subject, body = _message(appt)
             await send_plain(target=patient.contact, subject=subject, body=body)
+        await push_to_patient(session, appt.patient_id, subject, body)
         appt.reminder_sent_at = now
         sent += 1
     return {"reminders": sent}
