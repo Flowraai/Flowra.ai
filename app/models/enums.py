@@ -26,6 +26,14 @@ class DeviceOwnerType(str, enum.Enum):
     DOCTOR = "doctor"
 
 
+class MessageSender(str, enum.Enum):
+    """Autor de uma mensagem no chat."""
+
+    PATIENT = "patient"
+    DOCTOR = "doctor"
+    AI = "ai"
+
+
 class RiskLevel(str, enum.Enum):
     """Índice de risco do paciente (🟢🟡🟠🔴)."""
 

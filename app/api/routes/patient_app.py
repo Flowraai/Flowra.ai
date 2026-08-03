@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -18,10 +18,12 @@ from app.models.enums import (
     AppointmentStatus,
     DeviceOwnerType,
     MedicationIntakeStatus,
+    MessageSender,
     PrescriptionStatus,
 )
 from app.models.exam import Exam
 from app.models.medication import MedicationIntake, MedicationPlan
+from app.models.message import Message
 from app.models.patient import Patient
 from app.models.prescription import Prescription
 from app.models.protocol import Protocol
@@ -30,8 +32,9 @@ from app.schemas.appointment import AppointmentRead
 from app.schemas.checkin import CheckInCreate, CheckInResult
 from app.schemas.device import DeviceRegister, DeviceTokenRead
 from app.schemas.exam import ExamRead
+from app.schemas.message import MessageCreate, MessageRead
 from app.schemas.prescription import PrescriptionRead
-from app.services.push_service import register_device, unregister_device
+from app.services.push_service import push_to_doctor, register_device, unregister_device
 from app.schemas.medication import (
     MedicationDoseToday,
     MedicationIntakeRead,
@@ -296,3 +299,45 @@ async def unregister_patient_device(
     session: AsyncSession = Depends(get_db),
 ) -> None:
     await unregister_device(session, payload.token)
+
+
+@router.post("/messages", response_model=MessageRead, status_code=status.HTTP_201_CREATED)
+async def send_patient_message(
+    payload: MessageCreate,
+    patient: Patient = Depends(get_current_patient),
+    session: AsyncSession = Depends(get_db),
+) -> Message:
+    """Paciente envia mensagem ao médico responsável."""
+    message = Message(
+        tenant_id=patient.tenant_id, patient_id=patient.id, doctor_id=patient.doctor_id,
+        sender=MessageSender.PATIENT, body=payload.body, attachments=payload.attachments,
+    )
+    session.add(message)
+    await session.flush()
+    await push_to_doctor(
+        session, patient.doctor_id,
+        "[Flowra Care] Nova mensagem", f"{patient.name} enviou uma mensagem.",
+    )
+    return message
+
+
+@router.get("/messages", response_model=list[MessageRead])
+async def list_patient_messages(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    patient: Patient = Depends(get_current_patient),
+    session: AsyncSession = Depends(get_db),
+) -> list[Message]:
+    result = await session.execute(
+        select(Message)
+        .where(Message.patient_id == patient.id, Message.doctor_id == patient.doctor_id)
+        .order_by(Message.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    messages = list(result.scalars().all())
+    now = datetime.now(timezone.utc)
+    for m in messages:
+        if m.sender is MessageSender.DOCTOR and m.read_at is None:
+            m.read_at = now
+    return messages
