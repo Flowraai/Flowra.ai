@@ -30,12 +30,14 @@ from app.schemas.patient import (
     PatientOnboarding,
     PatientPanelItem,
     PatientRead,
+    PatientSummary,
     PatientTokenRead,
     PatientUpdate,
 )
 from app.services import audit
 from app.services.inactivity_service import days_since_checkin, is_inactive, scan_inactivity
 from app.services.onboarding_service import build_onboarding_link, send_onboarding
+from app.services.summary_service import patient_summary
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
@@ -188,6 +190,17 @@ async def update_patient(
         metadata={"fields": sorted(data.keys())},
     )
     return patient
+
+
+@router.get("/{patient_id}/summary", response_model=PatientSummary)
+async def patient_ai_summary(
+    patient_id: uuid.UUID,
+    doctor: Doctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db),
+) -> PatientSummary:
+    """Resumo da situação do paciente para o painel (LLM, com fallback determinístico)."""
+    patient = await _get_owned_patient(session, doctor, patient_id)
+    return PatientSummary(**await patient_summary(session, patient))
 
 
 @router.get("/{patient_id}/export", response_model=PatientExport)
