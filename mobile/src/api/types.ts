@@ -60,3 +60,43 @@ export interface ChatMessage {
   read_at: string | null;
   created_at: string;
 }
+
+export type AppointmentKind = "consultation" | "return";
+export type AppointmentStatus = "scheduled" | "confirmed" | "cancelled" | "completed";
+
+export interface Appointment {
+  id: string;
+  scheduled_at: string;
+  kind: AppointmentKind;
+  status: AppointmentStatus;
+  location: string | null;
+  notes: string | null;
+}
+
+export type ExamStatus = "requested" | "available";
+
+export interface Exam {
+  id: string;
+  name: string;
+  status: ExamStatus;
+  result_url: string | null;
+  notes: string | null;
+  available_at: string | null;
+  created_at: string;
+}
+
+export interface PrescriptionItem {
+  name: string;
+  dose: string;
+  instructions?: string | null;
+}
+
+export interface Prescription {
+  id: string;
+  items: PrescriptionItem[];
+  notes: string | null;
+  status: string;
+  pdf_url: string | null;
+  issued_at: string | null;
+  created_at: string;
+}

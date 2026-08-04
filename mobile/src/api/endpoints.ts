@@ -1,10 +1,13 @@
 import { api } from "./client";
 import type {
+  Appointment,
   ChatMessage,
   CheckInResult,
+  Exam,
   IntakeStatus,
   MedicationDose,
   PatientToday,
+  Prescription,
   Protocol,
 } from "./types";
 
@@ -30,4 +33,9 @@ export const patientApi = {
     api<ChatMessage>("/patient/ai-chat", { method: "POST", body: { body: bodyText, attachments: [] } }),
   registerDevice: (token: string, platform: "ios" | "android" | "web") =>
     api<unknown>("/patient/devices", { method: "POST", body: { token, platform } }),
+  appointments: () => api<Appointment[]>("/patient/appointments"),
+  confirmAppointment: (id: string) =>
+    api<Appointment>(`/patient/appointments/${id}/confirm`, { method: "POST" }),
+  exams: () => api<Exam[]>("/patient/exams"),
+  prescriptions: () => api<Prescription[]>("/patient/prescriptions"),
 };
