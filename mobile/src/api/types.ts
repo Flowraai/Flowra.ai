@@ -52,13 +52,29 @@ export interface MedicationDose {
   status: IntakeStatus;
 }
 
+export interface MessageAttachment {
+  id?: string;
+  url: string;
+  content_type?: string;
+  type?: string;
+  filename?: string | null;
+}
+
 export interface ChatMessage {
   id: string;
   sender: MessageSender;
   body: string;
-  attachments: unknown[];
+  attachments: MessageAttachment[];
   read_at: string | null;
   created_at: string;
+}
+
+export interface AttachmentRef {
+  id: string;
+  content_type: string;
+  size_bytes: number;
+  filename: string | null;
+  url: string;
 }
 
 export type AppointmentKind = "consultation" | "return";

@@ -17,7 +17,12 @@
     "android": {
       "package": "br.com.flowraai.care"
     },
-    "plugins": ["expo-secure-store", "expo-notifications"],
+    "plugins": [
+      "expo-secure-store",
+      "expo-notifications",
+      ["expo-image-picker", { "photosPermission": "O Flowra Care usa suas fotos para você anexar imagens ao chat com o médico." }],
+      ["expo-av", { "microphonePermission": "O Flowra Care usa o microfone para você gravar áudios no chat com o médico." }]
+    ],
     "extra": {
       "apiBaseUrl": "http://localhost:8000"
     }

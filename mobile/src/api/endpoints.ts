@@ -1,6 +1,7 @@
-import { api } from "./client";
+import { api, upload } from "./client";
 import type {
   Appointment,
+  AttachmentRef,
   ChatMessage,
   CheckInResult,
   Exam,
@@ -26,8 +27,14 @@ export const patientApi = {
       body: { status },
     }),
   messages: () => api<ChatMessage[]>("/patient/messages"),
-  sendMessage: (bodyText: string) =>
-    api<ChatMessage>("/patient/messages", { method: "POST", body: { body: bodyText, attachments: [] } }),
+  sendMessage: (bodyText: string, attachments: unknown[] = []) =>
+    api<ChatMessage>("/patient/messages", { method: "POST", body: { body: bodyText, attachments } }),
+  uploadAttachment: (file: { uri: string; name: string; type: string }) => {
+    const form = new FormData();
+    // React Native aceita { uri, name, type } como parte de arquivo do FormData.
+    form.append("file", file as unknown as Blob);
+    return upload<AttachmentRef>("/patient/attachments", form);
+  },
   aiHistory: () => api<ChatMessage[]>("/patient/ai-chat"),
   aiSend: (bodyText: string) =>
     api<ChatMessage>("/patient/ai-chat", { method: "POST", body: { body: bodyText, attachments: [] } }),
