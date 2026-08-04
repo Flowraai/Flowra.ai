@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Modal, Pressable, SafeAreaView, StatusBar, Text, View } from "react-native";
-import { loadToken, clearToken } from "./src/storage";
+import * as Linking from "expo-linking";
+import { loadToken, saveToken, clearToken } from "./src/storage";
 import { registerForPush } from "./src/push";
+import { tokenFromUrl } from "./src/linking";
+import { patientApi } from "./src/api/endpoints";
 import { useTheme } from "./src/theme";
 import { Loading } from "./src/components/ui";
 import { AccessScreen } from "./src/screens/AccessScreen";
@@ -19,15 +22,52 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
+  const [connecting, setConnecting] = useState(false);
 
-  useEffect(() => {
-    loadToken().then((tok) => {
-      setAuthed(!!tok);
-      if (tok) registerForPush();
-    });
+  const connectWithToken = useCallback(async (token: string): Promise<boolean> => {
+    setConnecting(true);
+    try {
+      await patientApi.today(token); // valida o código do link
+      await saveToken(token);
+      setAuthed(true);
+      registerForPush();
+      return true;
+    } catch {
+      return false;
+    } finally {
+      setConnecting(false);
+    }
   }, []);
 
-  if (authed === null) {
+  useEffect(() => {
+    let active = true;
+    async function bootstrap() {
+      const tok = await loadToken();
+      if (tok) {
+        if (active) setAuthed(true);
+        registerForPush();
+        return;
+      }
+      // Sem sessão salva: tenta o código de um deep link de abertura.
+      const initialUrl = await Linking.getInitialURL();
+      const linked = tokenFromUrl(initialUrl);
+      if (linked && (await connectWithToken(linked))) return;
+      if (active) setAuthed(false);
+    }
+    bootstrap();
+
+    // Deep link com o app já aberto.
+    const sub = Linking.addEventListener("url", ({ url }) => {
+      const t = tokenFromUrl(url);
+      if (t) connectWithToken(t);
+    });
+    return () => {
+      active = false;
+      sub.remove();
+    };
+  }, [connectWithToken]);
+
+  if (authed === null || connecting) {
     return <Splash />;
   }
   if (!authed) {

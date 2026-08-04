@@ -41,10 +41,26 @@ Aponte a API de produção em `app.json` → `expo.extra.apiBaseUrl` (ou via var
 perfil do `eas.json`). O `projectId` do push é lido de `expo.extra.eas.projectId`
 (preenchido pelo `eas init`).
 
+## Deep link (abrir pelo link)
+
+O app tem o esquema `flowracare://` (em `app.json`). Um link com `?token=…` abre o app
+e **conecta sozinho** — tanto com o esquema (`flowracare://acesso?token=XYZ`) quanto,
+em produção, com o link web do médico, desde que **universal links / app links** estejam
+configurados no deploy (associação de domínio: `apple-app-site-association` e
+`assetlinks.json`). Sem essa associação, o link web abre no navegador; o paciente ainda
+pode **colar o link** na tela de acesso, que extrai o código.
+
+Testar o esquema localmente:
+
+```bash
+npx uri-scheme open "flowracare://acesso?token=SEU_TOKEN" --ios   # ou --android
+```
+
 ## Fluxo / telas
 
-- **Acesso** — o paciente cola o código de acesso (do link do médico); validamos e
-  guardamos com segurança (SecureStore / Keychain-Keystore).
+- **Acesso** — o paciente entra pelo **link do médico** (deep link) ou colando o
+  **código / o link** — a tela extrai o token automaticamente. Validamos e guardamos
+  com segurança (SecureStore / Keychain-Keystore).
 - **Hoje** — saudação e estado do dia; botão para o **check-in diário** (< 1 min),
   renderizado dinamicamente a partir do protocolo do backend (escala, inteiro, escolha,
   sim/não, texto livre).
