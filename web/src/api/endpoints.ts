@@ -4,6 +4,9 @@ import { api } from "./client";
 import type {
   Alert,
   AlertStatus,
+  Appointment,
+  AppointmentInput,
+  AppointmentStatus,
   ChatMessage,
   CheckIn,
   DoctorProfile,
@@ -41,11 +44,19 @@ export const patients = {
   createMedication: (id: string, input: MedicationPlanInput) =>
     api<MedicationPlan>(`/patients/${id}/medications`, { method: "POST", body: input }),
   adherence: (id: string) => api<MedicationAdherence>(`/patients/${id}/medications/adherence`),
+  appointments: (id: string) => api<Appointment[]>(`/patients/${id}/appointments`),
+  createAppointment: (id: string, input: AppointmentInput) =>
+    api<Appointment>(`/patients/${id}/appointments`, { method: "POST", body: input }),
 };
 
 export const medications = {
   update: (planId: string, patch: { active?: boolean }) =>
     api<MedicationPlan>(`/medications/${planId}`, { method: "PATCH", body: patch }),
+};
+
+export const appointments = {
+  update: (id: string, patch: { status?: AppointmentStatus }) =>
+    api<Appointment>(`/appointments/${id}`, { method: "PATCH", body: patch }),
 };
 
 export const alerts = {
