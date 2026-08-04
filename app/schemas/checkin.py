@@ -26,6 +26,7 @@ class CheckInRead(BaseModel):
     structured_responses: dict
     free_text: str | None = None
     audio_url: str | None = None
+    audio_transcript: str | None = None
     risk_level: RiskLevel
     risk_reasons: list = []
     category_risks: dict = {}

@@ -7,6 +7,13 @@ Quando não houver banco, eles são **pulados** (skip) — os testes de unidade
 
 from __future__ import annotations
 
+import os
+import tempfile
+
+# Isola os uploads dos testes num diretório temporário (antes de importar a app,
+# pois as settings são lidas na importação).
+os.environ.setdefault("STORAGE_DIR", tempfile.mkdtemp(prefix="flowra-test-uploads-"))
+
 import httpx
 import pytest
 import pytest_asyncio
@@ -30,7 +37,7 @@ def _reset_rate_limiters():
 # device_tokens e tenants não têm FK que casque a partir das demais, então entram
 # explicitamente; o CASCADE cuida das tabelas filhas (checkins, medicação, etc.).
 _MUTABLE_TABLES = [
-    "alerts", "checkins", "audit_logs", "device_tokens",
+    "alerts", "checkins", "audit_logs", "device_tokens", "attachments",
     "patients", "doctors", "users", "tenants",
 ]
 

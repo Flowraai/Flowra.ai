@@ -119,6 +119,7 @@ Perfil **médico** (JWT — `Authorization: Bearer <token>`):
 | POST | `/api/v1/prescriptions/{id}/cancel` | Cancela a receita |
 | POST | `/api/v1/patients/{id}/messages` | Envia mensagem ao paciente (chat) |
 | GET  | `/api/v1/patients/{id}/messages` | Thread do chat com o paciente |
+| POST | `/api/v1/patients/{id}/attachments` | Anexa arquivo ao contexto do paciente |
 | GET  | `/api/v1/alerts` | Lista de alertas (filtro por status) |
 | PATCH| `/api/v1/alerts/{id}` | Atualiza status do alerta |
 
@@ -139,6 +140,8 @@ Perfil **paciente** (token opaco — header `X-Patient-Token: <token>`):
 | GET  | `/api/v1/patient/messages` | Thread do chat com o médico |
 | POST | `/api/v1/patient/ai-chat` | Conversa com a IA de apoio (responde na hora) |
 | GET  | `/api/v1/patient/ai-chat` | Histórico do chat com a IA |
+| POST | `/api/v1/patient/attachments` | Envia foto/arquivo/áudio (multipart) |
+| GET  | `/api/v1/attachments/{id}` | Baixa um anexo (acesso restrito ao dono) |
 | GET  | `/api/v1/patient/protocol` | Perguntas do dia para renderizar |
 | POST | `/api/v1/patient/checkins` | Envia o check-in diário (validado; **um por dia** — 2º envio no mesmo dia → 409) |
 
@@ -232,8 +235,22 @@ resultado do LLM é **combinado de forma conservadora** com o determinístico (m
 maior risco), e qualquer erro/ausência de chave faz cair no determinístico (nunca
 silencia um sinal). A chamada roda numa thread para não bloquear o event loop.
 
-> Áudio (upload + transcrição/speech-to-text) ainda não está implementado — o campo
-> `audio_url` existe, mas o pipeline de áudio fica para uma próxima etapa.
+**Anexos (fotos/arquivos/áudio)** — upload em `multipart/form-data` por paciente
+(`POST /patient/attachments`) ou médico (`POST /patients/{id}/attachments`). O tipo e
+o tamanho são validados (`UPLOAD_ALLOWED_TYPES`, `UPLOAD_MAX_BYTES`); os bytes vão para
+um backend de armazenamento **plugável** (`STORAGE_BACKEND=local` por padrão — grava em
+`STORAGE_DIR`; produção troca por object storage/S3 implementando o mesmo protocolo) e
+os metadados para a tabela `attachments`. O download (`GET /attachments/{id}`) é liberado
+**só** para o paciente dono ou o médico responsável (LGPD — arquivos clínicos são
+sensíveis; a resposta é 404 para quem não tem acesso, sem revelar a existência). A URL
+retornada é referenciável nos `attachments` de uma mensagem ou no `audio_url` do check-in.
+
+**Transcrição de áudio no check-in** — quando o `audio_url` do check-in aponta para um
+anexo de áudio e a transcrição está habilitada (`TRANSCRIPTION_PROVIDER=openai`, endpoint
+Whisper-compat), o áudio é transcrito e o texto entra na análise de risco **de forma
+conservadora** (soma-se ao texto livre, não o substitui) e fica salvo em
+`checkins.audio_transcript` para o médico ler. O padrão é `none` (não transcreve — o
+áudio fica apenas salvo como anexo); qualquer falha de transcrição não bloqueia o check-in.
 
 **Resumo do paciente** (`GET /patients/{id}/summary`): reúne o contexto (risco,
 check-ins recentes, adesão, alertas, próxima consulta) e produz um resumo para o
