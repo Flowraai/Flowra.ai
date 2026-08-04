@@ -92,11 +92,15 @@ jobs:
       - name: Serve e smoke test
         run: |
           set -euo pipefail
-          docker run -d --name web -p 8080:80 flowra-web:ci
-          for i in $(seq 1 20); do
-            curl -sf http://localhost:8080/healthz >/dev/null && break
+          # Sem o serviço 'api' aqui; aponta o upstream para um host resolvível para o
+          # nginx subir (o smoke não exercita /api, só o serve estático da SPA).
+          docker run -d --name web -e API_UPSTREAM=127.0.0.1:8000 -p 8080:80 flowra-web:ci
+          ok=0
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/healthz >/dev/null; then ok=1; break; fi
             sleep 1
           done
+          if [ "$ok" != 1 ]; then echo "nginx não respondeu:"; docker logs web; exit 1; fi
           curl -sf http://localhost:8080/healthz | grep -q ok
           # A SPA responde e serve o index (fallback de rota do cliente).
           curl -sf http://localhost:8080/ | grep -qi "Flowra"
