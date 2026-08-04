@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
 import { RiskBadge } from "../components/RiskBadge";
@@ -7,8 +8,10 @@ import { MedicationCard } from "../components/MedicationCard";
 import { AppointmentsCard } from "../components/AppointmentsCard";
 import { ExamsCard } from "../components/ExamsCard";
 import { PrescriptionsCard } from "../components/PrescriptionsCard";
+import { EditPatientModal } from "../components/EditPatientModal";
 import { IconAlertTri, IconChart, IconSpark } from "../components/icons";
 import { useAsync } from "../lib/useAsync";
+import { ApiError } from "../api/client";
 import { patients, alerts as alertsApi } from "../api/endpoints";
 import { avatarGradient, initials, num, RISK_LABEL, shortDay } from "../lib/format";
 import type { Alert, CheckIn, RiskLevel } from "../api/types";
@@ -34,12 +37,38 @@ function sleepLabel(ci: CheckIn): string {
 export function PatientDetail() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const patient = useAsync(() => patients.get(id), [id]);
+  const [reloadKey, setReloadKey] = useState(0);
+  const patient = useAsync(() => patients.get(id), [id, reloadKey]);
   const summary = useAsync(() => patients.summary(id), [id]);
   const checkins = useAsync(() => patients.checkins(id, 7), [id]);
   const alertList = useAsync(() => alertsApi.list(), [id]);
+  const [showEdit, setShowEdit] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const p = patient.data;
+
+  async function exportData() {
+    setExporting(true);
+    setExportError(null);
+    try {
+      const data = await patients.export(id);
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const slug = (p?.name ?? "paciente").normalize("NFD").replace(/[^\w]+/g, "-").toLowerCase();
+      a.href = url;
+      a.download = `flowra-${slug}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setExportError(e instanceof ApiError ? e.message : "Falha ao exportar.");
+    } finally {
+      setExporting(false);
+    }
+  }
   const meta = [age(p?.birth_date ?? null), p?.contact].filter(Boolean) as string[];
   const patientAlerts = (alertList.data ?? []).filter((a) => a.patient_id === id);
   const openAlerts = patientAlerts.filter((a) => a.status !== "resolved");
@@ -58,7 +87,14 @@ export function PatientDetail() {
       actions={
         <>
           <ThemeToggle />
-          <button className="btn ghost">Exportar dados (LGPD)</button>
+          {p ? (
+            <button className="btn ghost" onClick={() => setShowEdit(true)}>
+              Editar
+            </button>
+          ) : null}
+          <button className="btn ghost" onClick={exportData} disabled={exporting || !p}>
+            {exporting ? "Exportando…" : "Exportar dados (LGPD)"}
+          </button>
         </>
       }
     >
@@ -169,6 +205,22 @@ export function PatientDetail() {
           </div>
         </>
       )}
+
+      {exportError ? (
+        <p className="muted" style={{ color: "var(--risk-red)", fontSize: 13 }}>{exportError}</p>
+      ) : null}
+
+      {showEdit && p ? (
+        <EditPatientModal
+          patient={p}
+          onClose={() => setShowEdit(false)}
+          onSaved={() => {
+            setShowEdit(false);
+            setReloadKey((k) => k + 1);
+          }}
+          onDeleted={() => navigate("/", { replace: true })}
+        />
+      ) : null}
     </AppShell>
   );
 }
