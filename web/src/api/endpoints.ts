@@ -3,10 +3,13 @@
 import { api } from "./client";
 import type {
   Alert,
+  AlertStatus,
   ChatMessage,
   CheckIn,
   DoctorProfile,
   Patient,
+  PatientCreated,
+  PatientCreateInput,
   PatientPanelItem,
   PatientSummary,
   TokenPair,
@@ -20,6 +23,8 @@ export const auth = {
 
 export const patients = {
   list: () => api<PatientPanelItem[]>("/patients"),
+  create: (input: PatientCreateInput) =>
+    api<PatientCreated>("/patients", { method: "POST", body: input }),
   get: (id: string) => api<Patient>(`/patients/${id}`),
   checkins: (id: string, limit = 14) => api<CheckIn[]>(`/patients/${id}/checkins?limit=${limit}`),
   summary: (id: string) => api<PatientSummary>(`/patients/${id}/summary`),
@@ -34,4 +39,6 @@ export const patients = {
 export const alerts = {
   list: (statusFilter?: string) =>
     api<Alert[]>(`/alerts${statusFilter ? `?status_filter=${statusFilter}` : ""}`),
+  updateStatus: (id: string, status: AlertStatus) =>
+    api<Alert>(`/alerts/${id}`, { method: "PATCH", body: { status } }),
 };

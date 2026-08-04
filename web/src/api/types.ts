@@ -74,6 +74,17 @@ export interface Alert {
   created_at: string;
 }
 
+export interface PatientCreated extends Patient {
+  access_token: string;
+}
+
+export interface PatientCreateInput {
+  name: string;
+  contact?: string | null;
+  consent_given: boolean;
+  consent_version?: string | null;
+}
+
 export interface PatientSummary {
   summary: string;
   generated_by: "llm" | "deterministic";

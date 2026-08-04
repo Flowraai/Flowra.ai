@@ -3,7 +3,8 @@ import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { PatientDetail } from "./pages/PatientDetail";
-import { Placeholder } from "./pages/Placeholder";
+import { Alerts } from "./pages/Alerts";
+import { Messages } from "./pages/Messages";
 import type { ReactNode } from "react";
 
 function FullScreenLoader() {
@@ -69,7 +70,7 @@ export default function App() {
             path="/alertas"
             element={
               <RequireAuth>
-                <Placeholder title="Alertas" />
+                <Alerts />
               </RequireAuth>
             }
           />
@@ -77,7 +78,7 @@ export default function App() {
             path="/mensagens"
             element={
               <RequireAuth>
-                <Placeholder title="Mensagens" />
+                <Messages />
               </RequireAuth>
             }
           />
