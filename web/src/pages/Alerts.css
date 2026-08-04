@@ -1,0 +1,27 @@
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.panel-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.panel-head h3 { font-size: 15px; }
+.panel-head .hint { color: var(--muted); font-size: 12.5px; }
+.seg { margin-left: auto; display: flex; background: var(--surface-2); border-radius: 999px; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: transparent; font-size: 12.5px; font-weight: 600; color: var(--muted); padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+.seg button.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+
+.btn.sm { padding: 7px 12px; font-size: 12.5px; }
+
+.alerts-list { display: flex; flex-direction: column; }
+.alert-row { display: flex; gap: 13px; padding: 14px 18px; border-bottom: 1px solid var(--line); align-items: center; }
+.alert-row:last-child { border-bottom: 0; }
+.alert-row .sev { width: 6px; align-self: stretch; border-radius: 4px; flex: none; min-height: 44px; }
+.alert-main { min-width: 0; flex: 1; }
+.alert-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pt-link { border: 0; background: transparent; font-family: inherit; font-size: 14.5px; font-weight: 700; color: var(--ink); cursor: pointer; padding: 0; }
+.pt-link:hover { color: var(--accent-ink); text-decoration: underline; }
+.alert-reason { margin: 5px 0 3px; font-size: 13.5px; color: var(--ink); }
+.alert-meta { font-size: 11.5px; color: var(--muted); }
+.alert-actions { display: flex; gap: 8px; align-items: center; flex: none; }
+
+@media (max-width: 720px) {
+  .alert-row { flex-wrap: wrap; }
+  .alert-actions { width: 100%; justify-content: flex-end; }
+  .seg { margin-left: 0; }
+}

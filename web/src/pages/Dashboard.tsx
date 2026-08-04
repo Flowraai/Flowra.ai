@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
 import { RiskBadge } from "../components/RiskBadge";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { NewPatientModal } from "../components/NewPatientModal";
 import { IconPlus, IconSearch } from "../components/icons";
 import { useAsync } from "../lib/useAsync";
 import { patients } from "../api/endpoints";
@@ -21,9 +22,11 @@ function isToday(iso: string | null): boolean {
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { data, loading, error } = useAsync(() => patients.list(), []);
+  const [reloadKey, setReloadKey] = useState(0);
+  const { data, loading, error } = useAsync(() => patients.list(), [reloadKey]);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [showNew, setShowNew] = useState(false);
 
   const list = data ?? [];
   const kpis = useMemo(() => {
@@ -65,7 +68,7 @@ export function Dashboard() {
             />
           </div>
           <ThemeToggle />
-          <button className="btn">
+          <button className="btn" onClick={() => setShowNew(true)}>
             <IconPlus width={15} height={15} /> Novo paciente
           </button>
         </>
@@ -133,6 +136,10 @@ export function Dashboard() {
           </div>
         )}
       </div>
+
+      {showNew ? (
+        <NewPatientModal onClose={() => setShowNew(false)} onCreated={() => setReloadKey((k) => k + 1)} />
+      ) : null}
     </AppShell>
   );
 }

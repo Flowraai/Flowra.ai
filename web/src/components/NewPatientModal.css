@@ -1,0 +1,44 @@
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(10, 20, 18, 0.5); backdrop-filter: blur(2px);
+  display: grid; place-items: center; padding: 20px; z-index: 50;
+}
+.modal-card {
+  width: 100%; max-width: 440px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px 22px 20px;
+}
+.modal-card h3 { font-size: 18px; margin-bottom: 4px; }
+
+.np-form { display: flex; flex-direction: column; gap: 14px; }
+.np-form label { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.np-form input[type="text"], .np-form input:not([type]) {
+  font: inherit; font-size: 14.5px; color: var(--ink); background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; outline: none;
+}
+.np-form input:focus { border-color: var(--accent); }
+.np-consent { flex-direction: row !important; align-items: flex-start; gap: 9px; font-weight: 500 !important; color: var(--ink) !important; font-size: 13px !important; }
+.np-consent input { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--accent); }
+.np-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+.btn.sm { padding: 7px 12px; font-size: 12.5px; }
+.np-error {
+  font-size: 13px; font-weight: 600; color: var(--risk-red);
+  background: color-mix(in srgb, var(--risk-red) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--risk-red) 30%, var(--line));
+  padding: 9px 12px; border-radius: var(--radius-sm);
+}
+
+.np-done { display: flex; flex-direction: column; gap: 12px; text-align: center; }
+.np-check {
+  width: 46px; height: 46px; border-radius: 50%; margin: 0 auto; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--risk-green) 18%, var(--surface)); color: var(--risk-green);
+  font-size: 22px; font-weight: 800;
+}
+.np-done p { margin: 0; font-size: 13.5px; }
+.token-box {
+  display: flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 8px 8px 8px 12px;
+}
+.token-box code {
+  flex: 1; font-family: var(--mono); font-size: 12.5px; color: var(--ink); overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; text-align: left;
+}
+.np-hint { font-size: 12px !important; }
