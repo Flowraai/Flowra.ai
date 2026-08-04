@@ -72,6 +72,12 @@ export const IconAlertTri = (p: SVGProps<SVGSVGElement>) => (
     <path d="M12 9v4m0 4h.01" />
   </svg>
 );
+export const IconPill = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="m10.5 20.5 10-10a2.83 2.83 0 0 0-4-4l-10 10a4 4 0 1 0 4 4z" />
+    <path d="m8.5 8.5 7 7" />
+  </svg>
+);
 export const IconSend = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <path d="m22 2-7 20-4-9-9-4z" />

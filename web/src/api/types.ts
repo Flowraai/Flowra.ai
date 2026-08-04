@@ -91,6 +91,36 @@ export interface PatientSummary {
   context: Record<string, unknown>;
 }
 
+export interface MedicationPlan {
+  id: string;
+  patient_id: string;
+  name: string;
+  dose: string;
+  times: string[];
+  start_date: string;
+  end_date: string | null;
+  notes: string | null;
+  active: boolean;
+}
+
+export interface MedicationPlanInput {
+  name: string;
+  dose: string;
+  times: string[];
+  start_date: string;
+  end_date?: string | null;
+  notes?: string | null;
+}
+
+export interface MedicationAdherence {
+  total: number;
+  taken: number;
+  later: number;
+  missed: number;
+  pending: number;
+  adherence_rate: number;
+}
+
 export type MessageSender = "patient" | "doctor" | "ai";
 
 export interface ChatMessage {
