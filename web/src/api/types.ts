@@ -23,6 +23,15 @@ export interface DoctorProfile {
   tenant_name: string | null;
 }
 
+export interface DoctorUpdateInput {
+  name?: string;
+  specialty?: string;
+  clinic?: string | null;
+  council_id?: string | null;
+  notification_email?: string | null;
+  notification_phone?: string | null;
+}
+
 export interface PatientPanelItem {
   id: string;
   name: string;
