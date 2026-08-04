@@ -45,6 +45,9 @@ tests/         motor de risco, texto livre e smoke da API
 
 > **Painel do médico (web):** o frontend em React + Vite vive em [`web/`](web/README.md).
 > Rode `cd web && npm install && npm run dev` (proxy de `/api` para o backend em :8000).
+>
+> **App do paciente (Expo):** o app em React Native vive em [`mobile/`](mobile/README.md).
+> Rode `cd mobile && npm install && npm start` (aponte `expo.extra.apiBaseUrl` para a API).
 
 ### Opção A — Docker (desenvolvimento)
 
