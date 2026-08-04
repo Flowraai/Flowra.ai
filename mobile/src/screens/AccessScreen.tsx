@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native";
 import { patientApi } from "../api/endpoints";
 import { ApiError } from "../api/client";
 import { saveToken } from "../storage";
+import { tokenFromInput } from "../linking";
 import { Button, text } from "../components/ui";
 import { useTheme } from "../theme";
 
@@ -15,7 +16,8 @@ export function AccessScreen({ onAuthed }: { onAuthed: () => void }) {
   const [error, setError] = useState<string | null>(null);
 
   async function connect() {
-    const value = token.trim();
+    // Aceita o código puro ou o link colado (extrai o token deste).
+    const value = tokenFromInput(token);
     if (!value) return;
     setBusy(true);
     setError(null);
@@ -61,11 +63,11 @@ export function AccessScreen({ onAuthed }: { onAuthed: () => void }) {
         </View>
 
         <View style={{ gap: 8 }}>
-          <Text style={t.label}>Código de acesso</Text>
+          <Text style={t.label}>Código ou link de acesso</Text>
           <TextInput
             value={token}
             onChangeText={setToken}
-            placeholder="cole aqui o seu código"
+            placeholder="cole o código ou o link do seu médico"
             placeholderTextColor={theme.muted}
             autoCapitalize="none"
             autoCorrect={false}
