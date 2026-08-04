@@ -1,0 +1,28 @@
+# Controle de versão e CI
+.git
+.github
+.gitignore
+
+# Ambientes e caches Python
+.venv
+venv
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# Segredos e dados locais (nunca entram na imagem)
+.env
+*.env
+var/
+uploads/
+audio_uploads/
+data/
+
+# Testes e artefatos de desenvolvimento
+tests
+.coverage
+htmlcov
+*.md
+!README.md

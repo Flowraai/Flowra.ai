@@ -1,3 +1,4 @@
+# Ambiente de DESENVOLVIMENTO. Para produção, use docker-compose.prod.yml.
 services:
   db:
     image: postgres:16-alpine
@@ -21,13 +22,15 @@ services:
       db:
         condition: service_healthy
     environment:
+      ENVIRONMENT: development
+      DEBUG: "true"
+      LOG_FORMAT: text
       DATABASE_URL: postgresql+asyncpg://flowra:flowra@db:5432/flowra_care
       JWT_SECRET_KEY: dev-secret-nao-use-em-producao
+      # O entrypoint aplica as migrações; populamos o protocolo no dev.
+      SEED_PROTOCOL: "true"
     ports:
       - "8000:8000"
-    command: >
-      sh -c "python -m app.scripts.init_db &&
-             uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
 volumes:
   flowra_care_pgdata:

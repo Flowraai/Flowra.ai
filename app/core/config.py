@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     environment: str = "development"
     debug: bool = True
 
+    # Observabilidade — logging estruturado
+    log_level: str = "INFO"
+    log_format: str = "json"  # json (produção) | text (dev)
+
     # Banco de dados
     database_url: str = "postgresql+asyncpg://flowra:flowra@localhost:5432/flowra_care"
 

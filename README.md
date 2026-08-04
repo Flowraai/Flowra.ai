@@ -43,15 +43,15 @@ tests/         motor de risco, texto livre e smoke da API
 
 ## Como rodar
 
-### Opção A — Docker (recomendado)
+### Opção A — Docker (desenvolvimento)
 
 ```bash
-cp .env.example .env
 docker compose up --build
 # API em http://localhost:8000 — docs interativas em /docs
 ```
 
-O container da API roda o `init_db` (cria tabelas + popula o protocolo) e sobe o servidor.
+O `docker-entrypoint.sh` aplica as migrações (`alembic upgrade head`) e, no dev,
+popula o protocolo (`SEED_PROTOCOL=true`) antes de subir a API.
 
 ### Opção B — Local
 
@@ -64,15 +64,27 @@ python -m app.scripts.init_db   # cria tabelas e popula o protocolo psiquiátric
 uvicorn app.main:app --reload
 ```
 
-### Migrações (produção)
-
-Em produção, use Alembic em vez do `init_db`:
+### Produção (Docker)
 
 ```bash
-alembic revision --autogenerate -m "initial schema"
-alembic upgrade head
-python -m app.scripts.seed_protocol
+cp .env.example .env   # preencha JWT_SECRET_KEY, ENCRYPTION_KEY, DATABASE_URL, ...
+docker compose -f docker-compose.prod.yml up -d --build
 ```
+
+- **Imagem** multi-stage (deps num virtualenv isolado), roda como usuário **não-root**,
+  serve via **gunicorn + UvicornWorker** (`WEB_CONCURRENCY` workers).
+- **Entrypoint** aplica `alembic upgrade head` no boot (`RUN_MIGRATIONS`, seed via
+  `SEED_PROTOCOL`).
+- **Health checks**: `/health/live` (liveness, não toca no banco) e `/health/ready`
+  (readiness — verifica o banco, retorna **503** se indisponível). O `HEALTHCHECK` do
+  container e o compose de produção usam esses endpoints.
+- **Guardrails de produção** rodam no startup (ver seção Compliance): abortam com
+  `JWT_SECRET_KEY` padrão ou `DEBUG=true`.
+- **Observabilidade**: logs estruturados em **JSON** (`LOG_FORMAT=json`) com `request_id`
+  por requisição (aceita/propaga `X-Request-ID`); o log de acesso registra método, rota,
+  status e duração — **sem** query string nem corpo (evita vazar dado sensível).
+- **Uploads** persistem em volume (`STORAGE_DIR=/data/uploads`); em escala, troque por
+  object storage/S3 (backend de storage plugável).
 
 ## Fluxo da API (resumo)
 

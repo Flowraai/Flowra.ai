@@ -7,10 +7,12 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.middleware import RequestContextMiddleware
 from app.api.router import api_router
 from app.core.config import settings
+from app.core.logging import setup_logging
 
-logging.basicConfig(level=logging.INFO)
+setup_logging()
 logger = logging.getLogger("flowra_care")
 
 # Guardrails de produção: aborta em config insegura (JWT padrão, DEBUG) e
@@ -38,6 +40,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Correlação/observabilidade por requisição (adicionado por último = executa primeiro).
+app.add_middleware(RequestContextMiddleware)
 
 app.include_router(api_router)
 
