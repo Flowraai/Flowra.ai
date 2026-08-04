@@ -13,11 +13,13 @@ import { CheckinScreen } from "./src/screens/CheckinScreen";
 import { MedicationScreen } from "./src/screens/MedicationScreen";
 import { ChatScreen } from "./src/screens/ChatScreen";
 import { AiChatScreen } from "./src/screens/AiChatScreen";
+import { AgendaScreen } from "./src/screens/AgendaScreen";
 
-type Tab = "hoje" | "medicacao" | "chat" | "apoio";
+type Tab = "hoje" | "medicacao" | "agenda" | "chat" | "apoio";
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "hoje", label: "Hoje", icon: "🏠" },
-  { key: "medicacao", label: "Medicação", icon: "💊" },
+  { key: "medicacao", label: "Remédios", icon: "💊" },
+  { key: "agenda", label: "Agenda", icon: "📅" },
   { key: "chat", label: "Médico", icon: "💬" },
   { key: "apoio", label: "Apoio", icon: "✨" },
 ];
@@ -133,6 +135,8 @@ function Main({ onLogout }: { onLogout: () => void }) {
           <TodayScreen onOpenCheckin={() => setShowCheckin(true)} nonce={nonce} />
         ) : tab === "medicacao" ? (
           <MedicationScreen />
+        ) : tab === "agenda" ? (
+          <AgendaScreen />
         ) : tab === "chat" ? (
           <ChatScreen />
         ) : (
