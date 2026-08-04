@@ -10,6 +10,9 @@ import type {
   ChatMessage,
   CheckIn,
   DoctorProfile,
+  Exam,
+  ExamInput,
+  ExamStatus,
   MedicationAdherence,
   MedicationPlan,
   MedicationPlanInput,
@@ -18,6 +21,8 @@ import type {
   PatientCreateInput,
   PatientPanelItem,
   PatientSummary,
+  Prescription,
+  PrescriptionCreateInput,
   TokenPair,
 } from "./types";
 
@@ -47,6 +52,12 @@ export const patients = {
   appointments: (id: string) => api<Appointment[]>(`/patients/${id}/appointments`),
   createAppointment: (id: string, input: AppointmentInput) =>
     api<Appointment>(`/patients/${id}/appointments`, { method: "POST", body: input }),
+  exams: (id: string) => api<Exam[]>(`/patients/${id}/exams`),
+  createExam: (id: string, input: ExamInput) =>
+    api<Exam>(`/patients/${id}/exams`, { method: "POST", body: input }),
+  prescriptions: (id: string) => api<Prescription[]>(`/patients/${id}/prescriptions`),
+  createPrescription: (id: string, input: PrescriptionCreateInput) =>
+    api<Prescription>(`/patients/${id}/prescriptions`, { method: "POST", body: input }),
 };
 
 export const medications = {
@@ -57,6 +68,16 @@ export const medications = {
 export const appointments = {
   update: (id: string, patch: { status?: AppointmentStatus }) =>
     api<Appointment>(`/appointments/${id}`, { method: "PATCH", body: patch }),
+};
+
+export const exams = {
+  update: (id: string, patch: { status?: ExamStatus; result_url?: string | null }) =>
+    api<Exam>(`/exams/${id}`, { method: "PATCH", body: patch }),
+};
+
+export const prescriptions = {
+  issue: (id: string) => api<Prescription>(`/prescriptions/${id}/issue`, { method: "POST" }),
+  cancel: (id: string) => api<Prescription>(`/prescriptions/${id}/cancel`, { method: "POST" }),
 };
 
 export const alerts = {

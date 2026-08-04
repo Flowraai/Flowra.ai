@@ -142,6 +142,50 @@ export interface AppointmentInput {
   notes?: string | null;
 }
 
+export type ExamStatus = "requested" | "available";
+
+export interface Exam {
+  id: string;
+  patient_id: string;
+  name: string;
+  status: ExamStatus;
+  result_url: string | null;
+  notes: string | null;
+  available_at: string | null;
+  created_at: string;
+}
+
+export interface ExamInput {
+  name: string;
+  notes?: string | null;
+}
+
+export type PrescriptionStatus = "draft" | "issued" | "cancelled";
+
+export interface PrescriptionItem {
+  name: string;
+  dose: string;
+  instructions?: string | null;
+}
+
+export interface Prescription {
+  id: string;
+  patient_id: string;
+  doctor_id: string;
+  items: PrescriptionItem[];
+  notes: string | null;
+  status: PrescriptionStatus;
+  external_id: string | null;
+  pdf_url: string | null;
+  issued_at: string | null;
+  created_at: string;
+}
+
+export interface PrescriptionCreateInput {
+  items: PrescriptionItem[];
+  notes?: string | null;
+}
+
 export type MessageSender = "patient" | "doctor" | "ai";
 
 export interface ChatMessage {

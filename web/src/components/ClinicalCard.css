@@ -1,0 +1,22 @@
+.clin-list { display: flex; flex-direction: column; gap: 8px; }
+.clin-row {
+  display: flex; align-items: center; gap: 10px; background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 10px 12px; flex-wrap: wrap;
+}
+.clin-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.clin-main b { font-size: 14px; }
+.clin-main span { font-size: 12.5px; color: var(--muted); }
+
+.badge { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.badge.b-ok { color: var(--risk-green); background: color-mix(in srgb, var(--risk-green) 15%, var(--surface)); }
+.badge.b-muted { color: var(--muted); background: color-mix(in srgb, var(--muted) 14%, var(--surface)); }
+.badge.b-off { color: var(--risk-red); background: color-mix(in srgb, var(--risk-red) 13%, var(--surface)); }
+.badge.b-accent { color: var(--accent-ink); background: var(--accent-soft); }
+
+.clin-row .mini {
+  border: 0; background: transparent; color: var(--muted); font-family: inherit; font-size: 12px; font-weight: 600;
+  cursor: pointer; padding: 4px 8px; border-radius: 8px; flex: none;
+}
+.clin-row .mini:hover { color: var(--accent-ink); background: var(--accent-soft); }
+.clin-row .mini.danger:hover { color: var(--risk-red); background: color-mix(in srgb, var(--risk-red) 10%, transparent); }
+.clin-actions { display: flex; gap: 6px; align-items: center; flex: none; }
