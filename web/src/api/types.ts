@@ -85,6 +85,20 @@ export interface PatientCreateInput {
   consent_version?: string | null;
 }
 
+export interface PatientUpdateInput {
+  name?: string;
+  contact?: string | null;
+  birth_date?: string | null;
+  is_active?: boolean;
+}
+
+export interface PatientExport {
+  exported_at: string;
+  patient: Patient;
+  checkins: CheckIn[];
+  alerts: Alert[];
+}
+
 export interface PatientSummary {
   summary: string;
   generated_by: "llm" | "deterministic";

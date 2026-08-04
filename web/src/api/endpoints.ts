@@ -19,8 +19,10 @@ import type {
   Patient,
   PatientCreated,
   PatientCreateInput,
+  PatientExport,
   PatientPanelItem,
   PatientSummary,
+  PatientUpdateInput,
   Prescription,
   PrescriptionCreateInput,
   TokenPair,
@@ -37,6 +39,10 @@ export const patients = {
   create: (input: PatientCreateInput) =>
     api<PatientCreated>("/patients", { method: "POST", body: input }),
   get: (id: string) => api<Patient>(`/patients/${id}`),
+  update: (id: string, patch: PatientUpdateInput) =>
+    api<Patient>(`/patients/${id}`, { method: "PATCH", body: patch }),
+  remove: (id: string) => api<void>(`/patients/${id}`, { method: "DELETE" }),
+  export: (id: string) => api<PatientExport>(`/patients/${id}/export`),
   checkins: (id: string, limit = 14) => api<CheckIn[]>(`/patients/${id}/checkins?limit=${limit}`),
   summary: (id: string) => api<PatientSummary>(`/patients/${id}/summary`),
   messages: (id: string) => api<ChatMessage[]>(`/patients/${id}/messages`),
