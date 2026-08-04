@@ -50,3 +50,73 @@ jobs:
 
       - name: Run test suite
         run: pytest -q
+
+  docker:
+    # Builda a imagem de produção e faz um smoke test do container inteiro:
+    # entrypoint (migrações + seed) -> gunicorn -> health checks, contra um Postgres.
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: flowra
+          POSTGRES_PASSWORD: flowra
+          POSTGRES_DB: flowra_prod
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U flowra -d flowra_prod"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build production image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: flowra-care:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run container (produção) contra o Postgres
+        run: |
+          docker run -d --name flowra --network host \
+            -e ENVIRONMENT=production \
+            -e DEBUG=false \
+            -e DATABASE_URL=postgresql+asyncpg://flowra:flowra@localhost:5432/flowra_prod \
+            -e JWT_SECRET_KEY=ci-strong-secret-not-the-default-value \
+            -e SEED_PROTOCOL=true \
+            flowra-care:ci
+
+      - name: Wait for readiness (migrações + boot)
+        run: |
+          for i in $(seq 1 45); do
+            if curl -sf http://localhost:8000/health/ready >/dev/null; then
+              echo "container pronto"; exit 0
+            fi
+            sleep 2
+          done
+          echo "timeout esperando readiness"; docker logs flowra; exit 1
+
+      - name: Smoke checks (health, docs gating, request_id)
+        run: |
+          set -euo pipefail
+          curl -sf http://localhost:8000/health/live | grep -q alive
+          curl -sf http://localhost:8000/health/ready | grep -q '"database":"reachable"'
+          # /docs desabilitado em produção
+          code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/docs)
+          test "$code" = "404"
+          # correlação por request_id no cabeçalho da resposta
+          curl -sf -D - -o /dev/null http://localhost:8000/health/live | grep -iq '^x-request-id:'
+          echo "smoke checks OK"
+
+      - name: Container logs
+        if: always()
+        run: docker logs flowra || true
