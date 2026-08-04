@@ -121,6 +121,27 @@ export interface MedicationAdherence {
   adherence_rate: number;
 }
 
+export type AppointmentKind = "consultation" | "return";
+export type AppointmentStatus = "scheduled" | "confirmed" | "cancelled" | "completed";
+
+export interface Appointment {
+  id: string;
+  patient_id: string;
+  doctor_id: string;
+  scheduled_at: string;
+  kind: AppointmentKind;
+  status: AppointmentStatus;
+  location: string | null;
+  notes: string | null;
+}
+
+export interface AppointmentInput {
+  scheduled_at: string;
+  kind: AppointmentKind;
+  location?: string | null;
+  notes?: string | null;
+}
+
 export type MessageSender = "patient" | "doctor" | "ai";
 
 export interface ChatMessage {
