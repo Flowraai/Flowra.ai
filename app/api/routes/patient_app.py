@@ -316,9 +316,10 @@ async def send_patient_message(
     )
     session.add(message)
     await session.flush()
+    # LGPD — minimização: sem nome do paciente no push (aparece em tela de bloqueio).
     await push_to_doctor(
         session, patient.doctor_id,
-        "[Flowra Care] Nova mensagem", f"{patient.name} enviou uma mensagem.",
+        "[Flowra Care] Nova mensagem", "Um paciente enviou uma mensagem. Abra o painel.",
     )
     return message
 
