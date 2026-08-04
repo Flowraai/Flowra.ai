@@ -63,16 +63,24 @@ async def send_plain(target: str, subject: str, body: str) -> None:
             logger.error("Falha ao enviar mensagem via %s: %s", channel.channel_type.value, exc)
 
 
-def _render(alert: Alert, patient: Patient) -> tuple[str, str]:
-    prefix = "🔴 URGENTE" if alert.urgency is AlertUrgency.IMMEDIATE else "🟠 Acompanhamento"
-    subject = f"[Flowra Care] {prefix} — paciente {patient.name}"
+def _render(alert: Alert) -> tuple[str, str]:
+    """Conteúdo enviado a canais externos (WhatsApp/e-mail/webhook) e push.
+
+    LGPD — minimização: dado de saúde é sensível e estes canais são de terceiros
+    (Meta, provedor de e-mail, APNs/FCM) e aparecem em tela de bloqueio. NÃO
+    incluímos nome do paciente, nível de risco nem motivo clínico; só sinalizamos
+    que há um alerta e sua urgência. O detalhe clínico fica no painel, sob login.
+    """
+    if alert.urgency is AlertUrgency.IMMEDIATE:
+        subject = "[Flowra Care] 🔴 Alerta urgente"
+        detail = "um alerta URGENTE"
+    else:
+        subject = "[Flowra Care] 🟠 Novo alerta de acompanhamento"
+        detail = "um alerta de acompanhamento"
     body = (
-        f"Paciente: {patient.name}\n"
-        f"Nível de risco: {alert.level.value}\n"
-        f"Urgência: {alert.urgency.value}\n"
-        f"Motivo(s): {alert.reason}\n\n"
-        "Acesse o painel para revisar o caso.\n"
-        "Lembrete: a priorização é apoio à decisão e não substitui o julgamento clínico."
+        f"Um paciente sob seu acompanhamento gerou {detail}. "
+        "Abra o painel do Flowra Care para revisar o caso.\n"
+        "Por privacidade (LGPD), os detalhes clínicos ficam apenas no painel."
     )
     return subject, body
 
@@ -80,7 +88,7 @@ def _render(alert: Alert, patient: Patient) -> tuple[str, str]:
 async def dispatch_alert(
     session: AsyncSession, *, alert: Alert, patient: Patient, email: str, phone: str | None = None
 ) -> list[Notification]:
-    subject, body = _render(alert, patient)
+    subject, body = _render(alert)
     records: list[Notification] = []
 
     for channel in get_active_channels():

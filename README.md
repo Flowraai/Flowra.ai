@@ -289,13 +289,26 @@ o paciente é avisado e a receita passa a aparecer no histórico dele.
   cadastro do paciente (`consent_given`), IDs são UUID (não enumeráveis), e o token do
   paciente é armazenado apenas como hash. **Direitos do titular**: exportação
   (`GET /patients/{id}/export`, portabilidade) e eliminação (`DELETE /patients/{id}`) —
-  a exclusão remove paciente/check-ins/alertas/notificações por cascata e **preserva o
-  log de auditoria** (referencia só IDs). Em produção, habilite **criptografia em
-  repouso** no provedor de banco e mantenha **isolamento** em relação à Flowra AI (CRM).
-- **Auditoria** — `audit_logs` registra check-ins, cálculos de risco, alertas gerados e
-  ações do médico (proteção jurídica para a plataforma e para o médico).
+  a exclusão remove paciente/check-ins/alertas/notificações/anexos por cascata e
+  **preserva o log de auditoria** (referencia só IDs). Em produção, habilite
+  **criptografia em repouso** no provedor de banco e mantenha **isolamento** em relação
+  à Flowra AI (CRM).
+- **Minimização em canais externos** — notificações enviadas a terceiros (WhatsApp/Meta,
+  e-mail, webhook) e push (APNs/FCM/Expo, visíveis em tela de bloqueio) **não** incluem
+  nome do paciente, nível de risco nem motivo clínico: apenas sinalizam que há um alerta
+  e sua urgência, direcionando ao painel. O detalhe clínico fica **só no painel**, sob
+  login. O acesso a anexos (fotos/áudio/arquivos) é restrito ao paciente dono ou ao médico
+  responsável (404 para terceiros, sem revelar existência).
+- **Auditoria sem conteúdo clínico** — `audit_logs` registra check-ins, cálculos de risco,
+  alertas gerados e ações do médico (proteção jurídica), mas **não** grava texto livre nem
+  sinais derivados do relato do paciente — só níveis/IDs. Assim o log retido após a
+  eliminação não carrega dado sensível do titular.
 - **Responsabilidade** — a API deixa explícito que a IA não diagnostica; o retorno do
   check-in ao paciente é neutro (não expõe o risco calculado ao próprio paciente).
+- **A revisar antes de produção** — criptografia em repouso (dados sensíveis), gestão de
+  segredos (JWT/API keys fora do código), DPA com o provedor de LLM caso `FREE_TEXT_ANALYZER=llm`
+  ou o resumo por IA sejam habilitados (contexto clínico agregado sai para o provedor), e
+  restringir `/docs`/`/openapi.json` fora de ambiente de desenvolvimento.
 
 ## Testes
 

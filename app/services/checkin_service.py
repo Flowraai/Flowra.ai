@@ -94,6 +94,11 @@ async def process_checkin(
         entity_type="checkin",
         entity_id=checkin.id,
     )
+    # LGPD — o log de auditoria é retido mesmo após a eliminação do paciente
+    # (proteção jurídica). Por isso NÃO gravamos aqui conteúdo clínico/texto livre
+    # (ex.: sinais derivados do relato do paciente); apenas os níveis de risco, que
+    # são o mínimo necessário para auditar que o cálculo ocorreu. O detalhe clínico
+    # vive no check-in/alerta, que são apagados em cascata na eliminação.
     await audit.record(
         session,
         action=AuditAction.RISK_CALCULATED,
@@ -104,7 +109,6 @@ async def process_checkin(
             "checkin_level": assessment.level.value,
             "trend_level": trend.level.value,
             "combined_level": combined_level.value,
-            "reasons": combined_reasons,
         },
     )
 
