@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Flowra Care",
+    "slug": "flowra-care",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "flowracare",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": false,
+    "splash": {
+      "backgroundColor": "#0e7c6e"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "br.com.flowraai.care"
+    },
+    "android": {
+      "package": "br.com.flowraai.care"
+    },
+    "plugins": ["expo-secure-store", "expo-notifications"],
+    "extra": {
+      "apiBaseUrl": "http://localhost:8000"
+    }
+  }
+}
