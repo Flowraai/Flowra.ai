@@ -59,6 +59,9 @@ ENCRYPTION_KEY=<gerado acima>
 > Com `ENVIRONMENT=production`, a aplicação **recusa subir** se `JWT_SECRET_KEY` for
 > o valor padrão ou `DEBUG=true`.
 
+> **Já existe um nginx/proxy na VPS (ex.: Hostinger com nginx nativo no 80/443)?**
+> Não use o Caddy. Pule para a seção **“Atrás de um proxy existente”** no fim.
+
 ## 4. Subir
 
 ```bash
@@ -150,3 +153,45 @@ Para o **deep link** abrir pelo link web do médico, configure universal/app lin
 - **Enquadramento clínico**: a IA é apoio à priorização, **não diagnostica**; valide os
   limiares de risco com um psiquiatra antes de confiar clinicamente.
 - Atualizações de SO e imagens (`docker compose pull` para db/caddy) em dia.
+
+## Atrás de um proxy existente (ex.: nginx nativo — Hostinger)
+
+Quando a VPS já tem um nginx segurando 80/443 (com outros produtos), o Care sobe
+**sem Caddy**, publicando o painel só em `127.0.0.1:8090`, e o seu nginx roteia
+`care.SEUDOMINIO` para ele.
+
+1. **DNS**: registro **A** `care` → IP da VPS.
+
+2. **Suba o Care** (sem Caddy):
+   ```bash
+   cd /opt/flowra
+   cp .env.example .env         # preencha os segredos (passo 3 acima)
+   docker compose -f docker-compose.behind-proxy.yml up -d --build
+   curl -fsS http://127.0.0.1:8090/healthz && echo   # painel respondendo local
+   ```
+
+3. **Bloco do nginx do host** (usa `deploy/nginx/care.conf` como modelo):
+   ```bash
+   # descubra onde ficam os sites do seu nginx:
+   nginx -T 2>/dev/null | grep -E 'sites-enabled|conf.d' | head
+
+   sed 's/care.SEUDOMINIO/care.flowraai.com.br/' deploy/nginx/care.conf \
+     | sudo tee /etc/nginx/sites-available/care.conf
+   sudo ln -sf /etc/nginx/sites-available/care.conf /etc/nginx/sites-enabled/care.conf
+   sudo nginx -t && sudo systemctl reload nginx
+   ```
+   (Se o seu nginx usa `conf.d` em vez de `sites-*`, grave em `/etc/nginx/conf.d/care.conf`.)
+
+4. **HTTPS** (certbot com o plugin do nginx):
+   ```bash
+   sudo apt install -y certbot python3-certbot-nginx
+   sudo certbot --nginx -d care.flowraai.com.br
+   ```
+   O certbot adiciona o TLS ao bloco e recarrega o nginx.
+
+5. **Verifique**: abra `https://care.flowraai.com.br` → login do painel.
+   Backups e atualizações seguem iguais, trocando o `-f` para
+   `docker-compose.behind-proxy.yml`.
+
+> Isolamento: o Care tem **banco e volumes próprios** (`flowra_prod_*`), separados
+> dos outros produtos — não compartilhe Postgres/volumes com BeautyFlow/moda (LGPD).
