@@ -1,0 +1,50 @@
+# Ambiente de PRODUÇÃO (referência). As variáveis sensíveis vêm de um .env que
+# NÃO é versionado (ver .env.example) — em produção real, use um cofre de segredos.
+#
+#   cp .env.example .env   # preencha JWT_SECRET_KEY, ENCRYPTION_KEY, DATABASE_URL...
+#   docker compose -f docker-compose.prod.yml up -d --build
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-flowra}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-flowra_care}
+    volumes:
+      - flowra_prod_pgdata:/var/lib/postgresql/data
+    # Sem publicar porta: o banco só é acessível pela rede interna do compose.
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-flowra} -d ${POSTGRES_DB:-flowra_care}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      ENVIRONMENT: production
+      DEBUG: "false"
+      LOG_FORMAT: json
+      # Uploads persistem fora do container (troque por object storage/S3 em escala).
+      STORAGE_DIR: /data/uploads
+    volumes:
+      - flowra_prod_uploads:/data/uploads
+    ports:
+      - "8000:8000"
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health/ready').status==200 else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  flowra_prod_pgdata:
+  flowra_prod_uploads:
