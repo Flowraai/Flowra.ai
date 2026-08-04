@@ -19,6 +19,7 @@ from app.models.enums import (
     DeviceOwnerType,
     MedicationIntakeStatus,
     MessageSender,
+    MessageThread,
     PrescriptionStatus,
 )
 from app.models.exam import Exam
@@ -42,6 +43,7 @@ from app.schemas.medication import (
 )
 from app.schemas.patient import PatientToday
 from app.schemas.protocol import ProtocolRead
+from app.services.ai_chat_service import patient_ai_reply
 from app.services.checkin_service import process_checkin
 from app.services.medication_service import generate_today_intakes, maybe_alert_missed_streak
 
@@ -330,7 +332,11 @@ async def list_patient_messages(
 ) -> list[Message]:
     result = await session.execute(
         select(Message)
-        .where(Message.patient_id == patient.id, Message.doctor_id == patient.doctor_id)
+        .where(
+            Message.patient_id == patient.id,
+            Message.doctor_id == patient.doctor_id,
+            Message.thread == MessageThread.CARE,
+        )
         .order_by(Message.created_at.desc())
         .limit(limit)
         .offset(offset)
@@ -341,3 +347,31 @@ async def list_patient_messages(
         if m.sender is MessageSender.DOCTOR and m.read_at is None:
             m.read_at = now
     return messages
+
+
+@router.post("/ai-chat", response_model=MessageRead, status_code=status.HTTP_201_CREATED)
+async def ai_chat(
+    payload: MessageCreate,
+    patient: Patient = Depends(get_current_patient),
+    session: AsyncSession = Depends(get_db),
+) -> Message:
+    """Paciente conversa com a IA de apoio; a IA responde (e alerta o médico em risco)."""
+    return await patient_ai_reply(session, patient, payload.body)
+
+
+@router.get("/ai-chat", response_model=list[MessageRead])
+async def list_ai_chat(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    patient: Patient = Depends(get_current_patient),
+    session: AsyncSession = Depends(get_db),
+) -> list[Message]:
+    """Histórico da conversa do paciente com a IA."""
+    result = await session.execute(
+        select(Message)
+        .where(Message.patient_id == patient.id, Message.thread == MessageThread.AI)
+        .order_by(Message.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return list(result.scalars().all())

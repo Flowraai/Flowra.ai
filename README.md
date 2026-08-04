@@ -137,6 +137,8 @@ Perfil **paciente** (token opaco — header `X-Patient-Token: <token>`):
 | GET  | `/api/v1/patient/prescriptions/{id}` | Detalhe de uma receita emitida |
 | POST | `/api/v1/patient/messages` | Envia mensagem ao médico (chat) |
 | GET  | `/api/v1/patient/messages` | Thread do chat com o médico |
+| POST | `/api/v1/patient/ai-chat` | Conversa com a IA de apoio (responde na hora) |
+| GET  | `/api/v1/patient/ai-chat` | Histórico do chat com a IA |
 | GET  | `/api/v1/patient/protocol` | Perguntas do dia para renderizar |
 | POST | `/api/v1/patient/checkins` | Envia o check-in diário (validado; **um por dia** — 2º envio no mesmo dia → 409) |
 
@@ -237,6 +239,14 @@ silencia um sinal). A chamada roda numa thread para não bloquear o event loop.
 check-ins recentes, adesão, alertas, próxima consulta) e produz um resumo para o
 painel. Com LLM configurado, gera texto natural; sem chave, cai num resumo
 determinístico (sempre disponível). A IA não diagnostica.
+
+**Chat paciente↔IA** (`POST /patient/ai-chat`): uma thread separada do chat com o
+médico (mesma tabela `messages`, coluna `thread` = `care`/`ai`). Cada mensagem do
+paciente passa **sempre** pela análise de risco do texto livre antes de responder —
+sinal de risco ≥ 🟠 abre um alerta ao médico (com notificação/push), e em 🔴 a IA
+devolve uma **mensagem de segurança** (CVV 188 / pronto-socorro) em vez de conversar.
+Fora disso, responde de forma acolhedora e breve via LLM (se configurado) ou com um
+retorno determinístico. A IA nunca diagnostica nem prescreve.
 
 ## Multi-tenant (fundação)
 

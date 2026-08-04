@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_doctor
 from app.db.session import get_db
 from app.models.doctor import Doctor
-from app.models.enums import MessageSender
+from app.models.enums import MessageSender, MessageThread
 from app.models.message import Message
 from app.models.patient import Patient
 from app.schemas.message import MessageCreate, MessageRead
@@ -66,7 +66,11 @@ async def list_messages(
     await _owned_patient(session, doctor, patient_id)
     result = await session.execute(
         select(Message)
-        .where(Message.patient_id == patient_id, Message.doctor_id == doctor.id)
+        .where(
+            Message.patient_id == patient_id,
+            Message.doctor_id == doctor.id,
+            Message.thread == MessageThread.CARE,
+        )
         .order_by(Message.created_at.desc())
         .limit(limit)
         .offset(offset)
