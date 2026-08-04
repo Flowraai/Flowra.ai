@@ -93,6 +93,25 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
     llm_timeout_seconds: int = 20
 
+    # === Assinatura / cobrança (Asaas) ===
+    # Quando False (default), o painel não exige assinatura — nada muda no
+    # comportamento atual. Ative (BILLING_ENABLED=true) só quando os planos
+    # estiverem criados para passar a cobrar o acesso.
+    billing_enabled: bool = False
+    # manual (default, dev/testes — sem gateway) | asaas
+    billing_provider: str = "manual"
+    # Ambiente do Asaas: sandbox (testes, cartão fake) | production
+    asaas_environment: str = "sandbox"
+    asaas_api_key: str | None = None
+    # Token esperado no header `asaas-access-token` dos webhooks (defina o mesmo
+    # valor ao cadastrar o webhook no Asaas). Sem ele, o webhook é recusado.
+    asaas_webhook_token: str | None = None
+    # Para onde o Asaas redireciona após o pagamento no checkout hospedado.
+    billing_checkout_return_url: str | None = None
+    # E-mails com acesso de admin da plataforma (gestão de planos; isentos do
+    # paywall). CSV: admin1@x.com,admin2@x.com
+    admin_emails: list[str] = Field(default_factory=list)
+
     # CORS
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
 
@@ -120,12 +139,20 @@ class Settings(BaseSettings):
     whatsapp_template_name: str | None = None  # obrigatório fora da janela de 24h
     whatsapp_template_lang: str = "pt_BR"
 
-    @field_validator("cors_origins", "notification_channels", "upload_allowed_types", mode="before")
+    @field_validator(
+        "cors_origins", "notification_channels", "upload_allowed_types", "admin_emails",
+        mode="before",
+    )
     @classmethod
     def _split_csv(cls, value: object) -> object:
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
+
+    @field_validator("admin_emails")
+    @classmethod
+    def _lower_emails(cls, value: list[str]) -> list[str]:
+        return [email.lower() for email in value]
 
     @property
     def is_production(self) -> bool:
@@ -157,6 +184,21 @@ class Settings(BaseSettings):
             and self.external_ai_allowed
         )
 
+    @property
+    def asaas_base_url(self) -> str:
+        """Base da API do Asaas conforme o ambiente configurado."""
+        if self.asaas_environment.lower() == "production":
+            return "https://api.asaas.com/v3"
+        return "https://api-sandbox.asaas.com/v3"
+
+    @property
+    def billing_gateway_configured(self) -> bool:
+        """O provedor de cobrança está pronto para chamadas reais?"""
+        return self.billing_provider.lower() == "asaas" and bool(self.asaas_api_key)
+
+    def is_admin_email(self, email: str) -> bool:
+        return email.lower() in self.admin_emails
+
     def enforce_production_guardrails(self) -> list[str]:
         """Valida a configuração para produção. Levanta em erros críticos e
         devolve avisos (não fatais). Chamado no startup da aplicação."""
@@ -181,6 +223,17 @@ class Settings(BaseSettings):
             warnings.append(
                 "LLM configurado sem AI_DPA_ACKNOWLEDGED: a análise por IA externa "
                 "fica DESABILITADA em produção até o DPA ser reconhecido."
+            )
+        if self.billing_enabled and not self.billing_gateway_configured:
+            warnings.append(
+                "BILLING_ENABLED=true mas o gateway não está configurado "
+                "(defina BILLING_PROVIDER=asaas e ASAAS_API_KEY): a cobrança real "
+                "não vai funcionar."
+            )
+        if self.billing_enabled and not self.admin_emails:
+            warnings.append(
+                "BILLING_ENABLED=true sem ADMIN_EMAILS: ninguém poderá gerenciar "
+                "planos nem ficará isento do paywall."
             )
         return warnings
 

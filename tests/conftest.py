@@ -38,7 +38,7 @@ def _reset_rate_limiters():
 # explicitamente; o CASCADE cuida das tabelas filhas (checkins, medicação, etc.).
 _MUTABLE_TABLES = [
     "alerts", "checkins", "audit_logs", "device_tokens", "attachments",
-    "patients", "doctors", "users", "tenants",
+    "subscriptions", "plans", "patients", "doctors", "users", "tenants",
 ]
 
 

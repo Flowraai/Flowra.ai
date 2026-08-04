@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RISK_LABEL, RISK_ORDER, initials, num, relativeDate } from "./format";
+import { RISK_LABEL, RISK_ORDER, initials, money, num, relativeDate } from "./format";
 
 describe("format helpers", () => {
   it("gera iniciais a partir do nome", () => {
@@ -25,5 +25,12 @@ describe("format helpers", () => {
   it("formata data relativa", () => {
     expect(relativeDate(null)).toBe("—");
     expect(relativeDate(new Date().toISOString())).toMatch(/^hoje/);
+  });
+
+  it("formata centavos como moeda BRL", () => {
+    const s = money(14990);
+    expect(s).toMatch(/R\$/);
+    expect(s).toContain("149,90");
+    expect(money(0)).toContain("0,00");
   });
 });

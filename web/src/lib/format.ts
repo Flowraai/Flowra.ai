@@ -51,6 +51,11 @@ export function shortDay(iso: string): string {
   return d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
 }
 
+/** Formata centavos como moeda em pt-BR (14990 -> "R$ 149,90"). */
+export function money(cents: number): string {
+  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
 /** Lê um número de uma resposta estruturada (que pode vir como string). */
 export function num(value: unknown): number | null {
   if (typeof value === "number") return value;

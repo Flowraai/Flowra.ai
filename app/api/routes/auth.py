@@ -202,4 +202,5 @@ async def _profile_response(session: AsyncSession, doctor: Doctor) -> DoctorProf
         notification_email=doctor.notification_email,
         notification_phone=doctor.notification_phone,
         email=user.email if user else "",
+        is_admin=settings.is_admin_email(user.email) if user else False,
     )

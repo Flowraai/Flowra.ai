@@ -140,6 +140,21 @@ class NotificationStatus(str, enum.Enum):
     FAILED = "failed"
 
 
+class SubscriptionStatus(str, enum.Enum):
+    """Estado da assinatura de um tenant (dirigido pelos webhooks do gateway)."""
+
+    TRIALING = "trialing"    # período de teste grátis ativo
+    PENDING = "pending"      # criada, aguardando 1º pagamento (checkout)
+    ACTIVE = "active"        # pagamento confirmado, acesso liberado
+    OVERDUE = "overdue"      # pagamento vencido — acesso bloqueado até regularizar
+    CANCELED = "canceled"    # cancelada (pelo cliente ou por inadimplência)
+
+    @property
+    def grants_access(self) -> bool:
+        """Estados que liberam o painel clínico."""
+        return self in (SubscriptionStatus.TRIALING, SubscriptionStatus.ACTIVE)
+
+
 class AuditAction(str, enum.Enum):
     CHECKIN_SUBMITTED = "checkin_submitted"
     RISK_CALCULATED = "risk_calculated"

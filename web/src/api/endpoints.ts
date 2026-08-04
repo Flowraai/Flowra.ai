@@ -24,8 +24,13 @@ import type {
   PatientPanelItem,
   PatientSummary,
   PatientUpdateInput,
+  Plan,
+  PlanAdmin,
+  PlanInput,
   Prescription,
   PrescriptionCreateInput,
+  SubscribeResponse,
+  Subscription,
   TokenPair,
 } from "./types";
 
@@ -104,4 +109,24 @@ export const alerts = {
     api<Alert[]>(`/alerts${statusFilter ? `?status_filter=${statusFilter}` : ""}`),
   updateStatus: (id: string, status: AlertStatus) =>
     api<Alert>(`/alerts/${id}`, { method: "PATCH", body: { status } }),
+};
+
+export const billing = {
+  plans: () => api<Plan[]>("/billing/plans"),
+  subscription: () => api<Subscription>("/billing/subscription"),
+  subscribe: (planId: string, cpfCnpj: string, phone?: string) =>
+    api<SubscribeResponse>("/billing/subscribe", {
+      method: "POST",
+      body: { plan_id: planId, cpf_cnpj: cpfCnpj, phone: phone || null },
+    }),
+  cancel: () => api<Subscription>("/billing/cancel", { method: "POST" }),
+};
+
+export const adminPlans = {
+  list: () => api<PlanAdmin[]>("/admin/plans"),
+  create: (input: PlanInput) => api<PlanAdmin>("/admin/plans", { method: "POST", body: input }),
+  update: (id: string, patch: Partial<PlanInput>) =>
+    api<PlanAdmin>(`/admin/plans/${id}`, { method: "PATCH", body: patch }),
+  remove: (id: string) =>
+    api<{ deleted?: boolean; deactivated?: boolean }>(`/admin/plans/${id}`, { method: "DELETE" }),
 };

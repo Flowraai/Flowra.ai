@@ -29,6 +29,7 @@ from app.models.enums import (
     PrescriptionStatus,
     QuestionType,
     RiskLevel,
+    SubscriptionStatus,
     TenantKind,
     UserRole,
 )
@@ -36,8 +37,10 @@ from app.models.medication import MedicationIntake, MedicationPlan
 from app.models.message import Message
 from app.models.notification import Notification
 from app.models.patient import Patient
+from app.models.plan import Plan
 from app.models.prescription import Prescription
 from app.models.protocol import Protocol, ProtocolQuestion
+from app.models.subscription import Subscription
 from app.models.tenant import Tenant
 from app.models.user import User
 
@@ -56,10 +59,12 @@ __all__ = [
     "Notification",
     "PasswordResetToken",
     "Patient",
+    "Plan",
     "Prescription",
     "Protocol",
     "ProtocolQuestion",
     "RefreshToken",
+    "Subscription",
     "Tenant",
     "User",
     "AlertStatus",
@@ -77,6 +82,7 @@ __all__ = [
     "PrescriptionStatus",
     "QuestionType",
     "RiskLevel",
+    "SubscriptionStatus",
     "TenantKind",
     "UserRole",
 ]

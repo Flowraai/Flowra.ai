@@ -23,6 +23,7 @@ class DoctorRead(BaseModel):
 class DoctorProfile(DoctorRead):
     email: EmailStr
     tenant_name: str | None = None
+    is_admin: bool = False
 
 
 class DoctorUpdate(BaseModel):

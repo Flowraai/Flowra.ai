@@ -52,6 +52,15 @@ export async function api<T>(path: string, opts: Options = {}): Promise<T> {
     setToken(null);
     throw new ApiError(401, "Sessão expirada. Faça login novamente.");
   }
+  if (res.status === 402) {
+    // Assinatura necessária — avisa a app para levar à tela de planos.
+    try {
+      window.dispatchEvent(new CustomEvent("flowra:payment-required"));
+    } catch {
+      /* ignore (SSR/testes) */
+    }
+    throw new ApiError(402, "Assinatura necessária para acessar o painel.");
+  }
   if (!res.ok) {
     let detail = `Erro ${res.status}`;
     try {

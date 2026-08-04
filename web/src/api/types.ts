@@ -21,6 +21,7 @@ export interface DoctorProfile {
   notification_phone: string | null;
   email: string;
   tenant_name: string | null;
+  is_admin: boolean;
 }
 
 export interface DoctorUpdateInput {
@@ -207,6 +208,51 @@ export interface Prescription {
 export interface PrescriptionCreateInput {
   items: PrescriptionItem[];
   notes?: string | null;
+}
+
+export type BillingCycle = "monthly" | "yearly";
+export type SubscriptionStatus = "trialing" | "pending" | "active" | "overdue" | "canceled";
+
+export interface Plan {
+  id: string;
+  name: string;
+  description: string | null;
+  price_cents: number;
+  cycle: BillingCycle;
+  patient_limit: number | null;
+  trial_days: number;
+}
+
+export interface PlanAdmin extends Plan {
+  active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlanInput {
+  name: string;
+  description?: string | null;
+  price_cents: number;
+  cycle: BillingCycle;
+  patient_limit?: number | null;
+  trial_days?: number;
+  active?: boolean;
+  sort_order?: number;
+}
+
+export interface Subscription {
+  status: SubscriptionStatus;
+  plan: Plan | null;
+  current_period_end: string | null;
+  trial_end: string | null;
+  card_last4: string | null;
+  checkout_url: string | null;
+}
+
+export interface SubscribeResponse {
+  status: SubscriptionStatus;
+  checkout_url: string | null;
 }
 
 export type MessageSender = "patient" | "doctor" | "ai";

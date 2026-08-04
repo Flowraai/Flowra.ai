@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthContext";
 import { initials } from "../lib/format";
 import {
   IconBell,
+  IconCard,
   IconChat,
   IconFlower,
   IconGrid,
@@ -59,6 +60,16 @@ export function AppShell({
           <NavLink to="/configuracoes" className="nav-item">
             <IconSettings width={17} height={17} /> Configurações
           </NavLink>
+
+          <div className="nav-label">Conta</div>
+          <NavLink to="/assinatura" className="nav-item">
+            <IconCard width={17} height={17} /> Assinatura
+          </NavLink>
+          {doctor?.is_admin ? (
+            <NavLink to="/admin/planos" className="nav-item">
+              <IconGrid width={17} height={17} /> Planos
+            </NavLink>
+          ) : null}
         </nav>
         <div className="foot">
           <div className="avatar">{doctor ? initials(doctor.name) : "—"}</div>

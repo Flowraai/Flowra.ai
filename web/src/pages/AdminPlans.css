@@ -1,0 +1,70 @@
+.plan-table {
+  padding: 6px 8px;
+  overflow-x: auto;
+}
+.plan-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.plan-table th,
+.plan-table td {
+  text-align: left;
+  padding: 12px 12px;
+  border-bottom: 1px solid var(--border, #ececf2);
+  vertical-align: top;
+}
+.plan-table th {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted, #8a8a99);
+}
+.plan-table tr.inactive {
+  opacity: 0.55;
+}
+.plan-table .mono {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.plan-table .muted {
+  font-size: 12px;
+}
+
+.pill {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.pill.on {
+  background: color-mix(in srgb, var(--ok, #2e9e6b) 16%, transparent);
+  color: var(--ok, #2e9e6b);
+}
+.pill.off {
+  background: color-mix(in srgb, var(--muted, #8a8a99) 18%, transparent);
+  color: var(--muted, #8a8a99);
+}
+
+.row-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.row-actions button {
+  background: transparent;
+  border: 1px solid var(--border, #e4e4ec);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text, inherit);
+}
+.row-actions button:hover {
+  border-color: var(--brand, #7c5cff);
+}
+.row-actions button.danger:hover {
+  border-color: var(--danger, #d3423a);
+  color: var(--danger, #d3423a);
+}

@@ -1,4 +1,5 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { useEffect, type ReactNode } from "react";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
@@ -6,8 +7,9 @@ import { PatientDetail } from "./pages/PatientDetail";
 import { Alerts } from "./pages/Alerts";
 import { Messages } from "./pages/Messages";
 import { Settings } from "./pages/Settings";
+import { Subscribe } from "./pages/Subscribe";
+import { AdminPlans } from "./pages/AdminPlans";
 import { ResetPassword } from "./pages/ResetPassword";
-import type { ReactNode } from "react";
 
 function FullScreenLoader() {
   return (
@@ -31,10 +33,22 @@ function RedirectIfAuthed({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/** Ao receber 402 (assinatura necessária) de qualquer chamada, leva à tela de planos. */
+function PaymentRequiredWatcher() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const onNeed = () => navigate("/assinatura");
+    window.addEventListener("flowra:payment-required", onNeed);
+    return () => window.removeEventListener("flowra:payment-required", onNeed);
+  }, [navigate]);
+  return null;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <PaymentRequiredWatcher />
         <Routes>
           <Route
             path="/login"
@@ -89,6 +103,22 @@ export default function App() {
             element={
               <RequireAuth>
                 <Settings />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/assinatura"
+            element={
+              <RequireAuth>
+                <Subscribe />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/planos"
+            element={
+              <RequireAuth>
+                <AdminPlans />
               </RequireAuth>
             }
           />
