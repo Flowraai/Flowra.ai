@@ -72,6 +72,38 @@ jobs:
       - name: Typecheck + build
         run: npm run build
 
+  web-image:
+    # Builda a imagem estática do painel (nginx) e faz um smoke test do serve/SPA.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build web image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./web
+          load: true
+          tags: flowra-web:ci
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+      - name: Serve e smoke test
+        run: |
+          set -euo pipefail
+          docker run -d --name web -p 8080:80 flowra-web:ci
+          for i in $(seq 1 20); do
+            curl -sf http://localhost:8080/healthz >/dev/null && break
+            sleep 1
+          done
+          curl -sf http://localhost:8080/healthz | grep -q ok
+          # A SPA responde e serve o index (fallback de rota do cliente).
+          curl -sf http://localhost:8080/ | grep -qi "Flowra"
+          curl -sf http://localhost:8080/pacientes/qualquer | grep -qi "root"
+          echo "web image OK"
+          docker rm -f web >/dev/null
+
   mobile:
     # Typecheck do app do paciente (Expo / React Native) em mobile/.
     runs-on: ubuntu-latest

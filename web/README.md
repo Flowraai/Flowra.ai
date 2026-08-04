@@ -20,11 +20,28 @@ npm run build        # tsc (typecheck) + vite build -> web/dist/
 npm run preview      # serve a build localmente
 ```
 
-Sirva `web/dist/` como estático (Nginx, CDN, etc.) e configure a base da API:
+Sirva `web/dist/` como estático (Nginx, CDN, etc.). Por padrão o app chama `/api`
+na **mesma origem** — quem faz o proxy para o backend é o servidor (ver Docker abaixo).
+Para apontar para outra origem, configure a base da API no build:
 
 ```bash
 VITE_API_BASE_URL=https://api.exemplo.com.br npm run build
 ```
+
+## Deploy (Docker + nginx)
+
+A imagem builda a SPA e serve por **nginx**, com **proxy de `/api` para o backend** e
+fallback de rota do cliente para `index.html`.
+
+```bash
+docker build -t flowra-web ./web
+docker run -p 8080:80 -e API_UPSTREAM=api:8000 flowra-web
+# painel em http://localhost:8080 (proxy /api -> $API_UPSTREAM)
+```
+
+No `docker-compose.prod.yml` da raiz há o serviço `web` já ligado ao `api`
+(`docker compose -f docker-compose.prod.yml up -d --build`). Endpoint de saúde do
+container: `GET /healthz`.
 
 ## Estrutura
 

@@ -24,6 +24,23 @@ npm run typecheck    # tsc --noEmit
 O build nativo (iOS/Android) é feito via **EAS Build** (`eas build`) — precisa de conta
 Expo e não roda em CI comum.
 
+## Build nativo (EAS)
+
+Os perfis estão em `eas.json` (`development` / `preview` / `production`).
+
+```bash
+npm i -g eas-cli
+eas login
+eas init                 # vincula ao projeto Expo e grava o projectId (usado no push)
+eas build --profile preview --platform android   # ou ios
+eas build --profile production --platform all
+eas submit --profile production                   # publica nas lojas
+```
+
+Aponte a API de produção em `app.json` → `expo.extra.apiBaseUrl` (ou via variável no
+perfil do `eas.json`). O `projectId` do push é lido de `expo.extra.eas.projectId`
+(preenchido pelo `eas init`).
+
 ## Fluxo / telas
 
 - **Acesso** — o paciente cola o código de acesso (do link do médico); validamos e

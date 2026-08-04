@@ -75,9 +75,14 @@ uvicorn app.main:app --reload
 ```bash
 cp .env.example .env   # preencha JWT_SECRET_KEY, ENCRYPTION_KEY, DATABASE_URL, ...
 docker compose -f docker-compose.prod.yml up -d --build
+# api em :8000 · painel do médico em :8080
 ```
 
-- **Imagem** multi-stage (deps num virtualenv isolado), roda como usuário **não-root**,
+Sobe três serviços: **db** (Postgres), **api** (backend) e **web** (painel do médico —
+SPA servida por nginx, com proxy de `/api` para a `api`). O app do paciente é publicado
+à parte via **EAS Build** (ver [`mobile/`](mobile/README.md)).
+
+- **Imagem da API** multi-stage (deps num virtualenv isolado), roda como usuário **não-root**,
   serve via **gunicorn + UvicornWorker** (`WEB_CONCURRENCY` workers).
 - **Entrypoint** aplica `alembic upgrade head` no boot (`RUN_MIGRATIONS`, seed via
   `SEED_PROTOCOL`).
