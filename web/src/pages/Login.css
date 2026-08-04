@@ -44,4 +44,15 @@
   border: 1px solid color-mix(in srgb, var(--risk-red) 30%, var(--line));
   padding: 9px 12px; border-radius: var(--radius-sm);
 }
+.login-info {
+  font-size: 13px; font-weight: 600; color: var(--accent-ink);
+  background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  padding: 9px 12px; border-radius: var(--radius-sm);
+}
+.login-links { display: flex; justify-content: space-between; gap: 12px; margin-top: 2px; }
+.login-links .link {
+  border: 0; background: transparent; color: var(--accent-ink); font-family: inherit; font-size: 13px;
+  font-weight: 600; cursor: pointer; padding: 4px 2px;
+}
+.login-links .link:hover { text-decoration: underline; }
 .login-card .foot { font-size: 11.5px; text-align: center; margin: 8px 0 0; line-height: 1.45; }

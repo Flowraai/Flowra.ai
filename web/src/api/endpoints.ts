@@ -10,6 +10,7 @@ import type {
   ChatMessage,
   CheckIn,
   DoctorProfile,
+  DoctorUpdateInput,
   Exam,
   ExamInput,
   ExamStatus,
@@ -31,7 +32,19 @@ import type {
 export const auth = {
   login: (email: string, password: string) =>
     api<TokenPair>("/auth/login", { method: "POST", auth: false, body: { email, password } }),
+  register: (email: string, password: string, name: string) =>
+    api<TokenPair>("/auth/register", { method: "POST", auth: false, body: { email, password, name } }),
+  forgotPassword: (email: string) =>
+    api<{ message: string }>("/auth/forgot-password", { method: "POST", auth: false, body: { email } }),
+  resetPassword: (token: string, newPassword: string) =>
+    api<{ message: string }>("/auth/reset-password", {
+      method: "POST",
+      auth: false,
+      body: { token, new_password: newPassword },
+    }),
   me: () => api<DoctorProfile>("/auth/me"),
+  updateMe: (patch: DoctorUpdateInput) =>
+    api<DoctorProfile>("/auth/me", { method: "PATCH", body: patch }),
 };
 
 export const patients = {

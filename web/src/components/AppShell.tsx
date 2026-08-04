@@ -8,6 +8,7 @@ import {
   IconFlower,
   IconGrid,
   IconLogout,
+  IconSettings,
   IconUsers,
 } from "./icons";
 import "./AppShell.css";
@@ -54,6 +55,9 @@ export function AppShell({
           </NavLink>
           <NavLink to="/mensagens" className="nav-item">
             <IconChat width={17} height={17} /> Mensagens
+          </NavLink>
+          <NavLink to="/configuracoes" className="nav-item">
+            <IconSettings width={17} height={17} /> Configurações
           </NavLink>
         </nav>
         <div className="foot">

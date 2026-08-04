@@ -5,6 +5,8 @@ import { Dashboard } from "./pages/Dashboard";
 import { PatientDetail } from "./pages/PatientDetail";
 import { Alerts } from "./pages/Alerts";
 import { Messages } from "./pages/Messages";
+import { Settings } from "./pages/Settings";
+import { ResetPassword } from "./pages/ResetPassword";
 import type { ReactNode } from "react";
 
 function FullScreenLoader() {
@@ -82,6 +84,15 @@ export default function App() {
               </RequireAuth>
             }
           />
+          <Route
+            path="/configuracoes"
+            element={
+              <RequireAuth>
+                <Settings />
+              </RequireAuth>
+            }
+          />
+          <Route path="/redefinir-senha" element={<ResetPassword />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
