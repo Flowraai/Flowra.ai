@@ -211,11 +211,19 @@ export interface PrescriptionCreateInput {
 
 export type MessageSender = "patient" | "doctor" | "ai";
 
+export interface MessageAttachment {
+  id?: string;
+  url: string;
+  content_type?: string;
+  type?: string;
+  filename?: string | null;
+}
+
 export interface ChatMessage {
   id: string;
   sender: MessageSender;
   body: string;
-  attachments: unknown[];
+  attachments: MessageAttachment[];
   read_at: string | null;
   created_at: string;
 }

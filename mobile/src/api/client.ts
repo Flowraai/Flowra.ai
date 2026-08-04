@@ -44,3 +44,32 @@ export async function api<T>(path: string, opts: Options = {}): Promise<T> {
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
+
+/** Upload multipart (não define Content-Type: o fetch cuida do boundary). */
+export async function upload<T>(path: string, form: FormData): Promise<T> {
+  const headers: Record<string, string> = {};
+  const t = currentToken();
+  if (t) headers["X-Patient-Token"] = t;
+  const res = await fetch(`${API}${path}`, { method: "POST", headers, body: form });
+  if (!res.ok) {
+    let detail = `Erro ${res.status}`;
+    try {
+      const data = (await res.json()) as { detail?: unknown };
+      if (typeof data?.detail === "string") detail = data.detail;
+    } catch {
+      /* keep default */
+    }
+    throw new ApiError(res.status, detail);
+  }
+  return (await res.json()) as T;
+}
+
+/** URL absoluta de um anexo (para <Image>/player, com o header de auth). */
+export function attachmentUrl(id: string): string {
+  return `${API}/attachments/${id}`;
+}
+
+export function authHeader(): Record<string, string> {
+  const t = currentToken();
+  return t ? { "X-Patient-Token": t } : {};
+}

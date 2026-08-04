@@ -65,3 +65,15 @@ export async function api<T>(path: string, opts: Options = {}): Promise<T> {
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
+
+/** Baixa um anexo autenticado e devolve um object URL (o <img>/<audio> não
+ * consegue enviar o header Authorization sozinho). Lembre de revogar depois. */
+export async function attachmentObjectUrl(id: string): Promise<string> {
+  const token = getToken();
+  const res = await fetch(`${API}/attachments/${id}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new ApiError(res.status, "Falha ao carregar o anexo.");
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}

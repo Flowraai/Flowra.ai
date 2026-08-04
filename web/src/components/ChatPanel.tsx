@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { patients } from "../api/endpoints";
 import { ApiError } from "../api/client";
+import { ChatAttachment } from "./ChatAttachment";
 import { IconChat, IconSend } from "./icons";
 import type { ChatMessage } from "../api/types";
 import "./ChatPanel.css";
@@ -70,7 +71,10 @@ export function ChatPanel({ patientId }: { patientId: string }) {
           messages.map((m) => (
             <div key={m.id} className={`msg ${m.sender === "doctor" ? "me" : "them"}`}>
               {m.sender === "ai" ? <span className="who-ai">IA</span> : null}
-              {m.body}
+              {m.body && m.body !== "(anexo)" ? m.body : null}
+              {(m.attachments ?? []).map((a, i) => (
+                <ChatAttachment key={i} attachment={a} />
+              ))}
               <span className="t">
                 {new Date(m.created_at).toLocaleString("pt-BR", {
                   day: "2-digit",
