@@ -78,6 +78,18 @@ export const IconCalendar = (p: SVGProps<SVGSVGElement>) => (
     <path d="M16 2v4M8 2v4M3 10h18" />
   </svg>
 );
+export const IconFlask = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M9 3h6M10 3v6.5L5 18a2 2 0 0 0 1.8 3h10.4A2 2 0 0 0 19 18l-5-8.5V3" />
+    <path d="M7.5 14h9" />
+  </svg>
+);
+export const IconDoc = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <path d="M14 2v6h6M9 13h6M9 17h4" />
+  </svg>
+);
 export const IconPill = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <path d="m10.5 20.5 10-10a2.83 2.83 0 0 0-4-4l-10 10a4 4 0 1 0 4 4z" />

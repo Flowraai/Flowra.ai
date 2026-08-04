@@ -1,0 +1,12 @@
+.rx-modal { max-width: 480px; }
+.rx-items { display: flex; flex-direction: column; gap: 10px; }
+.rx-item { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.rx-item-head { display: flex; align-items: center; justify-content: space-between; }
+.rx-n { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.rx-del { border: 0; background: transparent; color: var(--muted); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 2px 4px; }
+.rx-del:hover { color: var(--risk-red); }
+.rx-row { display: flex; gap: 8px; }
+.rx-item input { width: 100%; font: inherit; font-size: 14px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 9px 11px; outline: none; }
+.rx-item input:focus { border-color: var(--accent); }
+.rx-item .rx-dose { max-width: 130px; }
+.rx-add { align-self: flex-start; }

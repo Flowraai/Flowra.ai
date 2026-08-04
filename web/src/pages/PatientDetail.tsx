@@ -5,6 +5,8 @@ import { ThemeToggle } from "../components/ThemeToggle";
 import { ChatPanel } from "../components/ChatPanel";
 import { MedicationCard } from "../components/MedicationCard";
 import { AppointmentsCard } from "../components/AppointmentsCard";
+import { ExamsCard } from "../components/ExamsCard";
+import { PrescriptionsCard } from "../components/PrescriptionsCard";
 import { IconAlertTri, IconChart, IconSpark } from "../components/icons";
 import { useAsync } from "../lib/useAsync";
 import { patients, alerts as alertsApi } from "../api/endpoints";
@@ -154,12 +156,15 @@ export function PatientDetail() {
                   <div className="state">Nenhum alerta para este paciente.</div>
                 )}
               </div>
+
+              <ExamsCard patientId={id} />
             </div>
 
             <div className="col">
               <ChatPanel patientId={id} />
               <MedicationCard patientId={id} />
               <AppointmentsCard patientId={id} />
+              <PrescriptionsCard patientId={id} />
             </div>
           </div>
         </>
