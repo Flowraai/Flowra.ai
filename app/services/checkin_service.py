@@ -22,23 +22,45 @@ from app.models.patient import Patient
 from app.risk.engine import PsychiatricRiskEngine
 from app.risk.free_text import get_free_text_analyzer
 from app.risk.trend import CheckInPoint, assess_trend
+from app.models.attachment import Attachment
 from app.schemas.checkin import CheckInCreate
 from app.services import audit
+from app.services.attachment_service import attachment_id_from_ref, load_bytes
 from app.services.notifications import dispatch_alert, doctor_notification_contacts
+from app.services.transcription import transcribe
 
 
 def _build_engine() -> PsychiatricRiskEngine:
     return PsychiatricRiskEngine(free_text_analyzer=get_free_text_analyzer())
 
 
+async def _transcribe_audio(session: AsyncSession, patient: Patient, audio_url: str | None) -> str | None:
+    """Transcreve o áudio do check-in (se houver anexo do paciente e transcrição ativa)."""
+    attachment_id = attachment_id_from_ref(audio_url)
+    if attachment_id is None:
+        return None
+    attachment = await session.get(Attachment, attachment_id)
+    if attachment is None or attachment.patient_id != patient.id:
+        return None
+    data = load_bytes(attachment)
+    if data is None:
+        return None
+    return await transcribe(data, attachment.content_type, attachment.filename or "audio")
+
+
 async def process_checkin(
     session: AsyncSession, patient: Patient, payload: CheckInCreate
 ) -> CheckIn:
     engine = _build_engine()
+    # Transcrição do áudio (se habilitada) entra no texto livre analisado pelo risco —
+    # de forma conservadora, sem substituir o que o paciente escreveu.
+    transcript = await _transcribe_audio(session, patient, payload.audio_url)
+    effective_text = "\n".join(t for t in (payload.free_text, transcript) if t) or None
+
     # O analisador de texto livre pode chamar um LLM (I/O bloqueante); roda numa
     # thread para não bloquear o event loop. As regras determinísticas são leves.
     assessment = await asyncio.to_thread(
-        engine.assess, payload.structured_responses, payload.free_text
+        engine.assess, payload.structured_responses, effective_text
     )
 
     checkin = CheckIn(
@@ -47,6 +69,7 @@ async def process_checkin(
         structured_responses=payload.structured_responses,
         free_text=payload.free_text,
         audio_url=payload.audio_url,
+        audio_transcript=transcript,
         risk_level=assessment.level,
         risk_reasons=assessment.reasons,
         category_risks=assessment.category_risks,

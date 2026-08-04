@@ -51,6 +51,24 @@ class Settings(BaseSettings):
     prescription_api_base_url: str | None = None
     prescription_api_key: str | None = None
 
+    # Anexos (fotos/arquivos/áudio) — armazenamento plugável
+    # local (default, disco) | ... (produção troca por object storage/S3)
+    storage_backend: str = "local"
+    storage_dir: str = "./var/uploads"
+    upload_max_bytes: int = 10 * 1024 * 1024  # 10 MB
+    upload_allowed_types: list[str] = Field(
+        default_factory=lambda: [
+            "image/jpeg", "image/png", "image/webp", "application/pdf",
+            "audio/mpeg", "audio/mp4", "audio/aac", "audio/ogg", "audio/webm", "audio/wav",
+        ]
+    )
+
+    # Transcrição de áudio (check-in por voz): none (default) | openai (Whisper-compat)
+    transcription_provider: str = "none"
+    transcription_base_url: str = "https://api.openai.com/v1"
+    transcription_api_key: str | None = None
+    transcription_model: str = "whisper-1"
+
     # Módulo de IA (análise do texto/áudio livre)
     free_text_analyzer: str = "keyword"  # keyword | llm
     # Endpoint compatível com a API OpenAI (chat completions). Funciona com
@@ -87,7 +105,7 @@ class Settings(BaseSettings):
     whatsapp_template_name: str | None = None  # obrigatório fora da janela de 24h
     whatsapp_template_lang: str = "pt_BR"
 
-    @field_validator("cors_origins", "notification_channels", mode="before")
+    @field_validator("cors_origins", "notification_channels", "upload_allowed_types", mode="before")
     @classmethod
     def _split_csv(cls, value: object) -> object:
         if isinstance(value, str):

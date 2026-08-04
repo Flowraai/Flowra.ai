@@ -6,6 +6,7 @@ enxerguem todas as tabelas.
 
 from app.models.alert import Alert
 from app.models.appointment import Appointment
+from app.models.attachment import Attachment
 from app.models.audit import AuditLog
 from app.models.auth_tokens import PasswordResetToken, RefreshToken
 from app.models.checkin import CheckIn
@@ -43,6 +44,7 @@ from app.models.user import User
 __all__ = [
     "Alert",
     "Appointment",
+    "Attachment",
     "AuditLog",
     "CheckIn",
     "DeviceToken",

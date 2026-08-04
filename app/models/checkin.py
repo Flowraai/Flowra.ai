@@ -39,6 +39,8 @@ class CheckIn(UUIDMixin, TimestampMixin, Base):
     # Texto livre ("Quer contar mais alguma coisa sobre hoje?") e/ou áudio.
     free_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     audio_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Transcrição do áudio (quando a transcrição está habilitada); alimenta o risco.
+    audio_transcript: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Resultado do motor de risco.
     risk_level: Mapped[RiskLevel] = mapped_column(

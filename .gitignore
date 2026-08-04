@@ -33,3 +33,5 @@ htmlcov/
 *.sqlite3
 *.db
 audio_uploads/
+var/
+uploads/
