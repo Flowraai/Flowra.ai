@@ -1,0 +1,20 @@
+# Caddy: TLS automático (Let's Encrypt) para o domínio e proxy para o painel.
+# O nginx do painel (serviço web) serve a SPA e faz o proxy de /api para a API.
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode gzip zstd
+
+	# Cabeçalhos de segurança básicos.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	reverse_proxy web:80
+}
