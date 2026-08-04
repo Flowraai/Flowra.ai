@@ -65,7 +65,10 @@ npx uri-scheme open "flowracare://acesso?token=SEU_TOKEN" --ios   # ou --android
   renderizado dinamicamente a partir do protocolo do backend (escala, inteiro, escolha,
   sim/não, texto livre).
 - **Medicação** — doses do dia com resposta ✓ Tomei / ⏰ Depois / ✕ Não tomei.
-- **Conversa** — chat com o médico.
+- **Médico** — chat com o médico.
+- **Apoio** — conversa com a IA de apoio (`/patient/ai-chat`): acolhe entre as consultas
+  e, em sinal de risco, responde com orientação de segurança (CVV 188) e alerta o médico.
+  Deixa explícito que não substitui o médico.
 - **Push** — registra o Expo push token no backend (`POST /patient/devices`); só
   funciona em dispositivo físico.
 

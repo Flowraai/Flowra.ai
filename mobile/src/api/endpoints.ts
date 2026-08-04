@@ -25,6 +25,9 @@ export const patientApi = {
   messages: () => api<ChatMessage[]>("/patient/messages"),
   sendMessage: (bodyText: string) =>
     api<ChatMessage>("/patient/messages", { method: "POST", body: { body: bodyText, attachments: [] } }),
+  aiHistory: () => api<ChatMessage[]>("/patient/ai-chat"),
+  aiSend: (bodyText: string) =>
+    api<ChatMessage>("/patient/ai-chat", { method: "POST", body: { body: bodyText, attachments: [] } }),
   registerDevice: (token: string, platform: "ios" | "android" | "web") =>
     api<unknown>("/patient/devices", { method: "POST", body: { token, platform } }),
 };
