@@ -7,6 +7,9 @@ import type {
   ChatMessage,
   CheckIn,
   DoctorProfile,
+  MedicationAdherence,
+  MedicationPlan,
+  MedicationPlanInput,
   Patient,
   PatientCreated,
   PatientCreateInput,
@@ -34,6 +37,15 @@ export const patients = {
       method: "POST",
       body: { body: bodyText, attachments: [] },
     }),
+  medications: (id: string) => api<MedicationPlan[]>(`/patients/${id}/medications`),
+  createMedication: (id: string, input: MedicationPlanInput) =>
+    api<MedicationPlan>(`/patients/${id}/medications`, { method: "POST", body: input }),
+  adherence: (id: string) => api<MedicationAdherence>(`/patients/${id}/medications/adherence`),
+};
+
+export const medications = {
+  update: (planId: string, patch: { active?: boolean }) =>
+    api<MedicationPlan>(`/medications/${planId}`, { method: "PATCH", body: patch }),
 };
 
 export const alerts = {

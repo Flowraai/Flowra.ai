@@ -3,6 +3,7 @@ import { AppShell } from "../components/AppShell";
 import { RiskBadge } from "../components/RiskBadge";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { ChatPanel } from "../components/ChatPanel";
+import { MedicationCard } from "../components/MedicationCard";
 import { IconAlertTri, IconChart, IconSpark } from "../components/icons";
 import { useAsync } from "../lib/useAsync";
 import { patients, alerts as alertsApi } from "../api/endpoints";
@@ -156,6 +157,7 @@ export function PatientDetail() {
 
             <div className="col">
               <ChatPanel patientId={id} />
+              <MedicationCard patientId={id} />
             </div>
           </div>
         </>

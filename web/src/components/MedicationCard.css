@@ -1,0 +1,20 @@
+.card .bd .adh { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
+.adh-top { display: flex; align-items: center; justify-content: space-between; }
+.adh-top b { font-size: 18px; }
+.adh-bar { height: 8px; border-radius: 5px; background: var(--surface-2); overflow: hidden; }
+.adh-bar > i { display: block; height: 100%; border-radius: 5px; }
+.adh-detail { font-size: 12px; }
+
+.plan-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.plan {
+  display: flex; align-items: center; gap: 10px; background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px;
+}
+.plan-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.plan-main b { font-size: 14px; }
+.plan-main span { font-size: 12.5px; }
+.plan-off {
+  border: 0; background: transparent; color: var(--muted); font-family: inherit; font-size: 12.5px;
+  font-weight: 600; cursor: pointer; padding: 4px 8px; border-radius: 8px; flex: none;
+}
+.plan-off:hover { color: var(--risk-red); background: color-mix(in srgb, var(--risk-red) 10%, transparent); }
