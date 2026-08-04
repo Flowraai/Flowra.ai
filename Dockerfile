@@ -11,7 +11,9 @@ ENV PYTHONUNBUFFERED=1 \
 RUN python -m venv "$VIRTUAL_ENV"
 
 WORKDIR /app
+# O build do pacote (setuptools, packages=["app"]) precisa do código-fonte.
 COPY pyproject.toml ./
+COPY app ./app
 # Instala só as dependências de runtime (sem o grupo dev).
 RUN pip install --upgrade pip && pip install .
 
