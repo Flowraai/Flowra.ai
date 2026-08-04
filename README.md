@@ -305,10 +305,20 @@ o paciente é avisado e a receita passa a aparecer no histórico dele.
   eliminação não carrega dado sensível do titular.
 - **Responsabilidade** — a API deixa explícito que a IA não diagnostica; o retorno do
   check-in ao paciente é neutro (não expõe o risco calculado ao próprio paciente).
-- **A revisar antes de produção** — criptografia em repouso (dados sensíveis), gestão de
-  segredos (JWT/API keys fora do código), DPA com o provedor de LLM caso `FREE_TEXT_ANALYZER=llm`
-  ou o resumo por IA sejam habilitados (contexto clínico agregado sai para o provedor), e
-  restringir `/docs`/`/openapi.json` fora de ambiente de desenvolvimento.
+- **Criptografia em repouso** — campos sensíveis (nome, contato, texto livre do check-in,
+  transcrição de áudio e mensagens do chat) são cifrados no banco com **AES-256-GCM**
+  (`EncryptedText`), com chave em `ENCRYPTION_KEY` (base64 de 32 bytes). Transparente para
+  o ORM; sem chave, os campos ficam em claro (dev) e valores legados em claro continuam
+  legíveis (adoção gradual). O hash do token do paciente **não** é cifrado (é usado em
+  lookup). Complementa — não substitui — a criptografia de disco do provedor de banco.
+- **Guardrails de produção** — no startup, com `ENVIRONMENT=production`, a aplicação
+  **aborta** se `JWT_SECRET_KEY` estiver no valor padrão ou `DEBUG=true`, e **avisa** se a
+  criptografia em repouso estiver desligada. `/docs`, `/redoc` e `/openapi.json` ficam
+  **desabilitados** fora de desenvolvimento (reduz superfície de ataque).
+- **IA externa sob DPA** — análise/resumo por LLM e transcrição de áudio enviam contexto
+  clínico a terceiros; em produção só são habilitados com `AI_DPA_ACKNOWLEDGED=true`
+  (contrato de tratamento de dados reconhecido). Sem isso, caem no comportamento
+  determinístico/local — nunca vazam para o provedor externo.
 
 ## Testes
 

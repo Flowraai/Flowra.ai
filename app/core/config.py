@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     # Banco de dados
     database_url: str = "postgresql+asyncpg://flowra:flowra@localhost:5432/flowra_care"
 
+    # Criptografia em repouso dos campos sensíveis (nome, contato, texto livre,
+    # transcrição, mensagens). Chave em base64 de 32 bytes (AES-256-GCM). Sem chave,
+    # os campos ficam em claro (dev) — em produção, configure e guarde no cofre.
+    # Gere com: python -c "import os,base64;print(base64.b64encode(os.urandom(32)).decode())"
+    encryption_key: str | None = None
+
     # Autenticação (perfil médico — JWT)
     jwt_secret_key: str = "troque-este-segredo-em-producao"
     jwt_algorithm: str = "HS256"
@@ -68,6 +74,11 @@ class Settings(BaseSettings):
     transcription_base_url: str = "https://api.openai.com/v1"
     transcription_api_key: str | None = None
     transcription_model: str = "whisper-1"
+
+    # DPA (contrato de tratamento de dados) com o provedor de IA externo.
+    # Análise/resumo por LLM e transcrição enviam contexto clínico a terceiros;
+    # em produção, só habilitamos se o DPA foi reconhecido (guardrail LGPD).
+    ai_dpa_acknowledged: bool = False
 
     # Módulo de IA (análise do texto/áudio livre)
     free_text_analyzer: str = "keyword"  # keyword | llm
@@ -115,6 +126,59 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.environment.lower() == "production"
+
+    @property
+    def docs_enabled(self) -> bool:
+        """Interface interativa (/docs, /redoc, /openapi.json) só fora de produção."""
+        return not self.is_production
+
+    @property
+    def external_ai_allowed(self) -> bool:
+        """Envio de contexto clínico a provedor de IA externo é permitido?
+
+        Em produção, exige o reconhecimento do DPA (guardrail LGPD). Fora de
+        produção, liberado para desenvolvimento/testes.
+        """
+        return self.ai_dpa_acknowledged or not self.is_production
+
+    @property
+    def llm_available(self) -> bool:
+        return bool(self.llm_api_key) and self.external_ai_allowed
+
+    @property
+    def transcription_available(self) -> bool:
+        return (
+            self.transcription_provider.lower() != "none"
+            and bool(self.transcription_api_key)
+            and self.external_ai_allowed
+        )
+
+    def enforce_production_guardrails(self) -> list[str]:
+        """Valida a configuração para produção. Levanta em erros críticos e
+        devolve avisos (não fatais). Chamado no startup da aplicação."""
+        if not self.is_production:
+            return []
+        critical: list[str] = []
+        if self.jwt_secret_key == "troque-este-segredo-em-producao":
+            critical.append("JWT_SECRET_KEY usa o valor padrão inseguro.")
+        if self.debug:
+            critical.append("DEBUG=true não é permitido em produção.")
+        if critical:
+            raise RuntimeError(
+                "Configuração insegura para produção: " + " ".join(critical)
+            )
+        warnings: list[str] = []
+        if not self.encryption_key:
+            warnings.append(
+                "ENCRYPTION_KEY não configurada: campos sensíveis ficarão em claro "
+                "no banco (habilite a criptografia em repouso)."
+            )
+        if self.free_text_analyzer == "llm" and self.llm_api_key and not self.ai_dpa_acknowledged:
+            warnings.append(
+                "LLM configurado sem AI_DPA_ACKNOWLEDGED: a análise por IA externa "
+                "fica DESABILITADA em produção até o DPA ser reconhecido."
+            )
+        return warnings
 
 
 @lru_cache

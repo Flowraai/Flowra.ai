@@ -111,7 +111,7 @@ class LLMFreeTextAnalyzer:
 
     def analyze(self, text: str | None) -> FreeTextResult:
         baseline = self._fallback.analyze(text)
-        if not text or not text.strip() or not settings.llm_api_key:
+        if not text or not text.strip() or not settings.llm_available:
             return baseline
 
         try:
@@ -168,6 +168,6 @@ class LLMFreeTextAnalyzer:
 
 
 def get_free_text_analyzer() -> FreeTextAnalyzer:
-    if settings.free_text_analyzer == "llm" and settings.llm_api_key:
+    if settings.free_text_analyzer == "llm" and settings.llm_available:
         return LLMFreeTextAnalyzer()
     return KeywordFreeTextAnalyzer()

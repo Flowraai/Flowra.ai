@@ -10,12 +10,13 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Text
+from sqlalchemy import DateTime, Enum, ForeignKey
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDMixin
+from app.db.types import EncryptedText
 from app.models.enums import MessageSender, MessageThread
 
 
@@ -41,6 +42,7 @@ class Message(UUIDMixin, TimestampMixin, Base):
     sender: Mapped[MessageSender] = mapped_column(
         Enum(MessageSender, name="message_sender"), nullable=False
     )
-    body: Mapped[str] = mapped_column(Text, nullable=False)
+    # Conteúdo da conversa — cifrado em repouso (LGPD).
+    body: Mapped[str] = mapped_column(EncryptedText, nullable=False)
     attachments: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

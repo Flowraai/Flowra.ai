@@ -14,10 +14,11 @@ from app.core.config import settings
 
 
 async def transcribe(data: bytes, content_type: str, filename: str = "audio") -> str | None:
-    provider = settings.transcription_provider.lower()
-    if provider == "none" or not settings.transcription_api_key:
+    # Guardrail LGPD: em produção sem DPA reconhecido (ou sem chave), não envia
+    # áudio do paciente ao provedor externo.
+    if not settings.transcription_available:
         return None
-    if provider != "openai":
+    if settings.transcription_provider.lower() != "openai":
         return None
     try:
         async with httpx.AsyncClient(timeout=settings.llm_timeout_seconds) as http:

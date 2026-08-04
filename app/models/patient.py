@@ -14,6 +14,7 @@ from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDMixin
+from app.db.types import EncryptedText
 from app.models.enums import RiskLevel
 
 if TYPE_CHECKING:
@@ -26,9 +27,10 @@ if TYPE_CHECKING:
 class Patient(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "patients"
 
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    # Contato (telefone/e-mail para app/WhatsApp). Dado pessoal — tratar sob LGPD.
-    contact: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # PII cifrada em repouso (identifica o titular do dado de saúde).
+    name: Mapped[str] = mapped_column(EncryptedText, nullable=False)
+    # Contato (telefone/e-mail para app/WhatsApp). Dado pessoal — cifrado sob LGPD.
+    contact: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)
     birth_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(
