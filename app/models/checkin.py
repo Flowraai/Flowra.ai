@@ -13,6 +13,7 @@ from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDMixin
+from app.db.types import EncryptedText
 from app.models.enums import RiskLevel
 
 if TYPE_CHECKING:
@@ -37,10 +38,11 @@ class CheckIn(UUIDMixin, TimestampMixin, Base):
     # Respostas estruturadas por código de pergunta: {"mood": 3, "crisis": true, ...}
     structured_responses: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     # Texto livre ("Quer contar mais alguma coisa sobre hoje?") e/ou áudio.
-    free_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Conteúdo clínico — cifrado em repouso (LGPD).
+    free_text: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)
     audio_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Transcrição do áudio (quando a transcrição está habilitada); alimenta o risco.
-    audio_transcript: Mapped[str | None] = mapped_column(Text, nullable=True)
+    audio_transcript: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)
 
     # Resultado do motor de risco.
     risk_level: Mapped[RiskLevel] = mapped_column(

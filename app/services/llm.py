@@ -13,7 +13,9 @@ from app.core.config import settings
 
 
 async def chat_complete(system: str, user: str, temperature: float = 0.2) -> str | None:
-    if not settings.llm_api_key:
+    # Guardrail LGPD: sem chave, ou em produção sem DPA reconhecido, não envia
+    # contexto clínico ao provedor externo.
+    if not settings.llm_available:
         return None
     try:
         async with httpx.AsyncClient(timeout=settings.llm_timeout_seconds) as http:

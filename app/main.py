@@ -11,6 +11,12 @@ from app.api.router import api_router
 from app.core.config import settings
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("flowra_care")
+
+# Guardrails de produção: aborta em config insegura (JWT padrão, DEBUG) e
+# registra avisos (ex.: criptografia em repouso desligada, DPA do LLM pendente).
+for _warning in settings.enforce_production_guardrails():
+    logger.warning("[produção] %s", _warning)
 
 app = FastAPI(
     title=settings.app_name,
@@ -19,6 +25,10 @@ app = FastAPI(
         "Backend do MVP de monitoramento psiquiátrico entre consultas. "
         "A IA não diagnostica: apoia a priorização de casos por risco."
     ),
+    # Interface interativa e schema OpenAPI só fora de produção (superfície de ataque).
+    docs_url="/docs" if settings.docs_enabled else None,
+    redoc_url="/redoc" if settings.docs_enabled else None,
+    openapi_url="/openapi.json" if settings.docs_enabled else None,
 )
 
 app.add_middleware(
@@ -37,6 +47,6 @@ async def root() -> dict:
     return {
         "name": settings.app_name,
         "status": "ok",
-        "docs": "/docs",
+        "docs": "/docs" if settings.docs_enabled else None,
         "disclaimer": "Ferramenta de apoio à priorização — não substitui julgamento clínico.",
     }
