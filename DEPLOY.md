@@ -104,7 +104,26 @@ gunzip -c backups/flowra-AAAAMMDD-HHMMSS.sql.gz | \
   docker compose -f docker-compose.prod.yml exec -T db psql -U flowra -d flowra_care
 ```
 
-## 7. Atualizar (deploy de nova versão)
+## 7. Scans agendados (obrigatório)
+
+Sem isto, os **alertas de inatividade**, a **não-adesão à medicação** e os
+**lembretes de consulta** nunca rodam (os jobs existem, mas nada os dispara).
+Os scans são idempotentes e rodam dentro do container `api`.
+
+```bash
+crontab -e
+# adicione (roda os três a cada 15 min; medicação precisa dessa cadência):
+*/15 * * * * cd /opt/flowra && ./scripts/run-scans.sh >> /var/log/flowra-scans.log 2>&1
+# monitor de heartbeat: avisa se os scans pararem (saída vai ao MAILTO do cron):
+17 * * * *   cd /opt/flowra && ./scripts/check-scans-heartbeat.sh >> /var/log/flowra-scans.log 2>&1
+```
+
+Defina `MAILTO=voce@dominio` no topo do `crontab` para receber por e-mail a saída
+de alerta do monitor. O `run-scans.sh` grava um heartbeat em
+`/var/log/flowra-scans.heartbeat` a cada ciclo bem-sucedido; o
+`check-scans-heartbeat.sh` alerta se ele ficar mais velho que 45 min.
+
+## 8. Atualizar (deploy de nova versão)
 
 ```bash
 cd /opt/flowra && git pull
@@ -113,7 +132,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 As migrações rodam sozinhas no boot. Faça um backup antes de atualizar.
 
-## 8. Integrações (para um produto de verdade)
+## 9. Integrações (para um produto de verdade)
 
 No modo padrão, notificações caem em **log**. Configure no `.env` conforme o uso
 (ver comentários no `.env.example`):
@@ -126,7 +145,7 @@ No modo padrão, notificações caem em **log**. Configure no `.env` conforme o 
 - **Receita com valor legal**: `PRESCRIPTION_PROVIDER=certified` + credenciais da plataforma
   certificada (o provedor `internal` é só registro, sem valor legal).
 
-## 9. App do paciente (Expo → lojas)
+## 10. App do paciente (Expo → lojas)
 
 O app **não** vai na VPS. Publique pelas lojas:
 
