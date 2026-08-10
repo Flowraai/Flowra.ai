@@ -104,9 +104,18 @@ def test_production_rejects_debug():
         _prod(debug=True).enforce_production_guardrails()
 
 
-def test_production_warns_without_encryption_key():
-    warnings = _prod(encryption_key=None).enforce_production_guardrails()
-    assert any("ENCRYPTION_KEY" in w for w in warnings)
+def test_production_rejects_missing_encryption_key():
+    # LGPD-2: sem chave em produção = erro FATAL (dado clínico ficaria em claro),
+    # não mais um simples aviso.
+    with pytest.raises(RuntimeError):
+        _prod(encryption_key=None).enforce_production_guardrails()
+
+
+def test_production_ok_with_encryption_key():
+    # Com chave (e demais guardrails ok), não levanta e não avisa sobre cifragem.
+    settings_prod = _prod(encryption_key=base64.b64encode(os.urandom(32)).decode())
+    warnings = settings_prod.enforce_production_guardrails()
+    assert not any("ENCRYPTION_KEY" in w for w in warnings)
 
 
 def test_external_ai_blocked_in_production_without_dpa():

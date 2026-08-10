@@ -213,16 +213,18 @@ class Settings(BaseSettings):
             critical.append("JWT_SECRET_KEY usa o valor padrão inseguro.")
         if self.debug:
             critical.append("DEBUG=true não é permitido em produção.")
+        # LGPD-2 — dado de saúde é categoria sensível: sem chave, os campos clínicos
+        # ficariam em claro no banco. Em produção isso é ERRO FATAL, não aviso.
+        if not self.encryption_key:
+            critical.append(
+                "ENCRYPTION_KEY não configurada: os campos sensíveis (dado de saúde) "
+                "ficariam em claro no banco — proibido em produção (LGPD)."
+            )
         if critical:
             raise RuntimeError(
                 "Configuração insegura para produção: " + " ".join(critical)
             )
         warnings: list[str] = []
-        if not self.encryption_key:
-            warnings.append(
-                "ENCRYPTION_KEY não configurada: campos sensíveis ficarão em claro "
-                "no banco (habilite a criptografia em repouso)."
-            )
         if self.free_text_analyzer == "llm" and self.llm_api_key and not self.ai_dpa_acknowledged:
             warnings.append(
                 "LLM configurado sem AI_DPA_ACKNOWLEDGED: a análise por IA externa "
