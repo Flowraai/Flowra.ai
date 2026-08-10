@@ -300,7 +300,9 @@ async def unregister_patient_device(
     patient: Patient = Depends(get_current_patient),
     session: AsyncSession = Depends(get_db),
 ) -> None:
-    await unregister_device(session, payload.token)
+    await unregister_device(
+        session, owner_type=DeviceOwnerType.PATIENT, owner_id=patient.id, token=payload.token,
+    )
 
 
 @router.post("/messages", response_model=MessageRead, status_code=status.HTTP_201_CREATED)

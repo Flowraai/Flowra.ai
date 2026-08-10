@@ -36,8 +36,25 @@ async def register_device(
     return device
 
 
-async def unregister_device(session: AsyncSession, token: str) -> bool:
-    device = await session.scalar(select(DeviceToken).where(DeviceToken.token == token))
+async def unregister_device(
+    session: AsyncSession,
+    *,
+    owner_type: DeviceOwnerType,
+    owner_id: uuid.UUID,
+    token: str,
+) -> bool:
+    """Desativa um device token — SÓ do próprio dono.
+
+    SEC-4 — escopado por owner_type/owner_id: sem isso, quem soubesse o token de
+    outro poderia desativá-lo e silenciar os alertas de risco daquele médico.
+    """
+    device = await session.scalar(
+        select(DeviceToken).where(
+            DeviceToken.token == token,
+            DeviceToken.owner_type == owner_type,
+            DeviceToken.owner_id == owner_id,
+        )
+    )
     if device is None:
         return False
     device.is_active = False

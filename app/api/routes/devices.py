@@ -34,4 +34,6 @@ async def unregister(
     doctor: Doctor = Depends(get_current_doctor),
     session: AsyncSession = Depends(get_db),
 ) -> None:
-    await unregister_device(session, payload.token)
+    await unregister_device(
+        session, owner_type=DeviceOwnerType.DOCTOR, owner_id=doctor.id, token=payload.token,
+    )

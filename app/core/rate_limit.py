@@ -7,11 +7,14 @@ mesma interface. Chaveado por IP do cliente (considera X-Forwarded-For).
 
 from __future__ import annotations
 
+import ipaddress
 import time
 from collections import defaultdict, deque
 from collections.abc import Awaitable, Callable
 
 from fastapi import HTTPException, Request, status
+
+from app.core.config import settings
 
 
 class SlidingWindowRateLimiter:
@@ -47,11 +50,34 @@ class SlidingWindowRateLimiter:
             limiter.reset()
 
 
+def _is_trusted_proxy(ip: str) -> bool:
+    """Proxy confiável = loopback ou rede privada. Nesta implantação a API só é
+    alcançável pelo proxy (rede interna do Docker), então só esses IPs podem ter
+    populado o X-Forwarded-For legitimamente."""
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return addr.is_loopback or addr.is_private
+
+
 def _client_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    """IP real do cliente para o rate limit.
+
+    SEC-1 — o X-Forwarded-For só é considerado quando o peer imediato é um proxy
+    confiável; senão um cliente externo poderia forjar o header e zerar o balde a
+    cada request (brute-force livre). Quando confiável, caminhamos o XFF da direita
+    para a esquerda ignorando IPs de proxies confiáveis: o primeiro IP não-confiável
+    é o cliente real (defende contra entradas prependidas/forjadas)."""
+    peer = request.client.host if request.client else "unknown"
+    if settings.rate_limit_trust_forwarded_for and _is_trusted_proxy(peer):
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            hops = [h.strip() for h in forwarded.split(",") if h.strip()]
+            for hop in reversed(hops):
+                if not _is_trusted_proxy(hop):
+                    return hop
+    return peer
 
 
 def rate_limit(

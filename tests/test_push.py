@@ -9,9 +9,9 @@ from app.db.session import AsyncSessionLocal
 from app.models.device_token import DeviceToken
 
 
-async def _doctor(client: httpx.AsyncClient) -> dict:
+async def _doctor(client: httpx.AsyncClient, email: str = "dra.ana@clinica.com") -> dict:
     r = await client.post("/api/v1/auth/register", json={
-        "email": "dra.ana@clinica.com", "password": "senhaforte123", "name": "Dra. Ana"})
+        "email": email, "password": "senhaforte123", "name": "Dra. Ana"})
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
 
 
@@ -59,6 +59,22 @@ async def test_unregister_stops_push(client: httpx.AsyncClient):
     await client.post("/api/v1/devices/unregister", headers=headers, json=body)
     r = await client.post("/api/v1/notifications/test-push", headers=headers)
     assert r.json()["sent"] == 0
+
+
+async def test_cannot_unregister_another_owners_device(client: httpx.AsyncClient):
+    # SEC-4: um device token só pode ser desativado pelo próprio dono. Um médico B
+    # que conheça o token do médico A NÃO pode desativá-lo (silenciar os alertas).
+    headers_a = await _doctor(client)
+    body = {"token": "ExponentPushToken[victim]", "platform": "ios"}
+    await client.post("/api/v1/devices", headers=headers_a, json=body)
+
+    headers_b = await _doctor(client, email="dr.b@x.com")
+    r = await client.post("/api/v1/devices/unregister", headers=headers_b, json=body)
+    assert r.status_code == 204  # resposta idêntica (não revela nada)
+
+    # o token do médico A continua ATIVO — o push dele ainda é entregue
+    sent = await client.post("/api/v1/notifications/test-push", headers=headers_a)
+    assert sent.json()["sent"] == 1
 
 
 async def test_test_push_without_devices(client: httpx.AsyncClient):

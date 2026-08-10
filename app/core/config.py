@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     login_rate_limit_window_seconds: int = 60
     register_rate_limit_attempts: int = 10
     password_reset_rate_limit_attempts: int = 5
+    # SEC-1 — só confiar no X-Forwarded-For quando o peer imediato for um proxy
+    # confiável (loopback/rede privada — a API só é acessível via proxy nesta
+    # implantação). Desligue apenas se a API for exposta sem proxy à frente.
+    rate_limit_trust_forwarded_for: bool = True
 
     # Risco por tendência e não-adesão
     risk_trend_window: int = 5          # nº de check-ins recentes considerados
