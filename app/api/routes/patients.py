@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime, timezone
 
@@ -16,6 +17,7 @@ from app.core.security import (
 )
 from app.db.session import get_db
 from app.models.alert import Alert
+from app.models.attachment import Attachment
 from app.models.checkin import CheckIn
 from app.models.doctor import Doctor
 from app.models.enums import AlertStatus, AuditAction
@@ -37,7 +39,10 @@ from app.schemas.patient import (
 from app.services import audit
 from app.services.inactivity_service import days_since_checkin, is_inactive, scan_inactivity
 from app.services.onboarding_service import build_onboarding_link, send_onboarding
+from app.services.storage import get_storage_backend
 from app.services.summary_service import patient_summary
+
+logger = logging.getLogger("flowra_care.patients")
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
@@ -249,6 +254,16 @@ async def delete_patient(
     é preservado (referencia apenas IDs — proteção jurídica da plataforma/médico).
     """
     patient = await _get_owned_patient(session, doctor, patient_id)
+
+    # LGPD-3 — coletar as chaves de storage dos anexos ANTES do cascade apagar as
+    # linhas; senão os bytes (áudios/imagens clínicas) ficam órfãos no storage após
+    # a "exclusão". A tabela attachments é apagada em cascata com o paciente.
+    storage_keys = (
+        await session.execute(
+            select(Attachment.storage_key).where(Attachment.patient_id == patient.id)
+        )
+    ).scalars().all()
+
     await session.execute(delete(Patient).where(Patient.id == patient.id))
     await audit.record(
         session,
@@ -257,6 +272,20 @@ async def delete_patient(
         entity_type="patient",
         entity_id=patient_id,
     )
+    # Persistir a eliminação ANTES de apagar os bytes: uma falha no storage não pode
+    # desfazer a exclusão no banco (nem deixar linha apontando para arquivo removido).
+    await session.commit()
+
+    backend = get_storage_backend()
+    for key in storage_keys:
+        try:
+            backend.delete(key)
+        except Exception:  # noqa: BLE001 — remoção de bytes é best-effort e idempotente
+            logger.exception(
+                "Falha ao apagar anexo %s do storage (paciente=%s); revisar orfãos.",
+                key, patient_id,
+            )
+
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

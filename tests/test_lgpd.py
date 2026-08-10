@@ -8,10 +8,12 @@ import httpx
 from sqlalchemy import func, select
 
 from app.db.session import AsyncSessionLocal
+from app.models.attachment import Attachment
 from app.models.audit import AuditLog
 from app.models.checkin import CheckIn
 from app.models.enums import AuditAction
 from app.models.notification import Notification
+from app.services.storage import get_storage_backend
 
 CRITICAL = {
     "mood": 1, "anxiety": 9, "slept_well": "nao", "sleep_hours": 2,
@@ -85,6 +87,32 @@ async def test_delete_erases_patient_and_health_data(client: httpx.AsyncClient):
             .where(AuditLog.action == AuditAction.PATIENT_DELETED,
                    AuditLog.entity_id == pid))
         assert deleted == 1
+
+
+async def test_delete_removes_attachment_bytes_from_storage(client: httpx.AsyncClient):
+    # LGPD-3 — a exclusão do paciente também precisa apagar os BYTES dos anexos
+    # (áudios/imagens clínicas), não só as linhas no banco. Antes do fix, o
+    # storage.delete() nunca era chamado e os arquivos ficavam órfãos no disco.
+    headers = await _register(client)
+    patient = (await client.post("/api/v1/patients", headers=headers,
+                                 json={"name": "João", "consent_given": True})).json()
+    pid = uuid.UUID(patient["id"])
+    ph = {"X-Patient-Token": patient["access_token"]}
+    await client.post("/api/v1/patient/attachments", headers=ph,
+                      files={"file": ("voz.m4a", b"fake-audio-bytes", "audio/mp4")})
+
+    # a chave de storage do anexo (não exposta pela API) + os bytes existem
+    async with AsyncSessionLocal() as session:
+        key = await session.scalar(
+            select(Attachment.storage_key).where(Attachment.patient_id == pid))
+    assert key is not None
+    assert get_storage_backend().load(key) is not None
+
+    resp = await client.delete(f"/api/v1/patients/{patient['id']}", headers=headers)
+    assert resp.status_code == 204
+
+    # os bytes sumiram do storage (não só a linha do banco)
+    assert get_storage_backend().load(key) is None
 
 
 async def test_cannot_delete_other_doctors_patient(client: httpx.AsyncClient):
