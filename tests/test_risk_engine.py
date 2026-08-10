@@ -121,6 +121,23 @@ def test_free_text_suicidal_forces_red():
     assert result.category_risks[P.CAT_LIVRE] == RiskLevel.RED.value
 
 
+def test_unanalyzed_audio_escalates_green_to_yellow():
+    # CL-2: check-in neutro, mas com áudio que não pôde ser transcrito/analisado.
+    # Não pode virar VERDE em silêncio — sobe para AMARELO e pede revisão manual.
+    result = engine.assess(_stable_responses(), free_text=None, audio_unanalyzed=True)
+    assert result.level is RiskLevel.YELLOW
+    assert any("áudio não analisado" in reason for reason in result.reasons)
+    assert result.category_risks[P.CAT_LIVRE] == RiskLevel.YELLOW.value
+
+
+def test_unanalyzed_audio_never_lowers_existing_risk():
+    # O flag de áudio é um PISO (mínimo amarelo), nunca rebaixa um risco maior.
+    r = _stable_responses()
+    r[P.Q_CRISIS] = P.YES  # vermelho
+    result = engine.assess(r, audio_unanalyzed=True)
+    assert result.level is RiskLevel.RED
+
+
 def test_boolean_true_is_treated_as_yes():
     r = _stable_responses()
     r[P.Q_CRISIS] = True

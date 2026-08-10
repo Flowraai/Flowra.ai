@@ -85,7 +85,11 @@ class PsychiatricRiskEngine:
         self.analyzer = free_text_analyzer or KeywordFreeTextAnalyzer()
 
     def assess(
-        self, structured_responses: dict, free_text: str | None = None
+        self,
+        structured_responses: dict,
+        free_text: str | None = None,
+        *,
+        audio_unanalyzed: bool = False,
     ) -> RiskAssessment:
         assessment = RiskAssessment()
         r = structured_responses or {}
@@ -164,5 +168,19 @@ class PsychiatricRiskEngine:
             current = assessment.category_risks.get(category)
             if current is None or RiskLevel(current).order < free_result.level.order:
                 assessment.category_risks[category] = free_result.level.value
+
+        # --- Áudio não analisado (CL-2) ---
+        # Se o check-in traz áudio mas ele NÃO foi transcrito/analisado (transcrição
+        # desligada por padrão, ou falha), não podemos concluir "verde": um áudio
+        # pode conter justamente o sinal de risco. Escalamos para no mínimo AMARELO
+        # e sinalizamos revisão manual (conservador: melhor falso positivo).
+        if audio_unanalyzed:
+            reason = "áudio não analisado — revisar manualmente"
+            assessment.level = assessment.level.escalate(RiskLevel.YELLOW)
+            assessment.reasons.append(reason)
+            category = P.CAT_LIVRE
+            current = assessment.category_risks.get(category)
+            if current is None or RiskLevel(current).order < RiskLevel.YELLOW.order:
+                assessment.category_risks[category] = RiskLevel.YELLOW.value
 
         return assessment

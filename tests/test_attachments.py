@@ -147,3 +147,22 @@ async def test_checkin_without_transcription_keeps_audio_only(client: httpx.Asyn
                                  headers=headers)).json()
     assert checkins[0]["audio_transcript"] is None
     assert checkins[0]["audio_url"] == up.json()["url"]
+
+
+async def test_untranscribed_audio_escalates_to_yellow(client: httpx.AsyncClient):
+    # CL-2: check-in neutro (STABLE) + áudio que não foi transcrito (provider 'none')
+    # NÃO pode virar VERDE — sobe para AMARELO com pedido de revisão manual, para o
+    # médico saber que há um áudio ainda por olhar.
+    headers = await _doctor(client)
+    patient = await _patient(client, headers)
+    ph = {"X-Patient-Token": patient["access_token"]}
+    up = await client.post("/api/v1/patient/attachments", headers=ph,
+                           files={"file": ("voz.m4a", b"fake-audio-bytes", "audio/mp4")})
+    r = await client.post("/api/v1/patient/checkins", headers=ph,
+                          json={"structured_responses": STABLE, "audio_url": up.json()["url"]})
+    assert r.status_code == 201
+
+    checkins = (await client.get(f"/api/v1/patients/{patient['id']}/checkins",
+                                 headers=headers)).json()
+    assert checkins[0]["risk_level"] == "yellow"
+    assert any("áudio não analisado" in reason for reason in checkins[0]["risk_reasons"])

@@ -60,10 +60,18 @@ async def process_checkin(
     transcript = await _transcribe_audio(session, patient, payload.audio_url)
     effective_text = "\n".join(t for t in (payload.free_text, transcript) if t) or None
 
+    # CL-2 — o check-in trouxe áudio mas ele não foi transcrito/analisado (transcrição
+    # desligada por padrão, ou falha). O motor não pode concluir "verde" sem ter olhado
+    # o áudio: sinalizamos para escalar a no mínimo AMARELO e pedir revisão manual.
+    audio_unanalyzed = bool(payload.audio_url) and transcript is None
+
     # O analisador de texto livre pode chamar um LLM (I/O bloqueante); roda numa
     # thread para não bloquear o event loop. As regras determinísticas são leves.
     assessment = await asyncio.to_thread(
-        engine.assess, payload.structured_responses, effective_text
+        engine.assess,
+        payload.structured_responses,
+        effective_text,
+        audio_unanalyzed=audio_unanalyzed,
     )
 
     checkin = CheckIn(
