@@ -64,10 +64,20 @@ async def test_sensitive_fields_encrypted_at_rest(client: httpx.AsyncClient, mon
             text("SELECT contact FROM patients WHERE id = :id"), {"id": patient["id"]})
         free_text_raw = await session.scalar(
             text("SELECT free_text FROM checkins WHERE patient_id = :id"), {"id": patient["id"]})
+        # LGPD-1 — os campos clínicos estruturados também precisam estar cifrados.
+        structured_raw = await session.scalar(
+            text("SELECT structured_responses FROM checkins WHERE patient_id = :id"),
+            {"id": patient["id"]})
+        reasons_raw = await session.scalar(
+            text("SELECT risk_reasons FROM checkins WHERE patient_id = :id"),
+            {"id": patient["id"]})
 
     assert name_raw.startswith("enc:v1:") and "João" not in name_raw
     assert contact_raw.startswith("enc:v1:") and "joao@ex.com" not in contact_raw
     assert free_text_raw.startswith("enc:v1:") and "matar" not in free_text_raw
+    # LGPD-1: humor/flag de crise e os motivos do risco não vazam em claro no dump.
+    assert structured_raw.startswith("enc:v1:") and "mood" not in structured_raw
+    assert reasons_raw.startswith("enc:v1:")
 
     # Pela API (ORM decifra de forma transparente) o valor volta em claro.
     got = (await client.get(f"/api/v1/patients/{patient['id']}", headers=headers)).json()

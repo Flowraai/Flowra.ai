@@ -8,12 +8,11 @@ import uuid
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Enum, ForeignKey, Text
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDMixin
-from app.db.types import EncryptedText
+from app.db.types import EncryptedJSON, EncryptedText
 from app.models.enums import RiskLevel
 
 if TYPE_CHECKING:
@@ -36,7 +35,9 @@ class CheckIn(UUIDMixin, TimestampMixin, Base):
     )
 
     # Respostas estruturadas por código de pergunta: {"mood": 3, "crisis": true, ...}
-    structured_responses: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    # LGPD-1 — conteúdo clínico sensível (humor, flag de crise/ideação): cifrado em
+    # repouso. Só é lido em Python (trend/resumo), nunca filtrado/indexado no banco.
+    structured_responses: Mapped[dict] = mapped_column(EncryptedJSON, default=dict, nullable=False)
     # Texto livre ("Quer contar mais alguma coisa sobre hoje?") e/ou áudio.
     # Conteúdo clínico — cifrado em repouso (LGPD).
     free_text: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)
@@ -51,8 +52,10 @@ class CheckIn(UUIDMixin, TimestampMixin, Base):
         nullable=False,
     )
     # Motivos determinísticos + sinais da IA que justificaram o risco (auditável).
-    risk_reasons: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
+    # LGPD-1 — pode conter o teor clínico (ex.: "ideação suicida"): cifrado em repouso.
+    risk_reasons: Mapped[list] = mapped_column(EncryptedJSON, default=list, nullable=False)
     # Risco por categoria: {"Humor": "orange", "Sono": "green", ...}
-    category_risks: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    # LGPD-1 — trajetória de risco por categoria: cifrado em repouso.
+    category_risks: Mapped[dict] = mapped_column(EncryptedJSON, default=dict, nullable=False)
 
     patient: Mapped["Patient"] = relationship(back_populates="checkins")
