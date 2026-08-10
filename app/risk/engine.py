@@ -100,6 +100,16 @@ class PsychiatricRiskEngine:
             if current is None or RiskLevel(current).order < level.order:
                 assessment.category_risks[category] = level.value
 
+        # --- Ideação/autoagressão (CL-1) — sinal crítico: VERMELHO imediato ---
+        # Item estruturado e OBRIGATÓRIO no protocolo. NÃO depende do texto livre
+        # (que é opcional): um "sim" aqui sempre eleva o risco ao máximo, mesmo que
+        # todo o resto do check-in esteja neutro e o texto livre venha vazio.
+        if _is_yes(r.get(P.Q_SELF_HARM)):
+            contribute(
+                P.Q_SELF_HARM, RiskLevel.RED,
+                "pensamentos de autoagressão/ideação suicida relatados",
+            )
+
         # --- Humor ---
         mood = _as_number(r.get(P.Q_MOOD))
         if mood is not None:

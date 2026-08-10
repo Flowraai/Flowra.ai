@@ -20,6 +20,7 @@ CAT_SONO = "Sono"
 CAT_MEDICACAO = "Medicação"
 CAT_CRISES = "Crises"
 CAT_EFEITOS = "Efeitos colaterais"
+CAT_RISCO = "Risco"
 CAT_LIVRE = "Livre"
 
 # --- Códigos estáveis usados pelo motor de risco ---
@@ -30,6 +31,7 @@ Q_SLEEP_HOURS = "sleep_hours"
 Q_MEDICATION = "medication_taken"
 Q_CRISIS = "crisis"
 Q_SIDE_EFFECTS = "side_effects"
+Q_SELF_HARM = "self_harm"
 Q_FREE_TEXT = "free_text"
 
 # Valores canônicos para respostas de múltipla escolha.
@@ -51,7 +53,9 @@ class QuestionDef:
 
 
 PSYCHIATRY_PROTOCOL_NAME = "Protocolo Psiquiátrico — Acompanhamento diário"
-PSYCHIATRY_PROTOCOL_VERSION = "1.0"
+# 1.1 — CL-1: item estruturado e obrigatório de ideação suicida/autoagressão
+# (mapeia direto para VERMELHO no motor de risco, sem depender do texto livre).
+PSYCHIATRY_PROTOCOL_VERSION = "1.1"
 PSYCHIATRY_SPECIALTY = "psiquiatria"
 
 PSYCHIATRY_QUESTIONS: list[QuestionDef] = [
@@ -111,12 +115,27 @@ PSYCHIATRY_QUESTIONS: list[QuestionDef] = [
         position=7,
         options={"choices": [YES, NO]},
     ),
+    # CL-1 — item estruturado e OBRIGATÓRIO de ideação/autoagressão. Não pode
+    # depender do texto livre (opcional): um "sim" aqui vira VERMELHO no motor de
+    # risco e alerta imediato ao médico. Textos/escala revisáveis com o consultor.
+    QuestionDef(
+        code=Q_SELF_HARM,
+        category=CAT_RISCO,
+        text=(
+            "Hoje você teve pensamentos de se machucar, de acabar com a própria "
+            "vida ou de que não valeria a pena viver?"
+        ),
+        type=QuestionType.BOOLEAN,
+        position=8,
+        required=True,
+        options={"choices": [YES, NO]},
+    ),
     QuestionDef(
         code=Q_FREE_TEXT,
         category=CAT_LIVRE,
         text="Quer contar mais alguma coisa sobre hoje?",
         type=QuestionType.FREE_TEXT,
-        position=8,
+        position=9,
         required=False,
     ),
 ]

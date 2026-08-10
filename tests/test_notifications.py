@@ -19,7 +19,7 @@ from app.services.notification_channels import (
 
 CRITICAL = {
     "mood": 1, "anxiety": 9, "slept_well": "nao", "sleep_hours": 2,
-    "medication_taken": "nao", "crisis": "sim", "side_effects": "sim",
+    "medication_taken": "nao", "crisis": "sim", "side_effects": "sim", "self_harm": "nao",
 }
 
 

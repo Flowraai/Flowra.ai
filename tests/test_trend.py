@@ -69,6 +69,7 @@ def _responses(mood: int) -> dict:
     return {
         P.Q_MOOD: mood, P.Q_ANXIETY: 2, P.Q_SLEPT_WELL: "sim", P.Q_SLEEP_HOURS: 8,
         P.Q_MEDICATION: "sim", P.Q_CRISIS: "nao", P.Q_SIDE_EFFECTS: "nao",
+        P.Q_SELF_HARM: "nao",
     }
 
 

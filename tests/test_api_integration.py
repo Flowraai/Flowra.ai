@@ -15,11 +15,11 @@ from tests.factories import insert_checkin
 
 STABLE = {
     "mood": 8, "anxiety": 2, "slept_well": "sim", "sleep_hours": 8,
-    "medication_taken": "sim", "crisis": "nao", "side_effects": "nao",
+    "medication_taken": "sim", "crisis": "nao", "side_effects": "nao", "self_harm": "nao",
 }
 CRITICAL = {
     "mood": 1, "anxiety": 9, "slept_well": "nao", "sleep_hours": 2,
-    "medication_taken": "nao", "crisis": "sim", "side_effects": "sim",
+    "medication_taken": "nao", "crisis": "sim", "side_effects": "sim", "self_harm": "nao",
 }
 
 
@@ -80,7 +80,7 @@ async def test_patient_fetches_daily_protocol(client: httpx.AsyncClient):
     ph = {"X-Patient-Token": patient["access_token"]}
     resp = await client.get("/api/v1/patient/protocol", headers=ph)
     assert resp.status_code == 200
-    assert len(resp.json()["questions"]) == 8
+    assert len(resp.json()["questions"]) == 9
 
 
 async def test_invalid_patient_token_rejected(client: httpx.AsyncClient):
@@ -124,6 +124,40 @@ async def test_critical_checkin_triggers_red_and_immediate_alert(client: httpx.A
     assert len(alerts) == 1
     assert alerts[0]["urgency"] == "immediate"
     assert alerts[0]["reasons_detail"]
+
+
+async def test_self_harm_yes_forces_red_and_alert_without_free_text(client: httpx.AsyncClient):
+    # CL-1 ponta a ponta: check-in neutro em tudo, SEM texto livre, mas com "sim"
+    # na pergunta obrigatória de ideação => VERMELHO + alerta imediato ao médico.
+    # Antes desse item, esse mesmo check-in ficava VERDE e ninguém era avisado.
+    headers = await _register_doctor(client)
+    patient = await _create_patient(client, headers)
+    ph = {"X-Patient-Token": patient["access_token"]}
+
+    resp = await client.post("/api/v1/patient/checkins", headers=ph,
+                             json={"structured_responses": {**STABLE, "self_harm": "sim"}})
+    assert resp.status_code == 201
+
+    panel = (await client.get("/api/v1/patients", headers=headers)).json()
+    assert panel[0]["current_risk"] == "red"
+    alerts = (await client.get("/api/v1/alerts", headers=headers)).json()
+    assert len(alerts) == 1
+    assert alerts[0]["urgency"] == "immediate"
+
+
+async def test_checkin_missing_self_harm_is_rejected(client: httpx.AsyncClient):
+    # A pergunta de ideação é OBRIGATÓRIA: um check-in sem ela é 422 — não pode
+    # "passar batido" e virar VERDE por omissão do campo.
+    headers = await _register_doctor(client)
+    patient = await _create_patient(client, headers)
+    ph = {"X-Patient-Token": patient["access_token"]}
+
+    incomplete = {k: v for k, v in STABLE.items() if k != "self_harm"}
+    resp = await client.post("/api/v1/patient/checkins", headers=ph,
+                             json={"structured_responses": incomplete})
+    assert resp.status_code == 422
+    codes = {e["code"] for e in resp.json()["detail"]["errors"]}
+    assert "self_harm" in codes
 
 
 async def test_panel_orders_by_risk(client: httpx.AsyncClient):

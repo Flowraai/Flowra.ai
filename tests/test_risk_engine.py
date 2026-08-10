@@ -95,6 +95,25 @@ def test_conservative_combination_takes_highest():
     assert result.level is RiskLevel.RED
 
 
+def test_self_harm_forces_red_even_when_all_else_neutral():
+    # CL-1: item estruturado e obrigatório de ideação/autoagressão. Todo o resto
+    # neutro e SEM texto livre — antes disso seria VERDE (o único sinal de suicídio
+    # vinha do texto livre, que é opcional). Agora "sim" aqui força VERMELHO.
+    r = _stable_responses()
+    r[P.Q_SELF_HARM] = P.YES
+    result = engine.assess(r, free_text=None)
+    assert result.level is RiskLevel.RED
+    assert result.category_risks[P.CAT_RISCO] == RiskLevel.RED.value
+    assert any("autoagress" in reason or "ideação" in reason for reason in result.reasons)
+
+
+def test_self_harm_no_keeps_green():
+    r = _stable_responses()
+    r[P.Q_SELF_HARM] = P.NO
+    result = engine.assess(r)
+    assert result.level is RiskLevel.GREEN
+
+
 def test_free_text_suicidal_forces_red():
     result = engine.assess(_stable_responses(), free_text="hoje eu não quero mais viver")
     assert result.level is RiskLevel.RED

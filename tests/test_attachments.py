@@ -6,7 +6,7 @@ import httpx
 
 STABLE = {
     "mood": 8, "anxiety": 2, "slept_well": "sim", "sleep_hours": 8,
-    "medication_taken": "sim", "crisis": "nao", "side_effects": "nao",
+    "medication_taken": "sim", "crisis": "nao", "side_effects": "nao", "self_harm": "nao",
 }
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"conteudo-falso-de-imagem" * 4
