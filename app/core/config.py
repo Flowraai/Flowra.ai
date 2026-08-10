@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Annotated
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -70,7 +71,7 @@ class Settings(BaseSettings):
     storage_backend: str = "local"
     storage_dir: str = "./var/uploads"
     upload_max_bytes: int = 10 * 1024 * 1024  # 10 MB
-    upload_allowed_types: list[str] = Field(
+    upload_allowed_types: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: [
             "image/jpeg", "image/png", "image/webp", "application/pdf",
             "audio/mpeg", "audio/mp4", "audio/aac", "audio/ogg", "audio/webm", "audio/wav",
@@ -114,16 +115,20 @@ class Settings(BaseSettings):
     billing_checkout_return_url: str | None = None
     # E-mails com acesso de admin da plataforma (gestão de planos; isentos do
     # paywall). CSV: admin1@x.com,admin2@x.com
-    admin_emails: list[str] = Field(default_factory=list)
+    admin_emails: Annotated[list[str], NoDecode] = Field(default_factory=list)
 
     # CORS
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    cors_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["http://localhost:3000"]
+    )
 
     # Onboarding do paciente (link do app/PWA enviado ao contato do paciente)
     patient_app_url_base: str | None = None
 
     # Notificações ao médico (alertas)
-    notification_channels: list[str] = Field(default_factory=lambda: ["log"])
+    notification_channels: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["log"]
+    )
     # SMTP (canal email)
     smtp_host: str | None = None
     smtp_port: int = 587
