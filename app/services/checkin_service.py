@@ -9,6 +9,7 @@ Fluxo (seções 4 e 6 do planejamento):
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import datetime, timezone
 
 from sqlalchemy import select
@@ -28,6 +29,8 @@ from app.services import audit
 from app.services.attachment_service import attachment_id_from_ref, load_bytes
 from app.services.notifications import dispatch_alert, doctor_notification_contacts
 from app.services.transcription import transcribe
+
+logger = logging.getLogger("flowra_care.checkin")
 
 
 def _build_engine() -> PsychiatricRiskEngine:
@@ -113,6 +116,7 @@ async def process_checkin(
     )
 
     # Alerta apenas quando o risco (pontual ou de tendência) exige atenção (🟠/🔴).
+    alert: Alert | None = None
     if combined_level.order >= RiskLevel.ORANGE.order:
         urgency = (
             AlertUrgency.IMMEDIATE
@@ -139,8 +143,25 @@ async def process_checkin(
             metadata={"level": alert.level.value, "urgency": urgency.value},
         )
 
-        email, phone = await doctor_notification_contacts(session, patient)
-        await dispatch_alert(session, alert=alert, patient=patient, email=email, phone=phone)
+    # CL-3 — durabilidade ANTES de notificar. Persistimos check-in + risco + alerta
+    # com um commit explícito e só DEPOIS notificamos. Uma falha de notificação
+    # (ex.: timeout do push da Expo) NUNCA pode derrubar a transação e fazer o
+    # check-in 🔴 e o alerta sumirem sem o médico ser avisado. (Antes, dispatch_alert
+    # rodava dentro da mesma transação: qualquer erro no envio descartava tudo.)
+    await session.commit()
+
+    if alert is not None:
+        try:
+            email, phone = await doctor_notification_contacts(session, patient)
+            await dispatch_alert(session, alert=alert, patient=patient, email=email, phone=phone)
+            await session.commit()
+        except Exception:  # noqa: BLE001 — notificar é best-effort; o alerta já está salvo
+            logger.exception(
+                "Falha ao despachar o alerta %s (paciente=%s). O alerta ESTÁ "
+                "persistido e visível no painel; apenas a notificação externa falhou.",
+                alert.id, patient.id,
+            )
+            await session.rollback()
 
     return checkin
 

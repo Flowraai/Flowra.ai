@@ -66,3 +66,44 @@ async def test_alert_pushes_to_doctor(client: httpx.AsyncClient, recorder: _Reco
                       json={"structured_responses": CRITICAL})
 
     assert "ExponentPushToken[med]" in recorder.tokens()
+
+
+class _FailingProvider:
+    """Simula um timeout/erro do provedor de push (ex.: Expo indisponível)."""
+
+    async def send(self, tokens: list[str], title: str, body: str) -> dict[str, str]:
+        raise RuntimeError("push provider timeout")
+
+
+async def test_push_failure_does_not_drop_checkin_or_alert(
+    client: httpx.AsyncClient, monkeypatch
+):
+    """CL-3: uma falha no push do alerta NÃO pode derrubar o check-in 🔴 nem o alerta.
+
+    Antes da correção, o push rodava dentro da transação do check-in: um timeout da
+    Expo fazia rollback e o check-in vermelho + o alerta sumiam sem o médico saber.
+    """
+    monkeypatch.setattr(
+        "app.services.push_service.get_push_provider", lambda: _FailingProvider()
+    )
+    headers = await _doctor(client)
+    await client.post("/api/v1/devices", headers=headers,
+                      json={"token": "ExponentPushToken[med]", "platform": "android"})
+    patient = await _patient(client, headers)
+
+    # Check-in de alto risco, com o push do médico garantido a falhar.
+    r = await client.post("/api/v1/patient/checkins",
+                          headers={"X-Patient-Token": patient["access_token"]},
+                          json={"structured_responses": CRITICAL})
+    # O paciente recebe sucesso — a falha de notificação não vaza para ele.
+    assert r.status_code == 201
+
+    # O check-in foi persistido (o médico o vê no painel).
+    checkins = (await client.get(
+        f"/api/v1/patients/{patient['id']}/checkins", headers=headers)).json()
+    assert len(checkins) == 1
+
+    # E o alerta de alto risco continua lá para o médico revisar.
+    alerts = (await client.get("/api/v1/alerts", headers=headers)).json()
+    assert len(alerts) >= 1
+    assert any(a["level"] in ("orange", "red") for a in alerts)

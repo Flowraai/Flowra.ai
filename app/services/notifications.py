@@ -118,7 +118,12 @@ async def dispatch_alert(
         records.append(notification)
 
     # Push ao médico (além dos canais), para quem tiver device registrado.
-    await push_to_doctor(session, patient.doctor_id, subject, body)
+    # CL-3 — o push é best-effort: uma falha (ex.: timeout da Expo) não pode
+    # abortar o dispatch nem impedir o registro das notificações e da auditoria.
+    try:
+        await push_to_doctor(session, patient.doctor_id, subject, body)
+    except Exception as exc:  # noqa: BLE001 — falha de push não quebra o alerta
+        logger.error("Falha ao enviar push ao médico (paciente=%s): %s", patient.id, exc)
 
     await session.flush()
     await audit.record(
