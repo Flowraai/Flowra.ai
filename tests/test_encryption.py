@@ -55,6 +55,8 @@ async def test_sensitive_fields_encrypted_at_rest(client: httpx.AsyncClient, mon
     await client.post("/api/v1/patient/checkins", headers=ph,
                       json={"structured_responses": CRITICAL,
                             "free_text": "não aguento mais, quero me matar"})
+    await client.post(f"/api/v1/patients/{patient['id']}/prescriptions", headers=headers,
+                      json={"items": [{"name": "Sertralina", "dose": "50mg"}]})
 
     # No banco, o conteúdo sensível está cifrado (prefixo enc:), sem texto em claro.
     async with AsyncSessionLocal() as session:
@@ -71,6 +73,10 @@ async def test_sensitive_fields_encrypted_at_rest(client: httpx.AsyncClient, mon
         reasons_raw = await session.scalar(
             text("SELECT risk_reasons FROM checkins WHERE patient_id = :id"),
             {"id": patient["id"]})
+        # Conteúdo clínico de receita (itens de medicação) também cifrado.
+        items_raw = await session.scalar(
+            text("SELECT items FROM prescriptions WHERE patient_id = :id"),
+            {"id": patient["id"]})
 
     assert name_raw.startswith("enc:v1:") and "João" not in name_raw
     assert contact_raw.startswith("enc:v1:") and "joao@ex.com" not in contact_raw
@@ -78,6 +84,7 @@ async def test_sensitive_fields_encrypted_at_rest(client: httpx.AsyncClient, mon
     # LGPD-1: humor/flag de crise e os motivos do risco não vazam em claro no dump.
     assert structured_raw.startswith("enc:v1:") and "mood" not in structured_raw
     assert reasons_raw.startswith("enc:v1:")
+    assert items_raw.startswith("enc:v1:") and "Sertralina" not in items_raw
 
     # Pela API (ORM decifra de forma transparente) o valor volta em claro.
     got = (await client.get(f"/api/v1/patients/{patient['id']}", headers=headers)).json()

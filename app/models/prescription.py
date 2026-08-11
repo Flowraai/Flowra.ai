@@ -9,11 +9,11 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Text
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDMixin
+from app.db.types import EncryptedJSON, EncryptedText
 from app.models.enums import PrescriptionStatus
 
 
@@ -32,9 +32,9 @@ class Prescription(UUIDMixin, TimestampMixin, Base):
         PgUUID(as_uuid=True), ForeignKey("doctors.id", ondelete="CASCADE"),
         index=True, nullable=False,
     )
-    # Itens: [{"name", "dose", "instructions"}].
-    items: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Itens: [{"name", "dose", "instructions"}]. Conteúdo clínico — cifrado em repouso.
+    items: Mapped[list] = mapped_column(EncryptedJSON, default=list, nullable=False)
+    notes: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)
     status: Mapped[PrescriptionStatus] = mapped_column(
         Enum(PrescriptionStatus, name="prescription_status"),
         default=PrescriptionStatus.DRAFT, nullable=False,
