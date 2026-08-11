@@ -149,6 +149,25 @@ async def test_checkin_without_transcription_keeps_audio_only(client: httpx.Asyn
     assert checkins[0]["audio_url"] == up.json()["url"]
 
 
+def test_content_disposition_sanitizes_malicious_filename():
+    # Nome de arquivo (não confiável) com CR/LF e aspas não pode injetar cabeçalho
+    # nem quebrar o Content-Disposition.
+    from app.api.routes.attachments import _content_disposition
+
+    header = _content_disposition('evil"\r\nSet-Cookie: x=1.png')
+    assert "\r" not in header and "\n" not in header
+    fallback = header.split('filename="', 1)[1].split('"', 1)[0]
+    assert '"' not in fallback  # aspas não escapam do valor entre aspas
+
+
+def test_content_disposition_none_and_unicode():
+    from app.api.routes.attachments import _content_disposition
+
+    assert _content_disposition(None) == "inline"
+    # nome com acento preserva o original via RFC 5987 (filename*)
+    assert "filename*=UTF-8''" in _content_disposition("laudo médico.pdf")
+
+
 async def test_untranscribed_audio_escalates_to_yellow(client: httpx.AsyncClient):
     # CL-2: check-in neutro (STABLE) + áudio que não foi transcrito (provider 'none')
     # NÃO pode virar VERDE — sobe para AMARELO com pedido de revisão manual, para o

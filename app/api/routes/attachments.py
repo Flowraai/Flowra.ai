@@ -7,6 +7,8 @@ para o médico responsável por ele (LGPD — arquivos clínicos são sensíveis
 
 from __future__ import annotations
 
+import re
+import urllib.parse
 import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
@@ -122,10 +124,23 @@ async def download_attachment(
     data = load_bytes(attachment)
     if data is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conteúdo indisponível.")
-    disposition = "inline"
-    if attachment.filename:
-        disposition = f'inline; filename="{attachment.filename}"'
     return Response(
         content=data, media_type=attachment.content_type,
-        headers={"Content-Disposition": disposition},
+        headers={"Content-Disposition": _content_disposition(attachment.filename)},
     )
+
+
+def _content_disposition(filename: str | None) -> str:
+    """Cabeçalho Content-Disposition seguro para o nome do arquivo.
+
+    O filename vem do upload (não confiável): sanitizamos para não injetar
+    cabeçalhos (CR/LF) nem quebrar o header (aspas/barra). O fallback ASCII cobre
+    clientes antigos; `filename*` (RFC 5987) preserva acentos/unicode.
+    """
+    if not filename:
+        return "inline"
+    clean = filename.replace("\r", "").replace("\n", "").strip()
+    ascii_fallback = re.sub(r'[^\x20-\x7e]', "_", clean).replace('"', "").replace("\\", "").strip()
+    ascii_fallback = ascii_fallback or "arquivo"
+    utf8 = urllib.parse.quote(clean, safe="")
+    return f"inline; filename=\"{ascii_fallback}\"; filename*=UTF-8''{utf8}"

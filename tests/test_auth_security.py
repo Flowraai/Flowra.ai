@@ -42,6 +42,28 @@ async def test_login_is_rate_limited(client: httpx.AsyncClient):
     assert "Retry-After" in blocked.headers
 
 
+async def test_login_unknown_email_is_401(client: httpx.AsyncClient):
+    # E-mail inexistente responde 401 igual a senha errada (e o tempo é equalizado
+    # por dentro com um bcrypt "de mentira" — anti-enumeração por timing).
+    r = await client.post("/api/v1/auth/login",
+                          json={"email": "ninguem@x.com", "password": "qualquercoisa"})
+    assert r.status_code == 401
+
+
+async def test_reset_password_is_rate_limited(client: httpx.AsyncClient):
+    await _register(client)
+    limit = settings.password_reset_rate_limit_attempts
+    # tentativas com token inválido até o limite: todas 400 (mas contam no limite)
+    for _ in range(limit):
+        r = await client.post("/api/v1/auth/reset-password",
+                              json={"token": "invalido", "new_password": "novasenha123"})
+        assert r.status_code == 400
+    # a próxima é bloqueada — impede brute-force do token de reset
+    blocked = await client.post("/api/v1/auth/reset-password",
+                                json={"token": "invalido", "new_password": "novasenha123"})
+    assert blocked.status_code == 429
+
+
 # ---------- Refresh token ----------
 async def test_refresh_rotates_and_old_token_is_revoked(client: httpx.AsyncClient):
     body = await _register(client)

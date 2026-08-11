@@ -46,6 +46,11 @@ _reset_limit = rate_limit(
     "password_reset",
 )
 
+# Hash "de mentira" com o mesmo custo de bcrypt de um login real. Usado quando o
+# e-mail não existe, para o tempo de resposta não revelar se a conta existe
+# (anti-enumeração por timing).
+_DUMMY_PASSWORD_HASH = hash_password("timing-equalization-placeholder")
+
 
 @router.post(
     "/register",
@@ -99,7 +104,14 @@ async def register_doctor(
 async def login(payload: LoginRequest, session: AsyncSession = Depends(get_db)) -> TokenPair:
     result = await session.execute(select(User).where(User.email == payload.email.lower()))
     user = result.scalar_one_or_none()
-    if user is None or not verify_password(payload.password, user.hashed_password):
+    if user is None:
+        # Gasta o mesmo bcrypt de um usuário real para não vazar, pelo tempo de
+        # resposta, se o e-mail existe.
+        verify_password(payload.password, _DUMMY_PASSWORD_HASH)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="E-mail ou senha inválidos."
+        )
+    if not verify_password(payload.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="E-mail ou senha inválidos."
         )
@@ -156,7 +168,11 @@ async def forgot_password(
     return generic
 
 
-@router.post("/reset-password", response_model=MessageResponse)
+@router.post(
+    "/reset-password",
+    response_model=MessageResponse,
+    dependencies=[Depends(_reset_limit)],
+)
 async def reset_password(
     payload: ResetPasswordRequest, session: AsyncSession = Depends(get_db)
 ) -> MessageResponse:
