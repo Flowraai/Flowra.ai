@@ -90,7 +90,7 @@ class Settings(BaseSettings):
 
     # DPA (contrato de tratamento de dados) com o provedor de IA externo.
     # Análise/resumo por LLM e transcrição enviam contexto clínico a terceiros;
-    # em produção, só habilitamos se o DPA foi reconhecido (guardrail LGPD).
+    # só habilitamos com o DPA reconhecido — em QUALQUER ambiente (guardrail LGPD-4).
     ai_dpa_acknowledged: bool = False
 
     # Módulo de IA (análise do texto/áudio livre)
@@ -180,10 +180,12 @@ class Settings(BaseSettings):
     def external_ai_allowed(self) -> bool:
         """Envio de contexto clínico a provedor de IA externo é permitido?
 
-        Em produção, exige o reconhecimento do DPA (guardrail LGPD). Fora de
-        produção, liberado para desenvolvimento/testes.
+        LGPD-4 — exige o reconhecimento do DPA em QUALQUER ambiente (não só
+        produção): um staging/dev com dado real não pode vazar texto/áudio do
+        paciente para a IA externa sem o contrato de tratamento de dados. Sem
+        DPA, o sistema cai no analisador determinístico local (nunca externo).
         """
-        return self.ai_dpa_acknowledged or not self.is_production
+        return self.ai_dpa_acknowledged
 
     @property
     def llm_available(self) -> bool:

@@ -28,7 +28,9 @@ class FakeLLM(LLMFreeTextAnalyzer):
 
 @pytest.fixture(autouse=True)
 def _enable_llm(monkeypatch):
+    # LLM externo exige chave + DPA reconhecido (LGPD-4) em qualquer ambiente.
     monkeypatch.setattr(settings, "llm_api_key", "test-key")
+    monkeypatch.setattr(settings, "ai_dpa_acknowledged", True)
 
 
 def test_llm_red_is_mapped():

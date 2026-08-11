@@ -125,6 +125,15 @@ def test_external_ai_blocked_in_production_without_dpa():
     assert s2.llm_available is True
 
 
+def test_external_ai_requires_dpa_in_any_environment():
+    # LGPD-4: fora de produção também exige DPA — um staging/dev com dado real não
+    # pode vazar texto/áudio do paciente para a IA externa sem contrato.
+    dev_no_dpa = Settings(environment="development", ai_dpa_acknowledged=False)
+    assert dev_no_dpa.external_ai_allowed is False
+    dev_with_dpa = Settings(environment="development", ai_dpa_acknowledged=True)
+    assert dev_with_dpa.external_ai_allowed is True
+
+
 def test_docs_disabled_in_production():
     assert _prod().docs_enabled is False
     assert Settings(environment="development").docs_enabled is True
