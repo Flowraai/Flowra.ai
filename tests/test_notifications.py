@@ -45,6 +45,16 @@ async def test_log_channel_always_sends():
     await LogChannel().send(target="dr@x.com", subject="s", body="b")  # não levanta
 
 
+async def test_log_channel_masks_contact_pii(caplog):
+    import logging as _logging
+
+    with caplog.at_level(_logging.WARNING, logger="flowra_care.notifications"):
+        await LogChannel().send(
+            target="medico@clinica.com", subject="[Flowra Care] Alerta", body="x")
+    assert "medico@clinica.com" not in caplog.text  # e-mail completo não vaza
+    assert "Alerta" in caplog.text  # o subject (sem PII/dado clínico) segue útil
+
+
 async def test_email_channel_requires_smtp(monkeypatch):
     monkeypatch.setattr(settings, "smtp_host", None)
     with pytest.raises(RuntimeError):

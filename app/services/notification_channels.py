@@ -20,6 +20,15 @@ from app.models.enums import NotificationChannel
 logger = logging.getLogger("flowra_care.notifications")
 
 
+def _mask_target(target: str) -> str:
+    """Mascara o contato (e-mail/telefone) para não vazar PII no log."""
+    if "@" in target:
+        local, _, domain = target.partition("@")
+        return f"{local[:2]}***@{domain}"
+    tail = target[-2:] if len(target) >= 2 else ""
+    return f"***{tail}"
+
+
 class Channel(Protocol):
     channel_type: NotificationChannel
 
@@ -32,7 +41,8 @@ class LogChannel:
     channel_type = NotificationChannel.LOG
 
     async def send(self, *, target: str, subject: str, body: str) -> None:
-        logger.warning("[NOTIFICAÇÃO] para=%s | %s", target, subject)
+        # O contato é mascarado (PII); o subject já é minimizado (sem dado clínico).
+        logger.warning("[NOTIFICAÇÃO] para=%s | %s", _mask_target(target), subject)
 
 
 class EmailChannel:
