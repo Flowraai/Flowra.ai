@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     # confiável (loopback/rede privada — a API só é acessível via proxy nesta
     # implantação). Desligue apenas se a API for exposta sem proxy à frente.
     rate_limit_trust_forwarded_for: bool = True
+    # SEC-2 — backend do rate limit. Sem REDIS_URL, o limite é por processo (use
+    # 1 worker). Com REDIS_URL, o estado é compartilhado e atômico entre workers
+    # (permite WEB_CONCURRENCY > 1). Ex.: redis://redis:6379/0
+    redis_url: str | None = None
 
     # Risco por tendência e não-adesão
     risk_trend_window: int = 5          # nº de check-ins recentes considerados

@@ -22,10 +22,22 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    # Rate limit compartilhado (SEC-2). Estado efêmero — sem volume.
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   api:
     build: .
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     env_file:
       - .env
@@ -35,6 +47,9 @@ services:
       LOG_FORMAT: json
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-flowra}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-flowra_care}
       STORAGE_DIR: /data/uploads
+      # SEC-2 — rate limit compartilhado entre workers; permite WEB_CONCURRENCY>1.
+      REDIS_URL: redis://redis:6379/0
+      WEB_CONCURRENCY: "2"
       # Aplica migrações e popula o protocolo psiquiátrico no boot (idempotente).
       RUN_MIGRATIONS: "true"
       SEED_PROTOCOL: "true"

@@ -23,6 +23,18 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      # SEC-2 — Redis só para o teste dedicado do rate limiter compartilhado.
+      # NÃO definimos REDIS_URL no env: o app segue em memória nos testes; o
+      # test_redis_rate_limit conecta em localhost:6379 diretamente.
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     env:
       DATABASE_URL: postgresql+asyncpg://flowra:flowra@localhost:5432/flowra_test
