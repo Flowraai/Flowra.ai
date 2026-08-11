@@ -13,7 +13,7 @@ function jsonRes(data: unknown) {
 }
 
 function mockApi() {
-  global.fetch = vi.fn((input: RequestInfo | URL) => {
+  globalThis.fetch = vi.fn((input: RequestInfo | URL) => {
     const u = String(input);
     if (u.includes("/billing/subscription")) {
       return jsonRes({ status: "pending", plan: null, current_period_end: null, trial_end: null, card_last4: null, checkout_url: null });
