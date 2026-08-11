@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_format: str = "json"  # json (produção) | text (dev)
 
+    # Fuso da fronteira do dia (check-in "de hoje" / um por dia). Usar UTC puro
+    # adiantava a virada do dia para check-ins noturnos no BR (UTC-3).
+    checkin_timezone: str = "America/Sao_Paulo"
+
     # Banco de dados
     database_url: str = "postgresql+asyncpg://flowra:flowra@localhost:5432/flowra_care"
 

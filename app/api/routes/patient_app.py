@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import exists, select
@@ -11,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_patient
+from app.core.config import settings
 from app.db.session import get_db
 from app.models.appointment import Appointment
 from app.models.checkin import CheckIn
@@ -51,8 +53,13 @@ router = APIRouter(prefix="/patient", tags=["patient-app"])
 
 
 def _start_of_day_utc() -> datetime:
-    now = datetime.now(timezone.utc)
-    return now.replace(hour=0, minute=0, second=0, microsecond=0)
+    """Início do dia CORRENTE no fuso configurado, convertido para UTC (o
+    created_at é gravado em UTC). Usar UTC puro adiantava a virada do dia para
+    check-ins noturnos no BR (UTC-3): à 01h de Brasília o dia já era "outro" em
+    UTC, contando/bloqueando errado o "um check-in por dia"."""
+    tz = ZoneInfo(settings.checkin_timezone)
+    start_local = datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0)
+    return start_local.astimezone(timezone.utc)
 
 
 @router.get("/today", response_model=PatientToday)

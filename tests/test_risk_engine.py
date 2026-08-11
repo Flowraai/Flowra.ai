@@ -86,6 +86,21 @@ def test_high_anxiety_is_yellow():
     assert result.level is RiskLevel.YELLOW
 
 
+def test_very_high_anxiety_is_orange():
+    r = _stable_responses()
+    r[P.Q_ANXIETY] = 9
+    result = engine.assess(r)
+    assert result.level is RiskLevel.ORANGE
+
+
+def test_max_anxiety_is_red():
+    # Antes, ansiedade 10/10 nunca passava de laranja. Agora o máximo vira VERMELHO.
+    r = _stable_responses()
+    r[P.Q_ANXIETY] = 10
+    result = engine.assess(r)
+    assert result.level is RiskLevel.RED
+
+
 def test_conservative_combination_takes_highest():
     # Ansiedade elevada (amarelo) + crise (vermelho) => vermelho.
     r = _stable_responses()

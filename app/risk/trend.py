@@ -82,11 +82,16 @@ def assess_trend(
     if streak >= t.sustained_count:
         escalate(RiskLevel.ORANGE, f"risco elevado sustentado ({streak} check-ins seguidos)")
 
-    # 2. Humor em queda estrita nas últimas leituras disponíveis.
+    # 2. Humor em queda nas últimas leituras: queda LÍQUIDA (o mais recente abaixo
+    #    do mais antigo da janela) + trajetória não-crescente. Não exige queda
+    #    estrita a cada passo — assim um padrão como 8→3→3 (piora que se sustenta
+    #    baixa) também dispara, e um humor plano/subindo não.
     moods = [m for m in (_to_number(p.responses.get(P.Q_MOOD)) for p in points) if m is not None]
     recent_moods = moods[: t.declining_moods]  # mais recente -> mais antigo
-    if len(recent_moods) >= t.declining_moods and all(
-        recent_moods[i] < recent_moods[i + 1] for i in range(len(recent_moods) - 1)
+    if (
+        len(recent_moods) >= t.declining_moods
+        and recent_moods[0] < recent_moods[-1]
+        and all(recent_moods[i] <= recent_moods[i + 1] for i in range(len(recent_moods) - 1))
     ):
         escalate(
             RiskLevel.ORANGE,

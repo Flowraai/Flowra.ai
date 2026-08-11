@@ -27,6 +27,7 @@ class RiskThresholds:
     mood_orange_at_or_below: int = 4
     mood_yellow_at_or_below: int = 5
     # Ansiedade (0-10, maior é pior)
+    anxiety_red_at_or_above: int = 10
     anxiety_orange_at_or_above: int = 9
     anxiety_yellow_at_or_above: int = 6
     # Sono (horas)
@@ -127,7 +128,9 @@ class PsychiatricRiskEngine:
         # --- Ansiedade ---
         anxiety = _as_number(r.get(P.Q_ANXIETY))
         if anxiety is not None:
-            if anxiety >= self.t.anxiety_orange_at_or_above:
+            if anxiety >= self.t.anxiety_red_at_or_above:
+                contribute(P.Q_ANXIETY, RiskLevel.RED, f"ansiedade máxima ({anxiety:g}/10)")
+            elif anxiety >= self.t.anxiety_orange_at_or_above:
                 contribute(P.Q_ANXIETY, RiskLevel.ORANGE, f"ansiedade muito alta ({anxiety:g}/10)")
             elif anxiety >= self.t.anxiety_yellow_at_or_above:
                 contribute(P.Q_ANXIETY, RiskLevel.YELLOW, f"ansiedade elevada ({anxiety:g}/10)")

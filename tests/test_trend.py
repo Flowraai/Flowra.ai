@@ -44,6 +44,21 @@ def test_declining_mood_is_orange():
     assert any("queda" in r for r in result.reasons)
 
 
+def test_sustained_low_after_drop_is_orange():
+    # 8 -> 3 -> 3: não é queda ESTRITA a cada passo (o antigo perdia isso), mas há
+    # queda líquida com trajetória não-crescente (piora que se sustenta baixa).
+    pts = [_p(RiskLevel.GREEN, mood=3), _p(RiskLevel.GREEN, mood=3), _p(RiskLevel.GREEN, mood=8)]
+    result = assess_trend(pts)
+    assert result.level is RiskLevel.ORANGE
+    assert any("queda" in r for r in result.reasons)
+
+
+def test_rising_mood_is_not_a_decline():
+    # 3 -> 6 -> 8 (melhorando): não deve acusar queda de humor.
+    pts = [_p(RiskLevel.GREEN, mood=8), _p(RiskLevel.GREEN, mood=6), _p(RiskLevel.GREEN, mood=3)]
+    assert not any("queda" in r for r in assess_trend(pts).reasons)
+
+
 def test_repeated_nonadherence_is_orange():
     pts = [
         _p(RiskLevel.GREEN, medication=P.NO),
