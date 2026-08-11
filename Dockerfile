@@ -25,11 +25,12 @@ ENV PYTHONUNBUFFERED=1 \
     VIRTUAL_ENV=/opt/venv \
     PATH="/opt/venv/bin:$PATH" \
     LOG_FORMAT=json \
-    STORAGE_DIR=/data/uploads \
-    # SEC-2 — o rate limit é em memória POR processo; com N workers o limite
-    # efetivo vira N×. Enquanto não houver um backend compartilhado (Redis),
-    # mantenha 1 worker para o limite ficar consistente. Suba com Redis + N>1.
-    WEB_CONCURRENCY=1
+    STORAGE_DIR=/data/uploads
+
+# SEC-2 — o rate limit é em memória POR processo; com N workers o limite efetivo
+# vira N×. Sem um backend compartilhado (Redis), mantenha 1 worker para o limite
+# ficar consistente. Suba com Redis + N>1.
+ENV WEB_CONCURRENCY=1
 
 # Usuário sem privilégios + diretório de dados (uploads) com posse correta.
 RUN useradd --create-home --uid 10001 flowra \

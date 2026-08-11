@@ -173,6 +173,7 @@ jobs:
             -e DEBUG=false \
             -e DATABASE_URL=postgresql+asyncpg://flowra:flowra@localhost:5432/flowra_prod \
             -e JWT_SECRET_KEY=ci-strong-secret-not-the-default-value \
+            -e ENCRYPTION_KEY="$(openssl rand -base64 32)" \
             -e SEED_PROTOCOL=true \
             flowra-care:ci
 
