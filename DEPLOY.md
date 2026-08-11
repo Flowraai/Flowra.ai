@@ -78,7 +78,13 @@ docker compose -f docker-compose.prod.yml logs -f api caddy
 
 ```bash
 curl -fsS https://$DOMAIN/healthz && echo            # painel (nginx) ok
-curl -fsS https://$DOMAIN/api/v1/health/ready && echo # API + banco ok
+
+# API + banco: a health fica em /health/ready (raiz da API, NÃO sob /api) e a API
+# não é publicada no host — verifique pelo próprio container:
+docker compose -f docker-compose.prod.yml exec -T api \
+  python -c "import urllib.request;print(urllib.request.urlopen('http://127.0.0.1:8000/health/ready').read().decode())"
+# esperado: {"status": "ready", "database": "reachable"}
+# (ou simplesmente `docker compose -f docker-compose.prod.yml ps` → api/db/web "healthy")
 ```
 
 Abra `https://SEU_DOMINIO` no navegador → tela de login do painel.
