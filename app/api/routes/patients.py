@@ -164,7 +164,17 @@ async def get_patient(
     doctor: Doctor = Depends(get_current_doctor),
     session: AsyncSession = Depends(get_db),
 ) -> Patient:
-    return await _get_owned_patient(session, doctor, patient_id)
+    patient = await _get_owned_patient(session, doctor, patient_id)
+    # LGPD-5 — accountability: registra QUEM abriu o prontuário de QUEM. Sem
+    # conteúdo clínico (só IDs), como o resto da auditoria.
+    await audit.record(
+        session,
+        action=AuditAction.PATIENT_VIEWED,
+        actor=f"doctor:{doctor.id}",
+        entity_type="patient",
+        entity_id=patient_id,
+    )
+    return patient
 
 
 @router.patch("/{patient_id}", response_model=PatientRead)

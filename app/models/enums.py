@@ -167,3 +167,4 @@ class AuditAction(str, enum.Enum):
     PATIENT_ONBOARDING_SENT = "patient_onboarding_sent"
     PATIENT_EXPORTED = "patient_exported"
     PATIENT_DELETED = "patient_deleted"
+    PATIENT_VIEWED = "patient_viewed"

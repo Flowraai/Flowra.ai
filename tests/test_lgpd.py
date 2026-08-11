@@ -115,6 +115,24 @@ async def test_delete_removes_attachment_bytes_from_storage(client: httpx.AsyncC
     assert get_storage_backend().load(key) is None
 
 
+async def test_viewing_patient_record_is_audited(client: httpx.AsyncClient):
+    # LGPD-5 — abrir o prontuário registra quem viu quem (accountability), sem
+    # conteúdo clínico (só IDs).
+    headers = await _register(client)
+    patient = await _create_patient_with_checkin(client, headers)
+    pid = uuid.UUID(patient["id"])
+
+    r = await client.get(f"/api/v1/patients/{patient['id']}", headers=headers)
+    assert r.status_code == 200
+
+    async with AsyncSessionLocal() as session:
+        viewed = await session.scalar(
+            select(func.count()).select_from(AuditLog)
+            .where(AuditLog.action == AuditAction.PATIENT_VIEWED,
+                   AuditLog.entity_id == pid))
+    assert viewed >= 1
+
+
 async def test_cannot_delete_other_doctors_patient(client: httpx.AsyncClient):
     headers_a = await _register(client)
     patient = await _create_patient_with_checkin(client, headers_a)
