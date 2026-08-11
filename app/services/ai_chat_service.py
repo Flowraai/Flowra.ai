@@ -14,7 +14,7 @@ from app.models.alert import Alert
 from app.models.enums import AlertUrgency, AuditAction, MessageSender, MessageThread, RiskLevel
 from app.models.message import Message
 from app.models.patient import Patient
-from app.risk.free_text import get_free_text_analyzer
+from app.risk.free_text import analyzer_for
 from app.services import audit
 from app.services.llm import chat_complete
 from app.services.notifications import dispatch_alert, doctor_notification_contacts
@@ -61,14 +61,18 @@ async def patient_ai_reply(session: AsyncSession, patient: Patient, text: str) -
         sender=MessageSender.PATIENT, thread=MessageThread.AI, body=text,
     ))
 
-    result = await asyncio.to_thread(get_free_text_analyzer().analyze, text)
+    # LGPD-4 — a análise de risco e a resposta conversacional só usam IA externa
+    # com o consentimento de IA do paciente; senão, ficam no determinístico local.
+    result = await asyncio.to_thread(analyzer_for(patient.ai_consent).analyze, text)
     if result.level.order >= RiskLevel.ORANGE.order:
         await _alert_doctor(session, patient, result.level, result.signals)
 
     if result.level is RiskLevel.RED:
         reply = _SAFETY
-    else:
+    elif patient.ai_consent:
         reply = await chat_complete(_SYSTEM, text) or _FALLBACK
+    else:
+        reply = _FALLBACK
 
     ai_message = Message(
         tenant_id=patient.tenant_id, patient_id=patient.id, doctor_id=patient.doctor_id,

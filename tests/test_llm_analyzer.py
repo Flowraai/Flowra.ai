@@ -9,6 +9,7 @@ from app.models.enums import RiskLevel
 from app.risk.free_text import (
     KeywordFreeTextAnalyzer,
     LLMFreeTextAnalyzer,
+    analyzer_for,
     get_free_text_analyzer,
 )
 
@@ -88,3 +89,10 @@ def test_factory_selects_llm_when_configured(monkeypatch):
 def test_factory_defaults_to_keyword(monkeypatch):
     monkeypatch.setattr(settings, "free_text_analyzer", "keyword")
     assert isinstance(get_free_text_analyzer(), KeywordFreeTextAnalyzer)
+
+
+def test_analyzer_for_gates_external_ai_on_consent(monkeypatch):
+    # LGPD-4: mesmo com LLM configurado, sem consentimento do paciente usa o local.
+    monkeypatch.setattr(settings, "free_text_analyzer", "llm")
+    assert isinstance(analyzer_for(True), LLMFreeTextAnalyzer)
+    assert isinstance(analyzer_for(False), KeywordFreeTextAnalyzer)

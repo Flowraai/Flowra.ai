@@ -115,6 +115,23 @@ async def test_delete_removes_attachment_bytes_from_storage(client: httpx.AsyncC
     assert get_storage_backend().load(key) is None
 
 
+async def test_ai_consent_defaults_off_and_is_settable(client: httpx.AsyncClient):
+    # LGPD-4 — consentimento de IA externa é separado, começa DESLIGADO e o médico
+    # registra/revoga. Sem ele, o sistema nunca manda texto/áudio a terceiros.
+    headers = await _register(client)
+    p = (await client.post("/api/v1/patients", headers=headers,
+                           json={"name": "João", "consent_given": True})).json()
+    assert p["ai_consent"] is False  # off por padrão
+
+    on = await client.patch(f"/api/v1/patients/{p['id']}", headers=headers,
+                            json={"ai_consent": True})
+    assert on.status_code == 200 and on.json()["ai_consent"] is True
+
+    off = await client.patch(f"/api/v1/patients/{p['id']}", headers=headers,
+                             json={"ai_consent": False})
+    assert off.json()["ai_consent"] is False
+
+
 async def test_viewing_patient_record_is_audited(client: httpx.AsyncClient):
     # LGPD-5 — abrir o prontuário registra quem viu quem (accountability), sem
     # conteúdo clínico (só IDs).

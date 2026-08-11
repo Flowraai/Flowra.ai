@@ -91,6 +91,7 @@ async def create_patient(
         access_token_hash=hash_patient_token(token),
         consent_given_at=datetime.now(timezone.utc),
         consent_version=payload.consent_version,
+        ai_consent_at=datetime.now(timezone.utc) if payload.ai_consent else None,
     )
     session.add(patient)
     await session.flush()
@@ -195,6 +196,9 @@ async def update_patient(
         patient.birth_date = data["birth_date"]
     if data.get("is_active") is not None:
         patient.is_active = data["is_active"]
+    if data.get("ai_consent") is not None:
+        # LGPD-4 — registra/revoga o consentimento de IA externa do paciente.
+        patient.ai_consent_at = datetime.now(timezone.utc) if data["ai_consent"] else None
 
     await audit.record(
         session,

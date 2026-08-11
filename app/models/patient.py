@@ -71,8 +71,19 @@ class Patient(UUIDMixin, TimestampMixin, Base):
         DateTime(timezone=True), nullable=True
     )
     consent_version: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # LGPD-4 — consentimento ESPECÍFICO para envio de texto/áudio à IA externa
+    # (finalidade distinta do consentimento geral). Sem isto, o sistema usa só o
+    # analisador local, nunca manda dado do paciente a terceiros.
+    ai_consent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    @property
+    def ai_consent(self) -> bool:
+        """Paciente consentiu com o uso de IA externa (texto/áudio a terceiros)?"""
+        return self.ai_consent_at is not None
 
     doctor: Mapped["Doctor"] = relationship(back_populates="patients")
     active_protocol: Mapped["Protocol | None"] = relationship()

@@ -171,3 +171,12 @@ def get_free_text_analyzer() -> FreeTextAnalyzer:
     if settings.free_text_analyzer == "llm" and settings.llm_available:
         return LLMFreeTextAnalyzer()
     return KeywordFreeTextAnalyzer()
+
+
+def analyzer_for(ai_consent: bool) -> FreeTextAnalyzer:
+    """LGPD-4 — o analisador externo (LLM) só entra com o consentimento de IA do
+    paciente; senão usa o determinístico local, que NUNCA envia texto a terceiros.
+    A análise de risco por palavras-chave continua garantida em ambos os casos."""
+    if ai_consent:
+        return get_free_text_analyzer()
+    return KeywordFreeTextAnalyzer()

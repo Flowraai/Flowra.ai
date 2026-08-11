@@ -113,6 +113,9 @@ async def test_checkin_audio_is_transcribed_and_feeds_risk(client: httpx.AsyncCl
     monkeypatch.setattr("app.services.checkin_service.transcribe", _fake_transcribe)
     headers = await _doctor(client)
     patient = await _patient(client, headers)
+    # LGPD-4 — transcrição (IA externa) só com consentimento de IA do paciente.
+    await client.patch(f"/api/v1/patients/{patient['id']}", headers=headers,
+                       json={"ai_consent": True})
     ph = {"X-Patient-Token": patient["access_token"]}
 
     up = await client.post("/api/v1/patient/attachments", headers=ph,

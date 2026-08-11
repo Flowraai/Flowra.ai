@@ -58,6 +58,9 @@ async def test_ai_chat_llm_reply(client: httpx.AsyncClient, monkeypatch):
     monkeypatch.setattr("app.services.ai_chat_service.chat_complete", _fake)
     headers = await _doctor(client)
     patient = await _patient(client, headers)
+    # LGPD-4 — resposta conversacional via IA externa só com consentimento de IA.
+    await client.patch(f"/api/v1/patients/{patient['id']}", headers=headers,
+                       json={"ai_consent": True})
     ph = {"X-Patient-Token": patient["access_token"]}
     r = await client.post("/api/v1/patient/ai-chat", headers=ph, json={"body": "olá"})
     assert r.json()["body"] == "Que bom te ver por aqui! Como posso ajudar?"

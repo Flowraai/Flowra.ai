@@ -21,6 +21,12 @@ class PatientCreate(BaseModel):
         description="Consentimento LGPD explícito do paciente para monitoramento."
     )
     consent_version: str | None = Field(default=None, max_length=30)
+    # LGPD-4 — consentimento SEPARADO para IA externa (texto/áudio a terceiros).
+    # Default False: sem opt-in, o sistema usa só o analisador local.
+    ai_consent: bool = Field(
+        default=False,
+        description="Consentimento do paciente para uso de IA externa (opcional).",
+    )
 
 
 class PatientUpdate(BaseModel):
@@ -28,6 +34,7 @@ class PatientUpdate(BaseModel):
     contact: str | None = Field(default=None, max_length=255)
     birth_date: datetime | None = None
     is_active: bool | None = None
+    ai_consent: bool | None = None
 
 
 class PatientToday(BaseModel):
@@ -51,6 +58,7 @@ class PatientRead(BaseModel):
     current_risk: RiskLevel
     last_checkin_at: datetime | None = None
     consent_given_at: datetime | None = None
+    ai_consent: bool = False
     is_active: bool
     created_at: datetime
 

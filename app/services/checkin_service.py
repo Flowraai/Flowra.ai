@@ -21,7 +21,7 @@ from app.models.checkin import CheckIn
 from app.models.enums import AlertUrgency, AuditAction, RiskLevel
 from app.models.patient import Patient
 from app.risk.engine import PsychiatricRiskEngine
-from app.risk.free_text import get_free_text_analyzer
+from app.risk.free_text import analyzer_for
 from app.risk.trend import CheckInPoint, assess_trend
 from app.models.attachment import Attachment
 from app.schemas.checkin import CheckInCreate
@@ -33,12 +33,17 @@ from app.services.transcription import transcribe
 logger = logging.getLogger("flowra_care.checkin")
 
 
-def _build_engine() -> PsychiatricRiskEngine:
-    return PsychiatricRiskEngine(free_text_analyzer=get_free_text_analyzer())
+def _build_engine(ai_consent: bool) -> PsychiatricRiskEngine:
+    # LGPD-4 — só usa o analisador externo (LLM) com o consentimento de IA do paciente.
+    return PsychiatricRiskEngine(free_text_analyzer=analyzer_for(ai_consent))
 
 
 async def _transcribe_audio(session: AsyncSession, patient: Patient, audio_url: str | None) -> str | None:
     """Transcreve o áudio do check-in (se houver anexo do paciente e transcrição ativa)."""
+    # LGPD-4 — a transcrição envia áudio a um provedor externo; exige consentimento
+    # de IA do paciente. Sem ele, o áudio não é transcrito (e o CL-2 escala p/ AMARELO).
+    if not patient.ai_consent:
+        return None
     attachment_id = attachment_id_from_ref(audio_url)
     if attachment_id is None:
         return None
@@ -54,7 +59,7 @@ async def _transcribe_audio(session: AsyncSession, patient: Patient, audio_url: 
 async def process_checkin(
     session: AsyncSession, patient: Patient, payload: CheckInCreate
 ) -> CheckIn:
-    engine = _build_engine()
+    engine = _build_engine(patient.ai_consent)
     # Transcrição do áudio (se habilitada) entra no texto livre analisado pelo risco —
     # de forma conservadora, sem substituir o que o paciente escreveu.
     transcript = await _transcribe_audio(session, patient, payload.audio_url)
