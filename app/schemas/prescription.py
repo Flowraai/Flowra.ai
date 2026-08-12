@@ -34,3 +34,31 @@ class PrescriptionRead(BaseModel):
     pdf_url: str | None = None
     issued_at: datetime | None = None
     created_at: datetime
+
+
+# ---- Integração com plataforma de receita (por médico) ----
+class PrescriptionProviderInfo(BaseModel):
+    slug: str
+    name: str
+    legal_value: bool
+    requires_credential: bool
+    credential_label: str | None = None
+    description: str
+    available: bool
+
+
+class PrescriptionIntegration(BaseModel):
+    """Estado da integração de receita do médico (nunca devolve o segredo)."""
+
+    provider: str
+    provider_name: str
+    legal_value: bool
+    available: bool
+    connected: bool
+
+
+class PrescriptionIntegrationUpdate(BaseModel):
+    provider: str = Field(min_length=1, max_length=40)
+    # Credencial da conta do médico (token). Opcional: pode conectar o provedor
+    # e informar o token depois. Enviada só na gravação; nunca é devolvida.
+    credential: str | None = Field(default=None, max_length=2000)

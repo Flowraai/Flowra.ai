@@ -255,6 +255,24 @@ export interface SubscribeResponse {
   checkout_url: string | null;
 }
 
+export interface PrescriptionProviderInfo {
+  slug: string;
+  name: string;
+  legal_value: boolean;
+  requires_credential: boolean;
+  credential_label: string | null;
+  description: string;
+  available: boolean;
+}
+
+export interface PrescriptionIntegration {
+  provider: string;
+  provider_name: string;
+  legal_value: boolean;
+  available: boolean;
+  connected: boolean;
+}
+
 export type MessageSender = "patient" | "doctor" | "ai";
 
 export interface MessageAttachment {

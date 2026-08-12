@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { AppShell } from "../components/AppShell";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { PrescriptionIntegrationCard } from "../components/PrescriptionIntegrationCard";
 import { useAuth } from "../auth/AuthContext";
 import { auth } from "../api/endpoints";
 import { ApiError } from "../api/client";
@@ -99,6 +100,8 @@ export function Settings() {
           </div>
         </form>
       </div>
+
+      <PrescriptionIntegrationCard />
     </AppShell>
   );
 }

@@ -15,12 +15,76 @@ from app.models.doctor import Doctor
 from app.models.enums import PrescriptionStatus
 from app.models.patient import Patient
 from app.models.prescription import Prescription
-from app.schemas.prescription import PrescriptionCreate, PrescriptionRead
+from app.schemas.prescription import (
+    PrescriptionCreate,
+    PrescriptionIntegration,
+    PrescriptionIntegrationUpdate,
+    PrescriptionProviderInfo,
+    PrescriptionRead,
+)
 from app.services.notifications import send_plain
-from app.services.prescription_provider import get_prescription_provider
+from app.services.prescription_provider import (
+    DEFAULT_PROVIDER,
+    PROVIDERS,
+    get_prescription_provider,
+)
 from app.services.push_service import push_to_patient
 
 router = APIRouter(tags=["prescriptions"])
+
+
+def _integration_state(doctor: Doctor) -> PrescriptionIntegration:
+    slug = (doctor.prescription_provider or DEFAULT_PROVIDER).lower()
+    info = PROVIDERS.get(slug, PROVIDERS[DEFAULT_PROVIDER])
+    connected = (not info.requires_credential) or bool(doctor.prescription_credential)
+    return PrescriptionIntegration(
+        provider=info.slug,
+        provider_name=info.name,
+        legal_value=info.legal_value,
+        available=info.available,
+        connected=connected,
+    )
+
+
+@router.get("/prescriptions/providers", response_model=list[PrescriptionProviderInfo])
+async def list_providers(_: Doctor = Depends(get_current_doctor)) -> list[PrescriptionProviderInfo]:
+    """Plataformas de receita disponíveis para o médico escolher."""
+    return [PrescriptionProviderInfo(**vars(info)) for info in PROVIDERS.values()]
+
+
+@router.get("/prescriptions/integration", response_model=PrescriptionIntegration)
+async def get_integration(
+    doctor: Doctor = Depends(get_current_doctor),
+) -> PrescriptionIntegration:
+    return _integration_state(doctor)
+
+
+@router.put("/prescriptions/integration", response_model=PrescriptionIntegration)
+async def set_integration(
+    payload: PrescriptionIntegrationUpdate,
+    doctor: Doctor = Depends(get_current_doctor),
+) -> PrescriptionIntegration:
+    slug = payload.provider.lower()
+    if slug not in PROVIDERS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Provedor de receita inválido."
+        )
+    doctor.prescription_provider = slug
+    # Só troca a credencial quando enviada (permite salvar o provedor sem reenviar o token).
+    if payload.credential is not None:
+        doctor.prescription_credential = payload.credential.strip() or None
+    if slug == DEFAULT_PROVIDER:
+        doctor.prescription_credential = None
+    return _integration_state(doctor)
+
+
+@router.delete("/prescriptions/integration", response_model=PrescriptionIntegration)
+async def clear_integration(
+    doctor: Doctor = Depends(get_current_doctor),
+) -> PrescriptionIntegration:
+    doctor.prescription_provider = None
+    doctor.prescription_credential = None
+    return _integration_state(doctor)
 
 
 async def _owned_patient(session: AsyncSession, doctor: Doctor, patient_id: uuid.UUID) -> Patient:
@@ -100,7 +164,7 @@ async def issue_prescription(
             status_code=status.HTTP_409_CONFLICT, detail="Somente rascunhos podem ser emitidos."
         )
     try:
-        external_id, pdf_url = await get_prescription_provider().issue(presc)
+        external_id, pdf_url = await get_prescription_provider(doctor).issue(presc)
     except (RuntimeError, NotImplementedError) as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

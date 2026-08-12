@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDMixin
+from app.db.types import EncryptedText
 
 if TYPE_CHECKING:
     from app.models.patient import Patient
@@ -40,6 +41,10 @@ class Doctor(UUIDMixin, TimestampMixin, Base):
     notification_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Telefone (E.164) para notificações via WhatsApp.
     notification_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # Emissão de receita: plataforma escolhida pelo médico (slug em PROVIDERS) e a
+    # credencial da conta dele (token) cifrada em repouso. None = registro interno.
+    prescription_provider: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    prescription_credential: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="doctor")
     patients: Mapped[list["Patient"]] = relationship(

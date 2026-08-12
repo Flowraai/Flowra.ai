@@ -29,6 +29,8 @@ import type {
   PlanInput,
   Prescription,
   PrescriptionCreateInput,
+  PrescriptionIntegration,
+  PrescriptionProviderInfo,
   SubscribeResponse,
   Subscription,
   TokenPair,
@@ -102,6 +104,15 @@ export const exams = {
 export const prescriptions = {
   issue: (id: string) => api<Prescription>(`/prescriptions/${id}/issue`, { method: "POST" }),
   cancel: (id: string) => api<Prescription>(`/prescriptions/${id}/cancel`, { method: "POST" }),
+  providers: () => api<PrescriptionProviderInfo[]>("/prescriptions/providers"),
+  integration: () => api<PrescriptionIntegration>("/prescriptions/integration"),
+  setIntegration: (provider: string, credential?: string | null) =>
+    api<PrescriptionIntegration>("/prescriptions/integration", {
+      method: "PUT",
+      body: { provider, credential: credential ?? null },
+    }),
+  clearIntegration: () =>
+    api<PrescriptionIntegration>("/prescriptions/integration", { method: "DELETE" }),
 };
 
 export const alerts = {
