@@ -10,6 +10,7 @@ import { Settings } from "./pages/Settings";
 import { Subscribe } from "./pages/Subscribe";
 import { AdminPlans } from "./pages/AdminPlans";
 import { ResetPassword } from "./pages/ResetPassword";
+import { PatientApp } from "./patient/PatientApp";
 
 function FullScreenLoader() {
   return (
@@ -123,6 +124,9 @@ export default function App() {
             }
           />
           <Route path="/redefinir-senha" element={<ResetPassword />} />
+          {/* Área do paciente (público, autenticado por token do link de convite) */}
+          <Route path="/checkin" element={<PatientApp />} />
+          <Route path="/paciente" element={<PatientApp />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
