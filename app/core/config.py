@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     # Fuso da fronteira do dia (check-in "de hoje" / um por dia). Usar UTC puro
     # adiantava a virada do dia para check-ins noturnos no BR (UTC-3).
     checkin_timezone: str = "America/Sao_Paulo"
+    # Quantos dias atrás o paciente pode responder um check-in esquecido (retroativo).
+    checkin_backfill_days: int = 7
 
     # Banco de dados
     database_url: str = "postgresql+asyncpg://flowra:flowra@localhost:5432/flowra_care"

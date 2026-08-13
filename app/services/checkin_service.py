@@ -57,7 +57,7 @@ async def _transcribe_audio(session: AsyncSession, patient: Patient, audio_url: 
 
 
 async def process_checkin(
-    session: AsyncSession, patient: Patient, payload: CheckInCreate
+    session: AsyncSession, patient: Patient, payload: CheckInCreate, *, when: datetime | None = None
 ) -> CheckIn:
     engine = _build_engine(patient.ai_consent)
     # Transcrição do áudio (se habilitada) entra no texto livre analisado pelo risco —
@@ -90,6 +90,9 @@ async def process_checkin(
         risk_reasons=assessment.reasons,
         category_risks=assessment.category_risks,
     )
+    # Check-in retroativo (dia esquecido): grava com a data informada.
+    if when is not None:
+        checkin.created_at = when
     session.add(checkin)
     await session.flush()  # garante checkin.id para o alerta e a auditoria
 
@@ -99,9 +102,12 @@ async def process_checkin(
     combined_level = assessment.level.escalate(trend.level)
     combined_reasons = assessment.reasons + trend.reasons
 
-    # Atualiza o índice de risco atual do paciente (denormalizado p/ o painel).
-    patient.current_risk = combined_level
-    patient.last_checkin_at = datetime.now(timezone.utc)
+    # Atualiza o índice de risco atual só se ESTE for o check-in mais recente —
+    # um retroativo de um dia antigo não pode rebaixar o risco/última data atuais.
+    effective_time = when or datetime.now(timezone.utc)
+    if patient.last_checkin_at is None or effective_time >= patient.last_checkin_at:
+        patient.current_risk = combined_level
+        patient.last_checkin_at = effective_time
 
     await audit.record(
         session,

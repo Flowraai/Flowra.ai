@@ -5,12 +5,14 @@ import { Today } from "./Today";
 import { Checkin } from "./Checkin";
 import { Medications } from "./Medications";
 import { Chat } from "./Chat";
+import { Calendar } from "./Calendar";
 import "./patient.css";
 
-type Tab = "today" | "meds" | "chat" | "support";
+type Tab = "today" | "cal" | "meds" | "chat" | "support";
 
 const TABS: { id: Tab; label: string; ico: string }[] = [
   { id: "today", label: "Hoje", ico: "🏠" },
+  { id: "cal", label: "Calendário", ico: "🗓️" },
   { id: "meds", label: "Remédios", ico: "💊" },
   { id: "chat", label: "Médico", ico: "💬" },
   { id: "support", label: "Apoio", ico: "💜" },
@@ -38,7 +40,16 @@ export function PatientApp() {
   const [today, setToday] = useState<PatientToday | null>(null);
   const [tab, setTab] = useState<Tab>("today");
   const [checkinOpen, setCheckinOpen] = useState(false);
+  const [checkinFor, setCheckinFor] = useState<string | null>(null);
+  const [checkinLabel, setCheckinLabel] = useState<string | null>(null);
+  const [calKey, setCalKey] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
+
+  function openCheckin(forDate: string | null, label: string | null) {
+    setCheckinFor(forDate);
+    setCheckinLabel(label);
+    setCheckinOpen(true);
+  }
 
   async function loadToday() {
     try {
@@ -88,6 +99,9 @@ export function PatientApp() {
 
   async function onCheckinDone(msg: string) {
     setCheckinOpen(false);
+    setCheckinFor(null);
+    setCheckinLabel(null);
+    setCalKey((k) => k + 1); // recarrega o calendário
     setToast(msg);
     await loadToday();
     setTimeout(() => setToast(null), 4000);
@@ -106,12 +120,23 @@ export function PatientApp() {
 
         <div className="pt-body">
           {checkinOpen ? (
-            <Checkin onDone={onCheckinDone} onCancel={() => setCheckinOpen(false)} />
+            <Checkin
+              onDone={onCheckinDone}
+              onCancel={() => setCheckinOpen(false)}
+              forDate={checkinFor ?? undefined}
+              dateLabel={checkinLabel ?? undefined}
+            />
           ) : (
             <>
               {toast ? <div className="pt-done" style={{ marginBottom: 14 }}>{toast}</div> : null}
               {tab === "today" && today ? (
-                <Today today={today} onStartCheckin={() => setCheckinOpen(true)} />
+                <Today today={today} onStartCheckin={() => openCheckin(null, null)} />
+              ) : null}
+              {tab === "cal" ? (
+                <Calendar
+                  key={calKey}
+                  onPick={(iso, label) => openCheckin(iso || null, iso ? label : null)}
+                />
               ) : null}
               {tab === "meds" ? <Medications /> : null}
               {tab === "chat" ? (

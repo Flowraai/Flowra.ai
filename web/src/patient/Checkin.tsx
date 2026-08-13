@@ -102,7 +102,17 @@ function QuestionField({
   );
 }
 
-export function Checkin({ onDone, onCancel }: { onDone: (msg: string) => void; onCancel: () => void }) {
+export function Checkin({
+  onDone,
+  onCancel,
+  forDate,
+  dateLabel,
+}: {
+  onDone: (msg: string) => void;
+  onCancel: () => void;
+  forDate?: string;
+  dateLabel?: string;
+}) {
   const [questions, setQuestions] = useState<Question[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Answers>({});
@@ -136,7 +146,7 @@ export function Checkin({ onDone, onCancel }: { onDone: (msg: string) => void; o
     try {
       const clean: Answers = {};
       for (const [k, v] of Object.entries(answers)) if (v !== "") clean[k] = v;
-      const res = await patientApi.submitCheckin(clean, freeText.trim() || null);
+      const res = await patientApi.submitCheckin(clean, freeText.trim() || null, forDate);
       onDone(res.message);
     } catch (e) {
       if (e instanceof PatientApiError && e.status === 409) {
@@ -173,7 +183,7 @@ export function Checkin({ onDone, onCancel }: { onDone: (msg: string) => void; o
           Fechar
         </button>
         <h2 className="pt-h1" style={{ margin: 0, fontSize: 18 }}>
-          Check-in de hoje
+          {dateLabel ? `Check-in de ${dateLabel}` : "Check-in de hoje"}
         </h2>
       </div>
       <div className="pt-card">

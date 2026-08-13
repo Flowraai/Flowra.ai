@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -15,6 +15,19 @@ class CheckInCreate(BaseModel):
     structured_responses: dict = Field(default_factory=dict)
     free_text: str | None = Field(default=None, max_length=5000)
     audio_url: str | None = Field(default=None, max_length=2000)
+    # Data do check-in. None = hoje. Permite responder um dia esquecido (retroativo)
+    # dentro da janela permitida. Nunca no futuro.
+    for_date: date | None = None
+
+
+class CalendarDay(BaseModel):
+    """Um dia no calendário do paciente."""
+
+    date: date
+    checked_in: bool
+    can_fill: bool          # dia passado em branco, dentro da janela -> pode responder
+    is_today: bool
+    mood: int | None = None  # humor daquele dia (o próprio registro), se houver
 
 
 class CheckInRead(BaseModel):

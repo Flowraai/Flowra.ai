@@ -132,16 +132,25 @@ export interface Appointment {
   notes: string | null;
 }
 
+export interface CalendarDay {
+  date: string; // YYYY-MM-DD
+  checked_in: boolean;
+  can_fill: boolean;
+  is_today: boolean;
+  mood: number | null;
+}
+
 export type Answers = Record<string, string | number>;
 
 export const patientApi = {
   today: () => pApi<PatientToday>("/patient/today"),
   protocol: () => pApi<Protocol>("/patient/protocol"),
-  submitCheckin: (structured: Answers, freeText: string | null) =>
+  submitCheckin: (structured: Answers, freeText: string | null, forDate?: string) =>
     pApi<CheckInResult>("/patient/checkins", {
       method: "POST",
-      body: { structured_responses: structured, free_text: freeText },
+      body: { structured_responses: structured, free_text: freeText, for_date: forDate ?? null },
     }),
+  calendar: (days = 35) => pApi<CalendarDay[]>(`/patient/checkins/calendar?days=${days}`),
   medicationsToday: () => pApi<MedicationDose[]>("/patient/medications/today"),
   respondIntake: (intakeId: string, status: IntakeStatus) =>
     pApi<{ status: IntakeStatus }>(`/patient/medications/intakes/${intakeId}/respond`, {

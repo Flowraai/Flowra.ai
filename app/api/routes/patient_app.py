@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -32,7 +32,7 @@ from app.models.prescription import Prescription
 from app.models.protocol import Protocol
 from app.protocol.validation import validate_responses
 from app.schemas.appointment import AppointmentRead
-from app.schemas.checkin import CheckInCreate, CheckInResult
+from app.schemas.checkin import CalendarDay, CheckInCreate, CheckInResult
 from app.schemas.device import DeviceRegister, DeviceTokenRead
 from app.schemas.exam import ExamRead
 from app.schemas.message import MessageCreate, MessageRead
@@ -52,14 +52,31 @@ from app.services.medication_service import generate_today_intakes, maybe_alert_
 router = APIRouter(prefix="/patient", tags=["patient-app"])
 
 
+def _tz() -> ZoneInfo:
+    return ZoneInfo(settings.checkin_timezone)
+
+
+def _today_local() -> date:
+    return datetime.now(_tz()).date()
+
+
+def _day_bounds_utc(d: date) -> tuple[datetime, datetime]:
+    """Intervalo [início, fim) do dia local `d`, em UTC (created_at é gravado em UTC)."""
+    tz = _tz()
+    start_local = datetime(d.year, d.month, d.day, tzinfo=tz)
+    end_local = start_local + timedelta(days=1)
+    return start_local.astimezone(timezone.utc), end_local.astimezone(timezone.utc)
+
+
+def _local_noon_utc(d: date) -> datetime:
+    """Meio-dia local de `d` em UTC — usado como created_at de um check-in retroativo
+    (fica com folga dentro do dia, independente do fuso)."""
+    return datetime(d.year, d.month, d.day, 12, tzinfo=_tz()).astimezone(timezone.utc)
+
+
 def _start_of_day_utc() -> datetime:
-    """Início do dia CORRENTE no fuso configurado, convertido para UTC (o
-    created_at é gravado em UTC). Usar UTC puro adiantava a virada do dia para
-    check-ins noturnos no BR (UTC-3): à 01h de Brasília o dia já era "outro" em
-    UTC, contando/bloqueando errado o "um check-in por dia"."""
-    tz = ZoneInfo(settings.checkin_timezone)
-    start_local = datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0)
-    return start_local.astimezone(timezone.utc)
+    """Início do dia CORRENTE no fuso configurado, em UTC."""
+    return _day_bounds_utc(_today_local())[0]
 
 
 @router.get("/today", response_model=PatientToday)
@@ -111,22 +128,43 @@ async def submit_checkin(
     patient: Patient = Depends(get_current_patient),
     session: AsyncSession = Depends(get_db),
 ) -> CheckInResult:
-    """Envio do check-in diário do paciente (< 1 min)."""
-    # Idempotência: um check-in por dia (limite do dia em UTC). Evita duplicatas que
-    # distorceriam tendência e não-adesão; reenvios recebem 409.
+    """Envio do check-in do paciente (< 1 min). Sem data = hoje; com `for_date`
+    permite responder um dia esquecido (retroativo), dentro da janela."""
+    today = _today_local()
+    target = payload.for_date or today
+
+    # Não permite futuro.
+    if target > today:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Não é possível responder um dia que ainda não chegou.",
+        )
+    # Retroativo: só dentro da janela configurada.
+    days_back = (today - target).days
+    if days_back > settings.checkin_backfill_days:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Só dá para responder até {settings.checkin_backfill_days} dias atrás.",
+        )
+
+    # Idempotência: um check-in por dia (no dia-alvo). Reenvios recebem 409.
+    day_start, day_end = _day_bounds_utc(target)
     already = await session.scalar(
         select(
             exists().where(
                 CheckIn.patient_id == patient.id,
-                CheckIn.created_at >= _start_of_day_utc(),
+                CheckIn.created_at >= day_start,
+                CheckIn.created_at < day_end,
             )
         )
     )
     if already:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Você já registrou seu check-in hoje.",
+        msg = (
+            "Você já registrou seu check-in hoje."
+            if target == today
+            else "Você já respondeu esse dia."
         )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=msg)
 
     # Valida as respostas contra o protocolo ativo antes de calcular o risco.
     if patient.active_protocol_id is None:
@@ -155,13 +193,71 @@ async def submit_checkin(
             },
         )
 
-    checkin = await process_checkin(session, patient, payload)
+    # Retroativo grava com o meio-dia local do dia-alvo; hoje usa o horário atual.
+    when = None if target == today else _local_noon_utc(target)
+    checkin = await process_checkin(session, patient, payload, when=when)
     # Retorno propositalmente neutro: não devolvemos o risco ao paciente.
     return CheckInResult(
         id=checkin.id,
         received_at=checkin.created_at or datetime.now(timezone.utc),
-        message="Check-in recebido. Obrigado por responder hoje.",
+        message=(
+            "Check-in recebido. Obrigado por responder hoje."
+            if target == today
+            else "Check-in do dia registrado. Obrigado!"
+        ),
     )
+
+
+def _mood_of(responses: dict | None) -> int | None:
+    """Humor (código estável "mood") daquele dia, se registrado — para o calendário."""
+    value = (responses or {}).get("mood")
+    try:
+        return int(float(value)) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+@router.get("/checkins/calendar", response_model=list[CalendarDay])
+async def checkin_calendar(
+    days: int = Query(35, ge=1, le=90),
+    patient: Patient = Depends(get_current_patient),
+    session: AsyncSession = Depends(get_db),
+) -> list[CalendarDay]:
+    """Calendário dos últimos `days` dias: respondido/faltou + humor do dia."""
+    today = _today_local()
+    start_date = today - timedelta(days=days - 1)
+    start_utc = _day_bounds_utc(start_date)[0]
+    end_utc = _day_bounds_utc(today)[1]
+    result = await session.execute(
+        select(CheckIn)
+        .where(
+            CheckIn.patient_id == patient.id,
+            CheckIn.created_at >= start_utc,
+            CheckIn.created_at < end_utc,
+        )
+    )
+    tz = _tz()
+    by_date: dict[date, int | None] = {}
+    for c in result.scalars().all():
+        local_day = c.created_at.astimezone(tz).date()
+        by_date[local_day] = _mood_of(c.structured_responses)
+
+    out: list[CalendarDay] = []
+    for i in range(days):
+        d = start_date + timedelta(days=i)
+        checked = d in by_date
+        is_today = d == today
+        days_back = (today - d).days
+        out.append(
+            CalendarDay(
+                date=d,
+                checked_in=checked,
+                can_fill=(not checked) and 0 < days_back <= settings.checkin_backfill_days,
+                is_today=is_today,
+                mood=by_date.get(d),
+            )
+        )
+    return out
 
 
 @router.get("/medications/today", response_model=list[MedicationDoseToday])
