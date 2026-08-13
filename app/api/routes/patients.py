@@ -22,7 +22,6 @@ from app.models.checkin import CheckIn
 from app.models.doctor import Doctor
 from app.models.enums import AlertStatus, AuditAction
 from app.models.patient import Patient
-from app.models.protocol import Protocol
 from app.schemas.alert import AlertRead
 from app.schemas.checkin import CheckInRead
 from app.schemas.patient import (
@@ -41,19 +40,11 @@ from app.services.inactivity_service import days_since_checkin, is_inactive, sca
 from app.services.onboarding_service import build_onboarding_link, send_onboarding
 from app.services.storage import get_storage_backend
 from app.services.summary_service import patient_summary
+from app.services.tenant_protocol import get_or_create_tenant_protocol
 
 logger = logging.getLogger("flowra_care.patients")
 
 router = APIRouter(prefix="/patients", tags=["patients"])
-
-
-async def _active_psychiatry_protocol(session: AsyncSession) -> Protocol | None:
-    result = await session.execute(
-        select(Protocol)
-        .where(Protocol.specialty == "psiquiatria", Protocol.is_active.is_(True))
-        .order_by(Protocol.created_at.desc())
-    )
-    return result.scalars().first()
 
 
 async def _get_owned_patient(
@@ -78,7 +69,8 @@ async def create_patient(
             detail="Consentimento LGPD explícito é obrigatório para cadastrar o paciente.",
         )
 
-    protocol = await _active_psychiatry_protocol(session)
+    # Usa a pesquisa configurada pelo médico (cria a cópia editável na 1ª vez).
+    protocol = await get_or_create_tenant_protocol(session, doctor.tenant_id)
     token = generate_patient_token()
 
     patient = Patient(

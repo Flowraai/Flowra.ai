@@ -6,6 +6,7 @@ import {
   IconBell,
   IconCard,
   IconChat,
+  IconClipboard,
   IconFlower,
   IconGrid,
   IconLogout,
@@ -56,6 +57,9 @@ export function AppShell({
           </NavLink>
           <NavLink to="/mensagens" className="nav-item">
             <IconChat width={17} height={17} /> Mensagens
+          </NavLink>
+          <NavLink to="/pesquisa" className="nav-item">
+            <IconClipboard width={17} height={17} /> Pesquisa
           </NavLink>
           <NavLink to="/configuracoes" className="nav-item">
             <IconSettings width={17} height={17} /> Configurações

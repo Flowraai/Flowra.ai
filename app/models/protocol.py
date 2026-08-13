@@ -25,6 +25,14 @@ if TYPE_CHECKING:
 class Protocol(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "protocols"
 
+    # Dono do protocolo. NULL = template global (seed). Não-nulo = cópia editável
+    # de um tenant (a "pesquisa" que aquele médico configura para os pacientes dele).
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        index=True,
+        nullable=True,
+    )
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     specialty: Mapped[str] = mapped_column(String(120), default="psiquiatria", nullable=False)
     version: Mapped[str] = mapped_column(String(30), default="1.0", nullable=False)
@@ -36,8 +44,6 @@ class Protocol(UUIDMixin, TimestampMixin, Base):
         cascade="all, delete-orphan",
         order_by="ProtocolQuestion.position",
     )
-
-    __table_args__ = (UniqueConstraint("specialty", "version", name="uq_protocol_specialty_version"),)
 
 
 class ProtocolQuestion(UUIDMixin, TimestampMixin, Base):

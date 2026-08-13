@@ -210,6 +210,42 @@ export interface PrescriptionCreateInput {
   notes?: string | null;
 }
 
+export type QuestionType = "scale" | "integer" | "choice" | "boolean" | "free_text";
+
+export interface SurveyQuestion {
+  id: string;
+  code: string;
+  category: string;
+  text: string;
+  type: QuestionType;
+  position: number;
+  required: boolean;
+  options: Record<string, unknown> | null;
+  protected: boolean;
+}
+
+export interface Survey {
+  id: string;
+  name: string;
+  questions: SurveyQuestion[];
+}
+
+export interface SurveyQuestionCreateInput {
+  text: string;
+  category?: string;
+  type: QuestionType;
+  required?: boolean;
+  options?: Record<string, unknown> | null;
+}
+
+export interface SurveyQuestionUpdateInput {
+  text?: string;
+  category?: string;
+  required?: boolean;
+  position?: number;
+  scale_style?: "number" | "emoji";
+}
+
 export type BillingCycle = "monthly" | "yearly";
 export type SubscriptionStatus = "trialing" | "pending" | "active" | "overdue" | "canceled";
 

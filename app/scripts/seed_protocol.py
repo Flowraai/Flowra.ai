@@ -15,6 +15,7 @@ from app.protocol import psychiatry as P
 async def seed_psychiatry_protocol(session: AsyncSession) -> Protocol:
     existing = await session.execute(
         select(Protocol).where(
+            Protocol.tenant_id.is_(None),  # só o template global (não as cópias dos médicos)
             Protocol.specialty == P.PSYCHIATRY_SPECIALTY,
             Protocol.version == P.PSYCHIATRY_PROTOCOL_VERSION,
         )

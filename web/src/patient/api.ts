@@ -83,7 +83,15 @@ export interface Question {
   type: QuestionType;
   position: number;
   required: boolean;
-  options: { min?: number; max?: number; unit?: string; direction?: string; choices?: string[] } | null;
+  options: {
+    min?: number;
+    max?: number;
+    unit?: string;
+    direction?: string;
+    choices?: string[];
+    scale_style?: string;
+    emojis?: { emoji: string; value: number }[];
+  } | null;
 }
 
 export interface Protocol {

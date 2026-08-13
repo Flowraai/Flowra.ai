@@ -33,6 +33,9 @@ import type {
   PrescriptionProviderInfo,
   SubscribeResponse,
   Subscription,
+  Survey,
+  SurveyQuestionCreateInput,
+  SurveyQuestionUpdateInput,
   TokenPair,
 } from "./types";
 
@@ -120,6 +123,18 @@ export const alerts = {
     api<Alert[]>(`/alerts${statusFilter ? `?status_filter=${statusFilter}` : ""}`),
   updateStatus: (id: string, status: AlertStatus) =>
     api<Alert>(`/alerts/${id}`, { method: "PATCH", body: { status } }),
+};
+
+export const survey = {
+  get: () => api<Survey>("/survey"),
+  addQuestion: (input: SurveyQuestionCreateInput) =>
+    api<Survey>("/survey/questions", { method: "POST", body: input }),
+  updateQuestion: (id: string, patch: SurveyQuestionUpdateInput) =>
+    api<Survey>(`/survey/questions/${id}`, { method: "PATCH", body: patch }),
+  deleteQuestion: (id: string) =>
+    api<Survey>(`/survey/questions/${id}`, { method: "DELETE" }),
+  reorder: (order: string[]) =>
+    api<Survey>("/survey/reorder", { method: "POST", body: { order } }),
 };
 
 export const billing = {

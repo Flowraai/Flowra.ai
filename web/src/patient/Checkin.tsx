@@ -28,7 +28,23 @@ function QuestionField({
   onChange: (v: string | number) => void;
 }) {
   let control;
-  if (q.type === "scale") {
+  if (q.type === "scale" && q.options?.scale_style === "emoji" && q.options.emojis?.length) {
+    control = (
+      <div className="pt-chips pt-emoji">
+        {q.options.emojis.map((e) => (
+          <button
+            type="button"
+            key={e.value}
+            className={`pt-chip pt-emoji-chip ${value === e.value ? "on" : ""}`}
+            onClick={() => onChange(e.value)}
+            aria-label={String(e.value)}
+          >
+            {e.emoji}
+          </button>
+        ))}
+      </div>
+    );
+  } else if (q.type === "scale") {
     const opts = range(q.options?.min ?? 0, q.options?.max ?? 10);
     control = (
       <div className="pt-chips">

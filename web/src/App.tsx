@@ -7,6 +7,7 @@ import { PatientDetail } from "./pages/PatientDetail";
 import { Alerts } from "./pages/Alerts";
 import { Messages } from "./pages/Messages";
 import { Settings } from "./pages/Settings";
+import { SurveyPage } from "./pages/Survey";
 import { Subscribe } from "./pages/Subscribe";
 import { AdminPlans } from "./pages/AdminPlans";
 import { ResetPassword } from "./pages/ResetPassword";
@@ -96,6 +97,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <Messages />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/pesquisa"
+            element={
+              <RequireAuth>
+                <SurveyPage />
               </RequireAuth>
             }
           />

@@ -1,0 +1,128 @@
+.survey-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 860px;
+}
+.survey-hint {
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.survey-list {
+  padding: 4px 10px;
+}
+.survey-q {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 6px;
+  border-bottom: 1px solid var(--line);
+}
+.survey-q:last-child {
+  border-bottom: none;
+}
+.survey-reorder {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.survey-reorder button {
+  width: 26px;
+  height: 24px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.survey-reorder button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.survey-main {
+  flex: 1;
+  min-width: 0;
+}
+.survey-text {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: text;
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+.survey-text:hover {
+  background: var(--surface-2);
+}
+.survey-edit {
+  width: 100%;
+  font-size: 15px;
+  padding: 8px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.survey-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.chip-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.chip-tag.ghost {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.chip-tag.safe {
+  background: color-mix(in srgb, var(--risk-orange) 18%, transparent);
+  color: var(--risk-orange);
+}
+
+.survey-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+}
+.survey-actions .mini {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12.5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.survey-actions .mini:hover {
+  border-color: var(--accent);
+}
+.survey-actions .mini.danger:hover {
+  border-color: var(--risk-red);
+  color: var(--risk-red);
+}
+.survey-actions .mini:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.survey-add {
+  padding: 18px 20px;
+}

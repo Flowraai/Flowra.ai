@@ -151,6 +151,20 @@
   border-color: var(--accent);
   color: #fff;
 }
+.pt-emoji {
+  gap: 10px;
+}
+.pt-emoji-chip {
+  font-size: 28px;
+  line-height: 1;
+  padding: 8px 12px;
+  min-width: 52px;
+}
+.pt-emoji-chip.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  transform: scale(1.08);
+}
 .pt-input,
 .pt-textarea {
   width: 100%;
