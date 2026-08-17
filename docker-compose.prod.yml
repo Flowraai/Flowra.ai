@@ -63,6 +63,25 @@ services:
       retries: 3
       start_period: 20s
 
+  # Agendador: lembretes de medicação/consulta e alertas de inatividade rodando
+  # sozinhos. Reaproveita a imagem da API; não aplica migrações (a api já aplica).
+  worker:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      ENVIRONMENT: production
+      DEBUG: "false"
+      LOG_FORMAT: json
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-flowra}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-flowra_care}
+      RUN_MIGRATIONS: "false"
+      SEED_PROTOCOL: "false"
+    command: ["python", "-m", "app.scripts.scheduler"]
+    restart: always
+
   web:
     build: ./web
     depends_on:

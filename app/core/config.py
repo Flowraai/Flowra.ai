@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     # Quantos dias atrás o paciente pode responder um check-in esquecido (retroativo).
     checkin_backfill_days: int = 7
 
+    # Agendador (worker): intervalo entre as varreduras periódicas (lembretes de
+    # medicação/consulta e alertas de inatividade). Idempotentes — seguro repetir.
+    scheduler_interval_seconds: int = 600
+
     # Banco de dados
     database_url: str = "postgresql+asyncpg://flowra:flowra@localhost:5432/flowra_care"
 

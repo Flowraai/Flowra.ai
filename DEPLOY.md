@@ -110,24 +110,31 @@ gunzip -c backups/flowra-AAAAMMDD-HHMMSS.sql.gz | \
   docker compose -f docker-compose.prod.yml exec -T db psql -U flowra -d flowra_care
 ```
 
-## 7. Scans agendados (obrigatório)
+## 7. Scans agendados (lembretes + alertas automáticos)
 
-Sem isto, os **alertas de inatividade**, a **não-adesão à medicação** e os
-**lembretes de consulta** nunca rodam (os jobs existem, mas nada os dispara).
-Os scans são idempotentes e rodam dentro do container `api`.
+Os **alertas de inatividade**, a **não-adesão à medicação** e os **lembretes de
+consulta** precisam de algo que os dispare periodicamente.
+
+**Já vem resolvido:** o compose sobe um serviço **`worker`** (o agendador) que roda
+as três varreduras sozinho, a cada `SCHEDULER_INTERVAL_SECONDS` (padrão 10 min).
+Não precisa configurar cron. Acompanhe com:
+
+```bash
+docker compose -f docker-compose.prod.yml logs -f worker   # (ou -f docker-compose.behind-proxy.yml)
+```
+
+> ⚠️ As varreduras **geram** os alertas/lembretes; eles só **chegam** ao médico/paciente
+> se houver um **canal de notificação configurado** (seção 9). No padrão
+> (`NOTIFICATION_CHANNELS=log`) tudo cai só em log.
+
+**Alternativa (cron no host):** se preferir agendar fora do compose, remova o serviço
+`worker` e use o cron (não rode os dois — evita trabalho duplicado):
 
 ```bash
 crontab -e
-# adicione (roda os três a cada 15 min; medicação precisa dessa cadência):
 */15 * * * * cd /opt/flowra && ./scripts/run-scans.sh >> /var/log/flowra-scans.log 2>&1
-# monitor de heartbeat: avisa se os scans pararem (saída vai ao MAILTO do cron):
 17 * * * *   cd /opt/flowra && ./scripts/check-scans-heartbeat.sh >> /var/log/flowra-scans.log 2>&1
 ```
-
-Defina `MAILTO=voce@dominio` no topo do `crontab` para receber por e-mail a saída
-de alerta do monitor. O `run-scans.sh` grava um heartbeat em
-`/var/log/flowra-scans.heartbeat` a cada ciclo bem-sucedido; o
-`check-scans-heartbeat.sh` alerta se ele ficar mais velho que 45 min.
 
 ## 8. Atualizar (deploy de nova versão)
 
