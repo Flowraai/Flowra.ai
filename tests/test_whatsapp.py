@@ -45,6 +45,56 @@ async def test_send_without_config_raises(monkeypatch):
         await WhatsAppChannel().send(target="5511988887777", subject="s", body="b")
 
 
+# ---------- Unitário: provider Evolution API (QR code) ----------
+class _FakeResp:
+    def raise_for_status(self) -> None:
+        return None
+
+
+class _FakeClient:
+    calls: list[dict] = []
+
+    def __init__(self, *a, **k) -> None:
+        pass
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *a):
+        return False
+
+    async def post(self, url, headers=None, json=None):
+        _FakeClient.calls.append({"url": url, "headers": headers, "json": json})
+        return _FakeResp()
+
+
+async def test_evolution_send_posts_expected(monkeypatch):
+    from app.services import notification_channels as nc
+
+    monkeypatch.setattr(settings, "whatsapp_provider", "evolution")
+    monkeypatch.setattr(settings, "evolution_api_url", "http://evo:8080/")
+    monkeypatch.setattr(settings, "evolution_api_key", "KEY123")
+    monkeypatch.setattr(settings, "evolution_instance", "flowra-care")
+    _FakeClient.calls.clear()
+    monkeypatch.setattr(nc.httpx, "AsyncClient", _FakeClient)
+
+    await WhatsAppChannel().send(
+        target="+55 (41) 99999-8888", subject="Novo alerta", body="Abra o painel."
+    )
+    call = _FakeClient.calls[-1]
+    assert call["url"] == "http://evo:8080/message/sendText/flowra-care"
+    assert call["headers"]["apikey"] == "KEY123"
+    assert call["json"]["number"] == "5541999998888"  # só dígitos
+    assert "Novo alerta" in call["json"]["text"] and "Abra o painel." in call["json"]["text"]
+
+
+async def test_evolution_without_config_raises(monkeypatch):
+    monkeypatch.setattr(settings, "whatsapp_provider", "evolution")
+    monkeypatch.setattr(settings, "evolution_api_url", None)
+    with pytest.raises(RuntimeError):
+        await WhatsAppChannel().send(target="5541999998888", subject="s", body="b")
+
+
 def test_factory_includes_whatsapp(monkeypatch):
     monkeypatch.setattr(settings, "notification_channels", ["whatsapp"])
     channels = get_active_channels()

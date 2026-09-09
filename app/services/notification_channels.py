@@ -83,17 +83,48 @@ class WebhookChannel:
             resp.raise_for_status()
 
 
-class WhatsAppChannel:
-    """WhatsApp via Meta Cloud API. `target` é um telefone (E.164/dígitos).
+def _digits(target: str) -> str:
+    return "".join(ch for ch in target if ch.isdigit())
 
-    Fora de uma janela de serviço de 24h, a Meta exige uma **template aprovada**:
-    configure WHATSAPP_TEMPLATE_NAME. Sem template, envia texto livre (só funciona
-    dentro da janela de 24h — útil para respostas/testes).
+
+class WhatsAppChannel:
+    """WhatsApp. `target` é um telefone (E.164/dígitos). Dois provedores:
+
+    - `meta` (default): API Cloud oficial. Fora da janela de 24h exige uma
+      **template aprovada** (WHATSAPP_TEMPLATE_NAME).
+    - `evolution`: Evolution API auto-hospedada (conecta por QR code, sem template).
+      Reaproveita uma instância já existente (EVOLUTION_API_URL/KEY/INSTANCE).
+
+    O conteúdo já vem **minimizado** (sem nome do paciente/dado clínico) — LGPD.
     """
 
     channel_type = NotificationChannel.WHATSAPP
 
     async def send(self, *, target: str, subject: str, body: str) -> None:
+        if settings.whatsapp_provider.lower() == "evolution":
+            await self._send_evolution(target, subject, body)
+        else:
+            await self._send_meta(target, subject, body)
+
+    # ---- Evolution API (QR code) ----
+    async def _send_evolution(self, target: str, subject: str, body: str) -> None:
+        if not (settings.evolution_api_url and settings.evolution_api_key and settings.evolution_instance):
+            raise RuntimeError(
+                "Evolution API não configurada (defina EVOLUTION_API_URL, "
+                "EVOLUTION_API_KEY e EVOLUTION_INSTANCE)."
+            )
+        text = f"{subject}\n\n{body}" if subject else body
+        url = f"{settings.evolution_api_url.rstrip('/')}/message/sendText/{settings.evolution_instance}"
+        async with httpx.AsyncClient(timeout=20) as http:
+            resp = await http.post(
+                url,
+                headers={"apikey": settings.evolution_api_key},
+                json={"number": _digits(target), "text": text},
+            )
+            resp.raise_for_status()
+
+    # ---- Meta Cloud API ----
+    async def _send_meta(self, target: str, subject: str, body: str) -> None:
         if not (settings.whatsapp_phone_number_id and settings.whatsapp_access_token):
             raise RuntimeError(
                 "WhatsApp não configurado (defina WHATSAPP_PHONE_NUMBER_ID e "

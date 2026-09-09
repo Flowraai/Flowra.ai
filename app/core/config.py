@@ -160,12 +160,21 @@ class Settings(BaseSettings):
     # Push (app): log (default, dev) | expo (Expo Push, RN/Expo)
     push_provider: str = "log"
     expo_access_token: str | None = None  # opcional (Expo)
+    # WhatsApp — provedor do canal:
+    #   meta      = API Cloud oficial da Meta (exige template aprovado);
+    #   evolution = Evolution API auto-hospedada (conecta por QR code, sem template).
+    whatsapp_provider: str = "meta"
     # WhatsApp (Meta Cloud API)
     whatsapp_phone_number_id: str | None = None
     whatsapp_access_token: str | None = None
     whatsapp_api_version: str = "v21.0"
     whatsapp_template_name: str | None = None  # obrigatório fora da janela de 24h
     whatsapp_template_lang: str = "pt_BR"
+    # WhatsApp (Evolution API) — reaproveita uma instância já existente.
+    # A URL precisa ser alcançável de dentro dos containers do Care.
+    evolution_api_url: str | None = None       # ex.: http://IP_DO_HOST:8080
+    evolution_api_key: str | None = None       # a EVOLUTION_API_KEY da instalação
+    evolution_instance: str | None = None      # nome da instância pareada (ex.: flowra-care)
 
     @field_validator(
         "cors_origins", "notification_channels", "upload_allowed_types", "admin_emails",
