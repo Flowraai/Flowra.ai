@@ -201,6 +201,8 @@ export interface PrescriptionItem {
   name: string;
   dose: string;
   instructions?: string | null;
+  // Horários "HH:MM" — ao emitir, o item vira acompanhamento na Medicação.
+  times?: string[];
 }
 
 export interface Prescription {

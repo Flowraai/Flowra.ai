@@ -22,6 +22,7 @@ from app.schemas.prescription import (
     PrescriptionProviderInfo,
     PrescriptionRead,
 )
+from app.services.medication_service import create_plans_from_prescription
 from app.services.notifications import send_plain
 from app.services.prescription_provider import (
     DEFAULT_PROVIDER,
@@ -175,6 +176,9 @@ async def issue_prescription(
     presc.external_id = external_id
     presc.pdf_url = pdf_url
     presc.issued_at = datetime.now(timezone.utc)
+
+    # Medicamentos com horário viram acompanhamento na Medicação (lembrete + adesão).
+    await create_plans_from_prescription(session, presc)
 
     subject = "[Flowra Care] Nova receita"
     body = "Seu médico emitiu uma nova receita. Abra o app para acessá-la."

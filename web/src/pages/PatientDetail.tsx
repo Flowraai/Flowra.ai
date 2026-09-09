@@ -38,6 +38,7 @@ export function PatientDetail() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const [reloadKey, setReloadKey] = useState(0);
+  const [medReloadKey, setMedReloadKey] = useState(0);
   const patient = useAsync(() => patients.get(id), [id, reloadKey]);
   const summary = useAsync(() => patients.summary(id), [id]);
   const checkins = useAsync(() => patients.checkins(id, 7), [id]);
@@ -198,9 +199,12 @@ export function PatientDetail() {
 
             <div className="col">
               <ChatPanel patientId={id} />
-              <MedicationCard patientId={id} />
+              <MedicationCard key={medReloadKey} patientId={id} />
               <AppointmentsCard patientId={id} />
-              <PrescriptionsCard patientId={id} />
+              <PrescriptionsCard
+                patientId={id}
+                onMedicationAdded={() => setMedReloadKey((k) => k + 1)}
+              />
             </div>
           </div>
         </>

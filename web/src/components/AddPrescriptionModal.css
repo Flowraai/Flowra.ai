@@ -10,3 +10,4 @@
 .rx-item input:focus { border-color: var(--accent); }
 .rx-item .rx-dose { max-width: 130px; }
 .rx-add { align-self: flex-start; }
+.rx-hint { font-size: 11.5px; color: var(--muted); line-height: 1.35; }

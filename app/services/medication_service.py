@@ -171,6 +171,37 @@ async def maybe_alert_missed_streak(session: AsyncSession, plan: MedicationPlan)
     return alert
 
 
+async def create_plans_from_prescription(session: AsyncSession, presc) -> int:
+    """Cria planos de medicação a partir dos itens da receita que têm horário.
+
+    Chamado na emissão da receita: cada medicamento com `times` passa a gerar
+    lembretes e a contar na adesão. Itens sem horário são ignorados (ficam só na
+    receita). Retorna quantos planos foram criados.
+    """
+    today = datetime.now(timezone.utc).date()
+    created = 0
+    for item in presc.items or []:
+        times = [t for t in (item.get("times") or []) if t]
+        if not times:
+            continue
+        session.add(
+            MedicationPlan(
+                tenant_id=presc.tenant_id,
+                patient_id=presc.patient_id,
+                name=item.get("name") or "Medicamento",
+                dose=item.get("dose") or "",
+                times=list(times),
+                start_date=today,
+                notes=item.get("instructions"),
+                active=True,
+            )
+        )
+        created += 1
+    if created:
+        await session.flush()
+    return created
+
+
 def _reminder_message(plan: MedicationPlan) -> tuple[str, str]:
     subject = "[Flowra Care] Hora do seu medicamento"
     body = (

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import httpx
 
-ITEMS = [{"name": "Sertralina", "dose": "50mg", "instructions": "1x ao dia"}]
+ITEMS = [{"name": "Sertralina", "dose": "50mg", "instructions": "1x ao dia", "times": []}]
 
 
 async def _doctor(client: httpx.AsyncClient, email: str = "dra.ana@clinica.com") -> dict:
@@ -81,3 +81,38 @@ async def test_prescription_isolation(client: httpx.AsyncClient):
     headers_b = await _doctor(client, email="dr.b@x.com")
     r = await client.get(f"/api/v1/prescriptions/{presc['id']}", headers=headers_b)
     assert r.status_code == 404
+
+
+async def test_issue_creates_medication_plan_for_items_with_times(client: httpx.AsyncClient):
+    """Item com horário vira plano de medicação (lembrete + adesão) ao emitir."""
+    headers = await _doctor(client)
+    patient = await _patient(client, headers)
+    presc = (await client.post(
+        f"/api/v1/patients/{patient['id']}/prescriptions", headers=headers,
+        json={"items": [
+            {"name": "Quetiapina", "dose": "25mg", "times": ["22:00"]},   # com horário
+            {"name": "Rivotril", "dose": "0,5mg", "times": []},           # sem horário (PRN)
+        ]},
+    )).json()
+
+    # Antes de emitir, nenhum plano criado.
+    meds0 = (await client.get(f"/api/v1/patients/{patient['id']}/medications", headers=headers)).json()
+    assert meds0 == []
+
+    await client.post(f"/api/v1/prescriptions/{presc['id']}/issue", headers=headers)
+
+    meds = (await client.get(f"/api/v1/patients/{patient['id']}/medications", headers=headers)).json()
+    assert len(meds) == 1  # só o item com horário
+    plan = meds[0]
+    assert plan["name"] == "Quetiapina" and plan["dose"] == "25mg"
+    assert plan["times"] == ["22:00"] and plan["active"] is True
+
+
+async def test_prescription_rejects_invalid_time(client: httpx.AsyncClient):
+    headers = await _doctor(client)
+    patient = await _patient(client, headers)
+    r = await client.post(
+        f"/api/v1/patients/{patient['id']}/prescriptions", headers=headers,
+        json={"items": [{"name": "X", "dose": "1mg", "times": ["25:99"]}]},
+    )
+    assert r.status_code == 422

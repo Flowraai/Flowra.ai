@@ -14,13 +14,17 @@ export function AddMedicationModal({
   patientId,
   onClose,
   onCreated,
+  initialName = "",
+  initialDose = "",
 }: {
   patientId: string;
   onClose: () => void;
   onCreated: () => void;
+  initialName?: string;
+  initialDose?: string;
 }) {
-  const [name, setName] = useState("");
-  const [dose, setDose] = useState("");
+  const [name, setName] = useState(initialName);
+  const [dose, setDose] = useState(initialDose);
   const [times, setTimes] = useState<string[]>([]);
   const [timeDraft, setTimeDraft] = useState("");
   const [startDate, setStartDate] = useState(today());

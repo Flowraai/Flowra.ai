@@ -3,6 +3,7 @@ import { patients, prescriptions as rxApi } from "../api/endpoints";
 import { ApiError } from "../api/client";
 import type { Prescription, PrescriptionStatus } from "../api/types";
 import { AddPrescriptionModal } from "./AddPrescriptionModal";
+import { AddMedicationModal } from "./AddMedicationModal";
 import { IconDoc } from "./icons";
 import "./ClinicalCard.css";
 
@@ -19,12 +20,19 @@ function summary(rx: Prescription): string {
   return items.length > 1 ? `${first} +${items.length - 1}` : first;
 }
 
-export function PrescriptionsCard({ patientId }: { patientId: string }) {
+export function PrescriptionsCard({
+  patientId,
+  onMedicationAdded,
+}: {
+  patientId: string;
+  onMedicationAdded?: () => void;
+}) {
   const [list, setList] = useState<Prescription[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [medPrefill, setMedPrefill] = useState<{ name: string; dose: string } | null>(null);
 
   function load() {
     setError(null);
@@ -94,6 +102,18 @@ export function PrescriptionsCard({ patientId }: { patientId: string }) {
                         PDF
                       </a>
                     ) : null}
+                    {rx.status === "issued" && (rx.items ?? []).length > 0 ? (
+                      <button
+                        className="mini"
+                        title="Criar lembrete e adesão para este medicamento"
+                        onClick={() => {
+                          const it = (rx.items ?? [])[0];
+                          setMedPrefill({ name: it?.name ?? "", dose: it?.dose ?? "" });
+                        }}
+                      >
+                        + Medicação
+                      </button>
+                    ) : null}
                     {rx.status === "draft" ? (
                       <>
                         <button className="mini" disabled={busy === rx.id} onClick={() => act(rx, "issue")}>
@@ -122,6 +142,19 @@ export function PrescriptionsCard({ patientId }: { patientId: string }) {
           onCreated={() => {
             setShowAdd(false);
             load();
+          }}
+        />
+      ) : null}
+
+      {medPrefill ? (
+        <AddMedicationModal
+          patientId={patientId}
+          initialName={medPrefill.name}
+          initialDose={medPrefill.dose}
+          onClose={() => setMedPrefill(null)}
+          onCreated={() => {
+            setMedPrefill(null);
+            onMedicationAdded?.();
           }}
         />
       ) : null}
