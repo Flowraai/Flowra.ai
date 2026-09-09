@@ -130,6 +130,8 @@ export interface Appointment {
   status: AppointmentStatus;
   location: string | null;
   notes: string | null;
+  reschedule_requested_at: string | null;
+  reschedule_note: string | null;
 }
 
 export interface CalendarDay {
@@ -160,6 +162,11 @@ export const patientApi = {
   appointments: () => pApi<Appointment[]>("/patient/appointments"),
   confirmAppointment: (id: string) =>
     pApi<Appointment>(`/patient/appointments/${id}/confirm`, { method: "POST" }),
+  requestReschedule: (id: string, note?: string) =>
+    pApi<Appointment>(`/patient/appointments/${id}/reschedule`, {
+      method: "POST",
+      body: { note: note ?? null },
+    }),
   messages: () => pApi<ChatMessage[]>("/patient/messages"),
   sendMessage: (body: string) =>
     pApi<ChatMessage>("/patient/messages", { method: "POST", body: { body, attachments: [] } }),

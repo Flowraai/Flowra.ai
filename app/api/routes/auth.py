@@ -26,7 +26,7 @@ from app.schemas.auth import (
     ResetPasswordRequest,
     TokenPair,
 )
-from app.schemas.doctor import DoctorProfile, DoctorUpdate
+from app.schemas.doctor import DoctorProfile, DoctorUpdate, MessagePrefs
 from app.services import auth_service
 from app.services.notifications import send_plain
 
@@ -200,6 +200,8 @@ async def update_me(
     for field, value in payload.model_dump(exclude_unset=True).items():
         if field == "name" and value is None:
             continue  # nome não pode ser nulo
+        if field == "message_prefs" and value is None:
+            continue  # None = não mexer nas preferências
         setattr(doctor, field, value)
     return await _profile_response(session, doctor)
 
@@ -217,6 +219,7 @@ async def _profile_response(session: AsyncSession, doctor: Doctor) -> DoctorProf
         council_id=doctor.council_id,
         notification_email=doctor.notification_email,
         notification_phone=doctor.notification_phone,
+        message_prefs=MessagePrefs(**(doctor.message_prefs or {})),
         email=user.email if user else "",
         is_admin=settings.is_admin_email(user.email) if user else False,
     )

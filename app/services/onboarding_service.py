@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.models.enums import AuditAction
 from app.models.patient import Patient
 from app.services import audit
+from app.services.message_prefs import prefs_for_patient, with_signature
 from app.services.notifications import deliver_to_patient
 
 
@@ -40,7 +41,11 @@ async def send_onboarding(
     """Envia o onboarding ao contato do paciente. Retorna se houve destino/tentativa."""
     if not patient.contact:
         return False
+    prefs, _doctor = await prefs_for_patient(session, patient)
+    if not prefs.send_onboarding:
+        return False
     subject, body = _message(patient, raw_token)
+    body = with_signature(body, prefs)
     # Se o médico tem WhatsApp conectado, o convite sai do número dele.
     await deliver_to_patient(session, patient, subject, body)
     await audit.record(

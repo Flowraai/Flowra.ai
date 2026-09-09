@@ -92,3 +92,29 @@ async def test_update_doctor_profile(client: httpx.AsyncClient):
 
     me = (await client.get("/api/v1/auth/me", headers=headers)).json()
     assert me["clinic"] == "Clínica Central"
+
+
+async def test_message_prefs_defaults_and_update(client: httpx.AsyncClient):
+    headers = await _doctor(client)
+    # Padrão: tudo ligado, sem assinatura.
+    me = (await client.get("/api/v1/auth/me", headers=headers)).json()
+    prefs = me["message_prefs"]
+    assert prefs["send_onboarding"] is True
+    assert prefs["send_appointment_reminder"] is True
+    assert prefs["signature"] is None
+
+    r = await client.patch("/api/v1/auth/me", headers=headers, json={
+        "message_prefs": {
+            "send_onboarding": True,
+            "send_medication_reminder": False,
+            "send_appointment_reminder": True,
+            "signature": "Dra. Ana — CRM 12345",
+        }})
+    assert r.status_code == 200
+    saved = r.json()["message_prefs"]
+    assert saved["send_medication_reminder"] is False
+    assert saved["signature"] == "Dra. Ana — CRM 12345"
+
+    # Persiste entre requisições.
+    me2 = (await client.get("/api/v1/auth/me", headers=headers)).json()
+    assert me2["message_prefs"]["send_medication_reminder"] is False

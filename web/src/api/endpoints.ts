@@ -97,8 +97,11 @@ export const medications = {
 };
 
 export const appointments = {
-  update: (id: string, patch: { status?: AppointmentStatus }) =>
-    api<Appointment>(`/appointments/${id}`, { method: "PATCH", body: patch }),
+  upcoming: (limit = 100) => api<Appointment[]>(`/appointments/upcoming?limit=${limit}`),
+  update: (
+    id: string,
+    patch: { status?: AppointmentStatus; scheduled_at?: string; location?: string | null },
+  ) => api<Appointment>(`/appointments/${id}`, { method: "PATCH", body: patch }),
 };
 
 export const exams = {

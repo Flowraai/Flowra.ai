@@ -224,6 +224,7 @@
 .tag.taken { background: color-mix(in srgb, var(--risk-green) 18%, transparent); color: var(--risk-green); }
 .tag.later { background: color-mix(in srgb, var(--risk-yellow) 20%, transparent); color: var(--risk-yellow); }
 .tag.missed { background: color-mix(in srgb, var(--risk-red) 16%, transparent); color: var(--risk-red); }
+.pt-appt-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 
 /* ---- Chat ---- */
 .pt-chat {

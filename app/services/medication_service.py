@@ -25,6 +25,7 @@ from app.models.enums import (
 from app.models.medication import MedicationIntake, MedicationPlan
 from app.models.patient import Patient
 from app.services import audit
+from app.services.message_prefs import prefs_for_patient, with_signature
 from app.services.notifications import (
     deliver_to_patient,
     dispatch_alert,
@@ -265,8 +266,10 @@ async def scan_due_medications(session: AsyncSession) -> dict:
         if plan is not None:
             subject, body = _reminder_message(plan)
             if patient is not None and patient.contact:
-                # Se o médico tem WhatsApp conectado, o lembrete sai do número dele.
-                await deliver_to_patient(session, patient, subject, body)
+                prefs, _doctor = await prefs_for_patient(session, patient)
+                if prefs.send_medication_reminder:
+                    # Se o médico tem WhatsApp conectado, o lembrete sai do número dele.
+                    await deliver_to_patient(session, patient, subject, with_signature(body, prefs))
             await push_to_patient(session, intake.patient_id, subject, body)
         intake.reminded_at = now
         reminders += 1

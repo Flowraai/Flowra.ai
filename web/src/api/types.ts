@@ -10,6 +10,13 @@ export interface TokenPair {
   token_type: string;
 }
 
+export interface MessagePrefs {
+  send_onboarding: boolean;
+  send_medication_reminder: boolean;
+  send_appointment_reminder: boolean;
+  signature: string | null;
+}
+
 export interface DoctorProfile {
   id: string;
   tenant_id: string;
@@ -22,6 +29,7 @@ export interface DoctorProfile {
   email: string;
   tenant_name: string | null;
   is_admin: boolean;
+  message_prefs: MessagePrefs;
 }
 
 export interface DoctorUpdateInput {
@@ -31,6 +39,7 @@ export interface DoctorUpdateInput {
   council_id?: string | null;
   notification_email?: string | null;
   notification_phone?: string | null;
+  message_prefs?: MessagePrefs;
 }
 
 export interface PatientPanelItem {
@@ -157,6 +166,8 @@ export interface Appointment {
   status: AppointmentStatus;
   location: string | null;
   notes: string | null;
+  reschedule_requested_at: string | null;
+  reschedule_note: string | null;
 }
 
 export interface AppointmentInput {

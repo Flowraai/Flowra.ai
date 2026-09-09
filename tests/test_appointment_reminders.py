@@ -52,3 +52,15 @@ async def test_does_not_remind_cancelled(client: httpx.AsyncClient):
     await client.patch(f"/api/v1/appointments/{ctx['appt']['id']}", headers=ctx["headers"],
                        json={"status": "cancelled"})
     assert (await _scan())["reminders"] == 0
+
+
+async def test_respects_doctor_pref_off(client: httpx.AsyncClient):
+    ctx = await _setup(client, _in_hours(2))
+    # Médico desliga o lembrete de consulta nas preferências.
+    await client.patch("/api/v1/auth/me", headers=ctx["headers"], json={
+        "message_prefs": {"send_appointment_reminder": False}})
+    result = await _scan()
+    assert result["reminders"] == 0
+    assert result["skipped_by_pref"] >= 1
+    # Não reenvia depois (marcado como tratado).
+    assert (await _scan())["skipped_by_pref"] == 0

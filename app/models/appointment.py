@@ -45,3 +45,9 @@ class Appointment(UUIDMixin, TimestampMixin, Base):
     reminder_sent_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Quando o paciente pediu para remarcar (pelo app). None = sem pedido pendente.
+    reschedule_requested_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Observação opcional do paciente no pedido de remarcação (ex.: "só à tarde").
+    reschedule_note: Mapped[str | None] = mapped_column(Text, nullable=True)

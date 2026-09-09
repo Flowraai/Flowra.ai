@@ -5,6 +5,7 @@ import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { PatientDetail } from "./pages/PatientDetail";
 import { Alerts } from "./pages/Alerts";
+import { Agenda } from "./pages/Agenda";
 import { Messages } from "./pages/Messages";
 import { Settings } from "./pages/Settings";
 import { SurveyPage } from "./pages/Survey";
@@ -81,6 +82,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <PatientDetail />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/agenda"
+            element={
+              <RequireAuth>
+                <Agenda />
               </RequireAuth>
             }
           />

@@ -107,6 +107,15 @@ async def update_appointment(
     session: AsyncSession = Depends(get_db),
 ) -> Appointment:
     appt = await _owned_appointment(session, doctor, appointment_id)
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    changes = payload.model_dump(exclude_unset=True)
+    rescheduled = "scheduled_at" in changes and changes["scheduled_at"] != appt.scheduled_at
+    for field, value in changes.items():
         setattr(appt, field, value)
+    # Ao remarcar (novo horário), reenvia o lembrete e encerra o pedido pendente.
+    if rescheduled:
+        appt.reminder_sent_at = None
+        appt.reschedule_requested_at = None
+        appt.reschedule_note = None
+        if appt.status is AppointmentStatus.CONFIRMED:
+            appt.status = AppointmentStatus.SCHEDULED  # novo horário volta a "agendada"
     return appt

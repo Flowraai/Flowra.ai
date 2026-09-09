@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthContext";
 import { initials } from "../lib/format";
 import {
   IconBell,
+  IconCalendar,
   IconCard,
   IconChat,
   IconClipboard,
@@ -54,6 +55,9 @@ export function AppShell({
           </NavLink>
           <NavLink to="/pacientes" className="nav-item">
             <IconUsers width={17} height={17} /> Pacientes
+          </NavLink>
+          <NavLink to="/agenda" className="nav-item">
+            <IconCalendar width={17} height={17} /> Agenda
           </NavLink>
           <NavLink to="/mensagens" className="nav-item">
             <IconChat width={17} height={17} /> Mensagens

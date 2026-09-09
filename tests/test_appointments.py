@@ -87,3 +87,53 @@ async def test_appointment_isolation(client: httpx.AsyncClient):
     r = await client.patch(f"/api/v1/appointments/{appt['id']}", headers=headers_b,
                            json={"status": "completed"})
     assert r.status_code == 404
+
+
+async def test_patient_requests_reschedule(client: httpx.AsyncClient):
+    headers = await _doctor(client)
+    patient = await _patient(client, headers)
+    appt = await _appt(client, headers, patient["id"], _in(2))
+    ph = {"X-Patient-Token": patient["access_token"]}
+
+    r = await client.post(
+        f"/api/v1/patient/appointments/{appt['id']}/reschedule",
+        headers=ph, json={"note": "só à tarde"},
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["reschedule_requested_at"] is not None
+    assert data["reschedule_note"] == "só à tarde"
+
+    # O médico vê o pedido na consulta.
+    lst = (await client.get(f"/api/v1/patients/{patient['id']}/appointments",
+                            headers=headers)).json()
+    assert lst[0]["reschedule_requested_at"] is not None
+
+
+async def test_doctor_reschedule_clears_request_and_resets_reminder(client: httpx.AsyncClient):
+    headers = await _doctor(client)
+    patient = await _patient(client, headers)
+    appt = await _appt(client, headers, patient["id"], _in(2))
+    ph = {"X-Patient-Token": patient["access_token"]}
+    await client.post(f"/api/v1/patient/appointments/{appt['id']}/reschedule",
+                      headers=ph, json={"note": "manhã, por favor"})
+
+    # Médico propõe um novo horário → limpa o pedido e volta para "agendada".
+    updated = (await client.patch(f"/api/v1/appointments/{appt['id']}", headers=headers,
+                                  json={"scheduled_at": _in(5)})).json()
+    assert updated["reschedule_requested_at"] is None
+    assert updated["reschedule_note"] is None
+    assert updated["status"] == "scheduled"
+
+
+async def test_confirm_clears_reschedule_request(client: httpx.AsyncClient):
+    headers = await _doctor(client)
+    patient = await _patient(client, headers)
+    appt = await _appt(client, headers, patient["id"], _in(2))
+    ph = {"X-Patient-Token": patient["access_token"]}
+    await client.post(f"/api/v1/patient/appointments/{appt['id']}/reschedule",
+                      headers=ph, json={})
+    confirmed = (await client.post(
+        f"/api/v1/patient/appointments/{appt['id']}/confirm", headers=ph)).json()
+    assert confirmed["status"] == "confirmed"
+    assert confirmed["reschedule_requested_at"] is None

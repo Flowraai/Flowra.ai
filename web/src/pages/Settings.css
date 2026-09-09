@@ -14,4 +14,9 @@
 .set-error { font-size: 13px; font-weight: 600; color: var(--risk-red); background: color-mix(in srgb, var(--risk-red) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--risk-red) 30%, var(--line)); padding: 9px 12px; border-radius: var(--radius-sm); }
 .set-saved { font-size: 13px; font-weight: 600; color: var(--risk-green); }
 
+.msg-prefs { display: flex; flex-direction: column; gap: 12px; }
+.msg-toggle { flex-direction: row !important; align-items: flex-start; gap: 10px; font-weight: 500 !important; color: var(--ink) !important; cursor: pointer; }
+.msg-toggle input { width: 18px; height: 18px; margin-top: 1px; flex: none; accent-color: var(--accent); cursor: pointer; }
+.msg-toggle b { font-size: 14px; }
+
 @media (max-width: 620px) { .set-row { grid-template-columns: 1fr; } }

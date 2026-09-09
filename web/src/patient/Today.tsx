@@ -48,6 +48,23 @@ export function Today({
     }
   }
 
+  async function reschedule(id: string) {
+    const note = window.prompt(
+      "Peça para remarcar. Se quiser, diga qual horário é melhor para você (opcional):",
+      "",
+    );
+    if (note === null) return; // cancelou
+    setBusy(id);
+    try {
+      await patientApi.requestReschedule(id, note.trim() || undefined);
+      await loadAppointments();
+    } catch (e) {
+      setError(e instanceof PatientApiError ? e.message : "Não foi possível enviar o pedido.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div>
       <h1 className="pt-h1">Olá, {firstName(today.patient_name)} 👋</h1>
@@ -82,16 +99,27 @@ export function Today({
                 <div className="pt-muted">{longDate(a.scheduled_at)}</div>
                 {a.location ? <div className="pt-muted">{a.location}</div> : null}
               </div>
-              {a.status === "confirmed" ? (
+              {a.reschedule_requested_at ? (
+                <span className="tag later">Remarcação pedida</span>
+              ) : a.status === "confirmed" ? (
                 <span className="tag taken">✓ Confirmada</span>
               ) : (
-                <button
-                  className="pt-btn ghost small"
-                  disabled={busy === a.id}
-                  onClick={() => confirm(a.id)}
-                >
-                  Confirmar
-                </button>
+                <div className="pt-appt-actions">
+                  <button
+                    className="pt-btn ghost small"
+                    disabled={busy === a.id}
+                    onClick={() => confirm(a.id)}
+                  >
+                    Confirmar
+                  </button>
+                  <button
+                    className="pt-btn ghost small"
+                    disabled={busy === a.id}
+                    onClick={() => reschedule(a.id)}
+                  >
+                    Remarcar
+                  </button>
+                </div>
               )}
             </div>
           ))}

@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import JSON, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -48,6 +48,10 @@ class Doctor(UUIDMixin, TimestampMixin, Base):
     # WhatsApp por médico (Evolution API): nome da instância pareada com o número
     # dele. As mensagens aos pacientes dele saem desse número. None = não conectado.
     whatsapp_instance: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Preferências das mensagens automáticas ao paciente: o que é enviado (convite,
+    # lembrete de medicação, lembrete de consulta) e a assinatura opcional. JSON de
+    # configuração (não é dado clínico). None = padrões (tudo ligado, sem assinatura).
+    message_prefs: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="doctor")
     patients: Mapped[list["Patient"]] = relationship(

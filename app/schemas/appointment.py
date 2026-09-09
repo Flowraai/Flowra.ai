@@ -25,6 +25,12 @@ class AppointmentUpdate(BaseModel):
     notes: str | None = None
 
 
+class RescheduleRequest(BaseModel):
+    """Pedido de remarcação feito pelo paciente (observação opcional)."""
+
+    note: str | None = Field(default=None, max_length=500)
+
+
 class AppointmentRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -36,3 +42,5 @@ class AppointmentRead(BaseModel):
     status: AppointmentStatus
     location: str | None = None
     notes: str | None = None
+    reschedule_requested_at: datetime | None = None
+    reschedule_note: str | None = None

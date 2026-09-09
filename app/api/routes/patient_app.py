@@ -31,7 +31,7 @@ from app.models.patient import Patient
 from app.models.prescription import Prescription
 from app.models.protocol import Protocol
 from app.protocol.validation import validate_responses
-from app.schemas.appointment import AppointmentRead
+from app.schemas.appointment import AppointmentRead, RescheduleRequest
 from app.schemas.checkin import CalendarDay, CheckInCreate, CheckInResult
 from app.schemas.device import DeviceRegister, DeviceTokenRead
 from app.schemas.exam import ExamRead
@@ -339,6 +339,37 @@ async def confirm_appointment(
             status_code=status.HTTP_409_CONFLICT, detail="Consulta cancelada não pode ser confirmada."
         )
     appt.status = AppointmentStatus.CONFIRMED
+    appt.reschedule_requested_at = None  # confirmar limpa qualquer pedido de remarcação
+    appt.reschedule_note = None
+    return appt
+
+
+@router.post("/appointments/{appointment_id}/reschedule", response_model=AppointmentRead)
+async def request_reschedule(
+    appointment_id: uuid.UUID,
+    payload: RescheduleRequest,
+    patient: Patient = Depends(get_current_patient),
+    session: AsyncSession = Depends(get_db),
+) -> Appointment:
+    """Paciente pede para remarcar. Não muda o horário (quem reagenda é o médico):
+    registra o pedido e avisa o médico para propor um novo horário."""
+    appt = await session.get(Appointment, appointment_id)
+    if appt is None or appt.patient_id != patient.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Consulta não encontrada.")
+    if appt.status is AppointmentStatus.CANCELLED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Consulta cancelada. Fale com seu médico para remarcar.",
+        )
+    appt.reschedule_requested_at = datetime.now(timezone.utc)
+    appt.reschedule_note = (payload.note or "").strip() or None
+    await session.flush()
+    # LGPD — minimização: sem nome/detalhe no push (aparece em tela de bloqueio).
+    await push_to_doctor(
+        session, appt.doctor_id,
+        "[Flowra Care] Pedido de remarcação",
+        "Um paciente pediu para remarcar uma consulta. Abra o painel.",
+    )
     return appt
 
 
