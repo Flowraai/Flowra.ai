@@ -5,6 +5,7 @@ import { RiskBadge } from "../components/RiskBadge";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { ChatPanel } from "../components/ChatPanel";
 import { MedicationCard } from "../components/MedicationCard";
+import { WearableCard } from "../components/WearableCard";
 import { AppointmentsCard } from "../components/AppointmentsCard";
 import { ExamsCard } from "../components/ExamsCard";
 import { PrescriptionsCard } from "../components/PrescriptionsCard";
@@ -207,6 +208,7 @@ export function PatientDetail() {
             <div className="col">
               <ChatPanel patientId={id} />
               <MedicationCard key={medReloadKey} patientId={id} />
+              <WearableCard patientId={id} />
               <AppointmentsCard patientId={id} />
               <PrescriptionsCard
                 patientId={id}

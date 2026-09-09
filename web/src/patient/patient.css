@@ -226,6 +226,14 @@
 .tag.missed { background: color-mix(in srgb, var(--risk-red) 16%, transparent); color: var(--risk-red); }
 .pt-appt-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 
+/* ---- Dispositivo (vestível) ---- */
+.dev-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 6px 0 12px; }
+.dev-metric { display: flex; flex-direction: column; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 6px; }
+.dev-metric .dev-ico { font-size: 18px; }
+.dev-metric b { font-size: 17px; }
+.dev-metric .pt-muted { font-size: 11px; }
+.dev-actions { display: flex; gap: 8px; }
+
 /* ---- Chat ---- */
 .pt-chat {
   display: flex;

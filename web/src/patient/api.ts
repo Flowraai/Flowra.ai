@@ -159,6 +159,33 @@ export interface CalendarDay {
 
 export type Answers = Record<string, string | number>;
 
+export interface WearableDay {
+  day: string; // YYYY-MM-DD
+  sleep_minutes: number | null;
+  resting_hr: number | null;
+  hrv_ms: number | null;
+  steps: number | null;
+}
+
+export interface WearableSummary {
+  connected: boolean;
+  provider: string | null;
+  provider_name: string | null;
+  requires_oauth: boolean;
+  last_sync_at: string | null;
+  latest: WearableDay | null;
+  avg_sleep_minutes: number | null;
+  avg_resting_hr: number | null;
+  avg_hrv_ms: number | null;
+  avg_steps: number | null;
+  days: WearableDay[];
+}
+
+export interface WearableConnectResult {
+  connected: boolean;
+  connect_url: string | null;
+}
+
 export interface PatientAccount {
   name: string;
   activated: boolean;
@@ -214,4 +241,10 @@ export const patientApi = {
   aiHistory: () => pApi<ChatMessage[]>("/patient/ai-chat"),
   sendAi: (body: string) =>
     pApi<ChatMessage>("/patient/ai-chat", { method: "POST", body: { body, attachments: [] } }),
+  wearable: () => pApi<WearableSummary>("/patient/wearable"),
+  wearableConnect: () =>
+    pApi<WearableConnectResult>("/patient/wearable/connect", { method: "POST" }),
+  wearableSync: () => pApi<WearableSummary>("/patient/wearable/sync", { method: "POST" }),
+  wearableDisconnect: () =>
+    pApi<void>("/patient/wearable/disconnect", { method: "POST" }),
 };

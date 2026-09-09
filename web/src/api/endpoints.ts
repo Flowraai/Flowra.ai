@@ -25,6 +25,7 @@ import type {
   PatientPanelItem,
   PatientSummary,
   PatientUpdateInput,
+  WearableSummary,
   Plan,
   PlanAdmin,
   PlanInput,
@@ -92,6 +93,7 @@ export const patients = {
   prescriptions: (id: string) => api<Prescription[]>(`/patients/${id}/prescriptions`),
   createPrescription: (id: string, input: PrescriptionCreateInput) =>
     api<Prescription>(`/patients/${id}/prescriptions`, { method: "POST", body: input }),
+  wearable: (id: string) => api<WearableSummary>(`/patients/${id}/wearable`),
 };
 
 export const medications = {

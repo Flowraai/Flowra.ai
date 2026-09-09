@@ -339,6 +339,28 @@ export interface WhatsAppConnect {
   pairing_code: string | null;
 }
 
+export interface WearableDay {
+  day: string;
+  sleep_minutes: number | null;
+  resting_hr: number | null;
+  hrv_ms: number | null;
+  steps: number | null;
+}
+
+export interface WearableSummary {
+  connected: boolean;
+  provider: string | null;
+  provider_name: string | null;
+  requires_oauth: boolean;
+  last_sync_at: string | null;
+  latest: WearableDay | null;
+  avg_sleep_minutes: number | null;
+  avg_resting_hr: number | null;
+  avg_hrv_ms: number | null;
+  avg_steps: number | null;
+  days: WearableDay[];
+}
+
 export type MessageSender = "patient" | "doctor" | "ai";
 
 export interface MessageAttachment {

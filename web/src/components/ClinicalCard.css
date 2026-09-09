@@ -20,3 +20,9 @@
 .clin-row .mini:hover { color: var(--accent-ink); background: var(--accent-soft); }
 .clin-row .mini.danger:hover { color: var(--risk-red); background: color-mix(in srgb, var(--risk-red) 10%, transparent); }
 .clin-actions { display: flex; gap: 6px; align-items: center; flex: none; }
+
+.wear-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.wear-cell { display: flex; flex-direction: column; gap: 1px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 9px 11px; }
+.wear-label { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.wear-cell b { font-size: 16px; }
+.wear-avg { font-size: 11px; color: var(--muted); }

@@ -43,6 +43,7 @@ from app.models.protocol import Protocol, ProtocolQuestion
 from app.models.subscription import Subscription
 from app.models.tenant import Tenant
 from app.models.user import User
+from app.models.wearable import WearableConnection, WearableDaily
 
 __all__ = [
     "Alert",
@@ -67,6 +68,8 @@ __all__ = [
     "Subscription",
     "Tenant",
     "User",
+    "WearableConnection",
+    "WearableDaily",
     "AlertStatus",
     "AlertUrgency",
     "AppointmentKind",

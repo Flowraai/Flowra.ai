@@ -24,6 +24,7 @@ from app.api.routes import (
     prescriptions,
     protocols,
     survey,
+    wearable,
     whatsapp,
 )
 
@@ -43,6 +44,7 @@ v1.include_router(attachments.router)  # compartilhado (médico e paciente)
 v1.include_router(devices.router)
 v1.include_router(protocols.router)
 v1.include_router(survey.router)
+v1.include_router(wearable.router)
 v1.include_router(whatsapp.router)
 
 # Telas clínicas do médico: exigem assinatura ativa do tenant quando

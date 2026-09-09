@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { patientApi, PatientApiError, type Appointment, type PatientToday } from "./api";
+import { DeviceCard } from "./DeviceCard";
 
 function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] ?? name;
@@ -125,6 +126,8 @@ export function Today({
           ))}
         </div>
       ) : null}
+
+      <DeviceCard />
 
       {error ? <div className="pt-error">{error}</div> : null}
     </div>

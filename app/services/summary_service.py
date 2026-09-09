@@ -21,6 +21,7 @@ from app.protocol import psychiatry as P
 from app.services.inactivity_service import days_since_checkin
 from app.services.llm import chat_complete
 from app.services.medication_service import adherence_summary
+from app.services import wearable_service
 
 _RECENT = 5
 _SYSTEM = (
@@ -81,6 +82,16 @@ async def _gather(session: AsyncSession, patient: Patient) -> dict:
         .order_by(Appointment.scheduled_at)
         .limit(1)
     )
+    w = await wearable_service.summary(session, patient, 7)
+    wearable = (
+        {
+            "avg_sleep_minutes": w["avg_sleep_minutes"],
+            "avg_resting_hr": w["avg_resting_hr"],
+            "avg_hrv_ms": w["avg_hrv_ms"],
+        }
+        if w["connected"]
+        else None
+    )
     return {
         "current_risk": patient.current_risk.value,
         "days_since_checkin": days_since_checkin(patient, now),
@@ -91,6 +102,7 @@ async def _gather(session: AsyncSession, patient: Patient) -> dict:
         "adherence": await adherence_summary(session, patient.id, 30),
         "open_alerts": int(open_alerts or 0),
         "next_appointment": next_appt.isoformat() if next_appt else None,
+        "wearable": wearable,
     }
 
 
@@ -124,6 +136,15 @@ def _render_deterministic(patient: Patient, ctx: dict) -> str:
         )
     if ctx["open_alerts"]:
         parts.append(f"{ctx['open_alerts']} alerta(s) em aberto.")
+    w = ctx.get("wearable")
+    if w and w.get("avg_sleep_minutes"):
+        h, m = divmod(int(w["avg_sleep_minutes"]), 60)
+        bits = [f"sono médio {h}h{m:02d}"]
+        if w.get("avg_resting_hr"):
+            bits.append(f"FC repouso {w['avg_resting_hr']} bpm")
+        if w.get("avg_hrv_ms"):
+            bits.append(f"HRV {w['avg_hrv_ms']} ms")
+        parts.append("Dispositivo (7d): " + ", ".join(bits) + ".")
     return " ".join(parts)
 
 

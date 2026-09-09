@@ -144,6 +144,17 @@ class Settings(BaseSettings):
     # Onboarding do paciente (link do app/PWA enviado ao contato do paciente)
     patient_app_url_base: str | None = None
 
+    # Dispositivos vestíveis (relógio/pulseira). Provedor plugável e agnóstico:
+    #   demo    = dados sintéticos (funciona sem credencial; para testes/demonstração)
+    #   terra   = agregador (Apple/Fitbit/Garmin/Samsung/Xiaomi…) — liga com credenciais
+    #   fitbit  = integração direta Fitbit (OAuth) — liga com client id/secret
+    # Os provedores reais ficam PRONTOS PARA LIGAR; sem credencial, usa-se o demo.
+    wearable_provider: str = "demo"
+    terra_api_key: str | None = None
+    terra_dev_id: str | None = None
+    fitbit_client_id: str | None = None
+    fitbit_client_secret: str | None = None
+
     # Notificações ao médico (alertas)
     notification_channels: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["log"]
