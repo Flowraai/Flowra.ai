@@ -12,6 +12,7 @@ export function ChatPanel({ patientId }: { patientId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [viaWhatsapp, setViaWhatsapp] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,7 +38,7 @@ export function ChatPanel({ patientId }: { patientId: string }) {
     if (!text || sending) return;
     setSending(true);
     try {
-      const msg = await patients.sendMessage(patientId, text);
+      const msg = await patients.sendMessage(patientId, text, viaWhatsapp);
       setMessages((prev) => [...prev, msg]);
       setDraft("");
     } catch (err) {
@@ -89,9 +90,17 @@ export function ChatPanel({ patientId }: { patientId: string }) {
         )}
       </div>
       <form className="compose" onSubmit={onSend}>
+        <label className="compose-wa" title="Entrega o texto no WhatsApp do paciente (pelo seu número, se conectado)">
+          <input
+            type="checkbox"
+            checked={viaWhatsapp}
+            onChange={(e) => setViaWhatsapp(e.target.checked)}
+          />
+          <span>WhatsApp</span>
+        </label>
         <input
           className="box"
-          placeholder="Escreva uma mensagem…"
+          placeholder={viaWhatsapp ? "Mensagem que vai para o WhatsApp…" : "Escreva uma mensagem…"}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           aria-label="Mensagem"

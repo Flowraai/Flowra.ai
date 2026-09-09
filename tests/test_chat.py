@@ -88,3 +88,28 @@ async def test_chat_isolation(client: httpx.AsyncClient):
     headers_b = await _doctor(client, email="dr.b@x.com")
     r = await client.get(f"/api/v1/patients/{patient['id']}/messages", headers=headers_b)
     assert r.status_code == 404
+
+
+async def test_manual_message_delivers_full_text(client: httpx.AsyncClient, monkeypatch):
+    """Com deliver=True, o TEXTO da mensagem é entregue ao paciente (WhatsApp/canais)."""
+    delivered: list[str] = []
+
+    async def _fake_deliver(session, patient, subject, body):
+        delivered.append(body)
+        return True
+
+    monkeypatch.setattr("app.api.routes.messages.deliver_to_patient", _fake_deliver)
+
+    headers = await _doctor(client)
+    patient = (await client.post("/api/v1/patients", headers=headers, json={
+        "name": "João", "consent_given": True, "contact": "+5511999999999"})).json()
+
+    # Envio manual: entrega o texto.
+    await client.post(f"/api/v1/patients/{patient['id']}/messages", headers=headers,
+                      json={"body": "Sua receita está pronta", "deliver": True})
+    assert delivered == ["Sua receita está pronta"]
+
+    # Envio comum: NÃO entrega o texto (fica no app, aviso genérico).
+    await client.post(f"/api/v1/patients/{patient['id']}/messages", headers=headers,
+                      json={"body": "conteúdo interno"})
+    assert delivered == ["Sua receita está pronta"]

@@ -14,6 +14,11 @@ class MessageCreate(BaseModel):
     body: str = Field(min_length=1, max_length=5000)
     # Anexos [{"url", "type"}] — o upload em si é um follow-up.
     attachments: list[dict] = Field(default_factory=list)
+    # Só no envio do médico: entregar o TEXTO da mensagem no WhatsApp do paciente
+    # (pelo número do médico, se conectado; senão pelos canais do servidor). Sem
+    # isto, o paciente recebe só um aviso genérico ("abra o app"). Ignorado no
+    # envio do paciente.
+    deliver: bool = False
 
 
 class MessageRead(BaseModel):

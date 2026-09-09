@@ -71,10 +71,10 @@ export const patients = {
   checkins: (id: string, limit = 14) => api<CheckIn[]>(`/patients/${id}/checkins?limit=${limit}`),
   summary: (id: string) => api<PatientSummary>(`/patients/${id}/summary`),
   messages: (id: string) => api<ChatMessage[]>(`/patients/${id}/messages`),
-  sendMessage: (id: string, bodyText: string) =>
+  sendMessage: (id: string, bodyText: string, deliver = false) =>
     api<ChatMessage>(`/patients/${id}/messages`, {
       method: "POST",
-      body: { body: bodyText, attachments: [] },
+      body: { body: bodyText, attachments: [], deliver },
     }),
   medications: (id: string) => api<MedicationPlan[]>(`/patients/${id}/medications`),
   createMedication: (id: string, input: MedicationPlanInput) =>
