@@ -97,6 +97,12 @@ export interface PatientCreated extends Patient {
   access_token: string;
 }
 
+export interface PatientOnboarding {
+  access_token: string;
+  onboarding_link: string;
+  sent: boolean;
+}
+
 export interface PatientCreateInput {
   name: string;
   contact?: string | null;

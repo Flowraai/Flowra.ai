@@ -79,6 +79,20 @@ async def test_resend_onboarding_rotates_token_and_returns_link(client: httpx.As
             headers={"X-Patient-Token": data["access_token"]})).status_code == 200
 
 
+async def test_resend_onboarding_ignores_pref(client: httpx.AsyncClient):
+    """Reenvio manual é explícito: entrega mesmo com o convite automático desligado."""
+    headers = await _doctor_headers(client)
+    # Desliga o envio automático de onboarding nas preferências do médico.
+    await client.patch("/api/v1/auth/me", headers=headers, json={
+        "message_prefs": {"send_onboarding": False}})
+    p = (await client.post("/api/v1/patients", headers=headers, json={
+        "name": "João", "contact": "+5511999999999", "consent_given": True})).json()
+
+    r = await client.post(f"/api/v1/patients/{p['id']}/resend-onboarding", headers=headers)
+    assert r.status_code == 200
+    assert r.json()["sent"] is True  # force=True ignora a preferência
+
+
 # ---------- Notificações reais: destino e teste ----------
 async def test_notification_test_endpoint(client: httpx.AsyncClient):
     headers = await _doctor_headers(client)

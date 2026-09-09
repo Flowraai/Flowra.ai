@@ -36,13 +36,18 @@ def _message(patient: Patient, raw_token: str) -> tuple[str, str]:
 
 
 async def send_onboarding(
-    session: AsyncSession, patient: Patient, raw_token: str
+    session: AsyncSession, patient: Patient, raw_token: str, *, force: bool = False
 ) -> bool:
-    """Envia o onboarding ao contato do paciente. Retorna se houve destino/tentativa."""
+    """Envia o onboarding ao contato do paciente. Retorna se houve destino/tentativa.
+
+    `force=True` ignora a preferência do médico (usado no reenvio manual "reenviar
+    acesso", que é uma ação explícita); o envio automático no cadastro respeita a
+    preferência.
+    """
     if not patient.contact:
         return False
     prefs, _doctor = await prefs_for_patient(session, patient)
-    if not prefs.send_onboarding:
+    if not prefs.send_onboarding and not force:
         return False
     subject, body = _message(patient, raw_token)
     body = with_signature(body, prefs)

@@ -350,7 +350,7 @@ async def resend_onboarding(
         entity_type="patient",
         entity_id=patient.id,
     )
-    sent = await send_onboarding(session, patient, token)
+    sent = await send_onboarding(session, patient, token, force=True)
     return PatientOnboarding(
         access_token=token, onboarding_link=build_onboarding_link(token), sent=sent
     )

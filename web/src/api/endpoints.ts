@@ -21,6 +21,7 @@ import type {
   PatientCreated,
   PatientCreateInput,
   PatientExport,
+  PatientOnboarding,
   PatientPanelItem,
   PatientSummary,
   PatientUpdateInput,
@@ -67,6 +68,8 @@ export const patients = {
   update: (id: string, patch: PatientUpdateInput) =>
     api<Patient>(`/patients/${id}`, { method: "PATCH", body: patch }),
   remove: (id: string) => api<void>(`/patients/${id}`, { method: "DELETE" }),
+  resendOnboarding: (id: string) =>
+    api<PatientOnboarding>(`/patients/${id}/resend-onboarding`, { method: "POST" }),
   export: (id: string) => api<PatientExport>(`/patients/${id}/export`),
   checkins: (id: string, limit = 14) => api<CheckIn[]>(`/patients/${id}/checkins?limit=${limit}`),
   summary: (id: string) => api<PatientSummary>(`/patients/${id}/summary`),

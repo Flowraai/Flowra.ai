@@ -9,6 +9,7 @@ import { AppointmentsCard } from "../components/AppointmentsCard";
 import { ExamsCard } from "../components/ExamsCard";
 import { PrescriptionsCard } from "../components/PrescriptionsCard";
 import { EditPatientModal } from "../components/EditPatientModal";
+import { ResendAccessModal } from "../components/ResendAccessModal";
 import { IconAlertTri, IconChart, IconSpark } from "../components/icons";
 import { useAsync } from "../lib/useAsync";
 import { ApiError } from "../api/client";
@@ -44,6 +45,7 @@ export function PatientDetail() {
   const checkins = useAsync(() => patients.checkins(id, 7), [id]);
   const alertList = useAsync(() => alertsApi.list(), [id]);
   const [showEdit, setShowEdit] = useState(false);
+  const [showResend, setShowResend] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
@@ -91,6 +93,11 @@ export function PatientDetail() {
           {p ? (
             <button className="btn ghost" onClick={() => setShowEdit(true)}>
               Editar
+            </button>
+          ) : null}
+          {p ? (
+            <button className="btn ghost" onClick={() => setShowResend(true)}>
+              Reenviar acesso
             </button>
           ) : null}
           <button className="btn ghost" onClick={exportData} disabled={exporting || !p}>
@@ -224,6 +231,10 @@ export function PatientDetail() {
           }}
           onDeleted={() => navigate("/", { replace: true })}
         />
+      ) : null}
+
+      {showResend && p ? (
+        <ResendAccessModal patientId={id} patientName={p.name} onClose={() => setShowResend(false)} />
       ) : null}
     </AppShell>
   );
