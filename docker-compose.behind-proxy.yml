@@ -50,6 +50,8 @@ services:
       # SEC-2 — rate limit compartilhado entre workers; permite WEB_CONCURRENCY>1.
       REDIS_URL: redis://redis:6379/0
       WEB_CONCURRENCY: "2"
+      # WhatsApp por médico: fala com a Evolution dedicada pela rede interna.
+      EVOLUTION_API_URL: http://evolution:8080
       RUN_MIGRATIONS: "true"
       SEED_PROTOCOL: "true"
     volumes:
@@ -76,6 +78,8 @@ services:
       DEBUG: "false"
       LOG_FORMAT: json
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-flowra}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-flowra_care}
+      # Lembretes ao paciente podem sair pelo WhatsApp do médico (via Evolution).
+      EVOLUTION_API_URL: http://evolution:8080
       RUN_MIGRATIONS: "false"
       SEED_PROTOCOL: "false"
     command: ["python", "-m", "app.scripts.scheduler"]
@@ -101,6 +105,55 @@ services:
       retries: 3
       start_period: 5s
 
+  # WhatsApp por médico (Evolution API dedicada, só na rede interna — sem porta
+  # pública). Cada médico pareia o próprio número pelo painel (QR). Banco próprio.
+  evolution-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: ${EVOLUTION_DB_PASSWORD:?defina EVOLUTION_DB_PASSWORD no .env}
+      POSTGRES_DB: evolution
+    volumes:
+      - evolution_pgdata:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evolution -d evolution"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  evolution:
+    image: evoapicloud/evolution-api:v2.3.7
+    depends_on:
+      evolution-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:?defina EVOLUTION_API_KEY no .env}
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://evolution:${EVOLUTION_DB_PASSWORD}@evolution-db:5432/evolution?schema=public
+      DATABASE_CONNECTION_CLIENT_NAME: evolution
+      # LGPD/minimização: guarda só o necessário à sessão; não persiste mensagens/contatos.
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "false"
+      DATABASE_SAVE_MESSAGE_UPDATE: "false"
+      DATABASE_SAVE_DATA_CONTACTS: "false"
+      DATABASE_SAVE_DATA_CHATS: "false"
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://redis:6379/6
+      CACHE_REDIS_PREFIX_KEY: evolution
+      CACHE_REDIS_SAVE_INSTANCES: "false"
+      CACHE_LOCAL_ENABLED: "false"
+      SERVER_URL: http://evolution:8080
+      DEL_INSTANCE: "false"
+    volumes:
+      - evolution_instances:/evolution/instances
+    restart: always
+
 volumes:
   flowra_prod_pgdata:
   flowra_prod_uploads:
+  evolution_pgdata:
+  evolution_instances:
