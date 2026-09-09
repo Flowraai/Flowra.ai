@@ -11,8 +11,10 @@ from app.api.middleware import RequestContextMiddleware
 from app.api.router import api_router
 from app.core.config import settings
 from app.core.logging import setup_logging
+from app.core.monitoring import init_monitoring
 
 setup_logging()
+init_monitoring("api")
 logger = logging.getLogger("flowra_care")
 
 # Guardrails de produção: aborta em config insegura (JWT padrão, DEBUG) e

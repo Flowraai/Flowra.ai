@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     # medicação/consulta e alertas de inatividade). Idempotentes — seguro repetir.
     scheduler_interval_seconds: int = 600
 
+    # Monitoramento de erros (Sentry). Sem SENTRY_DSN, fica desligado (no-op).
+    # send_default_pii fica FALSE (LGPD): não anexa IP/cookies/corpo às ocorrências.
+    sentry_dsn: str | None = None
+    sentry_traces_sample_rate: float = 0.0
+
     # Banco de dados
     database_url: str = "postgresql+asyncpg://flowra:flowra@localhost:5432/flowra_care"
 

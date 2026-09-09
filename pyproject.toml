@@ -24,6 +24,8 @@ dependencies = [
     "tzdata>=2024.1",
     # Backend opcional do rate limit compartilhado (SEC-2); só usado se REDIS_URL.
     "redis>=5.0",
+    # Monitoramento de erros opcional; só inicializa se SENTRY_DSN estiver definido.
+    "sentry-sdk[fastapi]>=2.0",
 ]
 
 [project.optional-dependencies]

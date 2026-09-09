@@ -19,6 +19,7 @@ import logging
 
 from app.core.config import settings
 from app.core.logging import setup_logging
+from app.core.monitoring import init_monitoring
 from app.db.session import AsyncSessionLocal
 from app.services.appointment_service import scan_appointment_reminders
 from app.services.inactivity_service import scan_inactivity
@@ -46,6 +47,7 @@ async def run_once() -> None:
 
 async def main() -> None:
     setup_logging()
+    init_monitoring("worker")
     interval = max(settings.scheduler_interval_seconds, 30)
     logger.info("agendador iniciado", extra={"interval_s": interval})
     while True:
