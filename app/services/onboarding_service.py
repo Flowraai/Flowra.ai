@@ -13,7 +13,7 @@ from app.core.config import settings
 from app.models.enums import AuditAction
 from app.models.patient import Patient
 from app.services import audit
-from app.services.notifications import send_plain
+from app.services.notifications import deliver_to_patient
 
 
 def build_onboarding_link(raw_token: str) -> str:
@@ -41,7 +41,8 @@ async def send_onboarding(
     if not patient.contact:
         return False
     subject, body = _message(patient, raw_token)
-    await send_plain(target=patient.contact, subject=subject, body=body)
+    # Se o médico tem WhatsApp conectado, o convite sai do número dele.
+    await deliver_to_patient(session, patient, subject, body)
     await audit.record(
         session,
         action=AuditAction.PATIENT_ONBOARDING_SENT,

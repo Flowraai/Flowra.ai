@@ -37,6 +37,8 @@ import type {
   SurveyQuestionCreateInput,
   SurveyQuestionUpdateInput,
   TokenPair,
+  WhatsAppConnect,
+  WhatsAppStatus,
 } from "./types";
 
 export const auth = {
@@ -135,6 +137,12 @@ export const survey = {
     api<Survey>(`/survey/questions/${id}`, { method: "DELETE" }),
   reorder: (order: string[]) =>
     api<Survey>("/survey/reorder", { method: "POST", body: { order } }),
+};
+
+export const whatsapp = {
+  status: () => api<WhatsAppStatus>("/whatsapp/status"),
+  connect: () => api<WhatsAppConnect>("/whatsapp/connect", { method: "POST" }),
+  disconnect: () => api<WhatsAppStatus>("/whatsapp/disconnect", { method: "POST" }),
 };
 
 export const billing = {

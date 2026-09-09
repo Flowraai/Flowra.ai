@@ -23,6 +23,7 @@ from app.api.routes import (
     prescriptions,
     protocols,
     survey,
+    whatsapp,
 )
 
 api_router = APIRouter()
@@ -40,6 +41,7 @@ v1.include_router(attachments.router)  # compartilhado (médico e paciente)
 v1.include_router(devices.router)
 v1.include_router(protocols.router)
 v1.include_router(survey.router)
+v1.include_router(whatsapp.router)
 
 # Telas clínicas do médico: exigem assinatura ativa do tenant quando
 # BILLING_ENABLED=true (no-op caso contrário).

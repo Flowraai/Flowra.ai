@@ -63,6 +63,35 @@ async def send_plain(target: str, subject: str, body: str) -> None:
             logger.error("Falha ao enviar mensagem via %s: %s", channel.channel_type.value, exc)
 
 
+async def deliver_to_patient(
+    session: AsyncSession, patient: Patient, subject: str, body: str
+) -> bool:
+    """Entrega uma mensagem ao paciente (onboarding, lembretes).
+
+    Se o médico dele tem WhatsApp conectado (Evolution) e o paciente tem telefone,
+    envia **pelo número do médico**; senão, cai nos canais configurados (send_plain).
+    """
+    from app.services import evolution  # local: evita ciclo e custo quando não usado
+
+    if not patient.contact:
+        return False
+    phone_digits = "".join(ch for ch in patient.contact if ch.isdigit())
+    if evolution.configured() and len(phone_digits) >= 10:
+        doctor = await session.get(Doctor, patient.doctor_id)
+        if doctor is not None and doctor.whatsapp_instance:
+            try:
+                text = f"{subject}\n\n{body}" if subject else body
+                await evolution.send_text(doctor.whatsapp_instance, patient.contact, text)
+                return True
+            except Exception as exc:  # noqa: BLE001 — cai no fallback abaixo
+                logger.warning(
+                    "WhatsApp do médico falhou (paciente=%s): %s; usando fallback",
+                    patient.id, exc,
+                )
+    await send_plain(target=patient.contact, subject=subject, body=body)
+    return True
+
+
 def _render(alert: Alert) -> tuple[str, str]:
     """Conteúdo enviado a canais externos (WhatsApp/e-mail/webhook) e push.
 

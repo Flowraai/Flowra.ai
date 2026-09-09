@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { AppShell } from "../components/AppShell";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { PrescriptionIntegrationCard } from "../components/PrescriptionIntegrationCard";
+import { WhatsAppConnectCard } from "../components/WhatsAppConnectCard";
 import { useAuth } from "../auth/AuthContext";
 import { auth } from "../api/endpoints";
 import { ApiError } from "../api/client";
@@ -101,6 +102,7 @@ export function Settings() {
         </form>
       </div>
 
+      <WhatsAppConnectCard />
       <PrescriptionIntegrationCard />
     </AppShell>
   );

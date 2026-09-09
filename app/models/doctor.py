@@ -45,6 +45,9 @@ class Doctor(UUIDMixin, TimestampMixin, Base):
     # credencial da conta dele (token) cifrada em repouso. None = registro interno.
     prescription_provider: Mapped[str | None] = mapped_column(String(40), nullable=True)
     prescription_credential: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)
+    # WhatsApp por médico (Evolution API): nome da instância pareada com o número
+    # dele. As mensagens aos pacientes dele saem desse número. None = não conectado.
+    whatsapp_instance: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="doctor")
     patients: Mapped[list["Patient"]] = relationship(

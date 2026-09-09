@@ -309,6 +309,17 @@ export interface PrescriptionIntegration {
   connected: boolean;
 }
 
+export interface WhatsAppStatus {
+  connected: boolean;
+  state: string;
+}
+
+export interface WhatsAppConnect {
+  state: string | null;
+  qr: string | null;
+  pairing_code: string | null;
+}
+
 export type MessageSender = "patient" | "doctor" | "ai";
 
 export interface MessageAttachment {
