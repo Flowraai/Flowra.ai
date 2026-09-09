@@ -91,25 +91,38 @@ async def test_chat_isolation(client: httpx.AsyncClient):
 
 
 async def test_manual_message_delivers_full_text(client: httpx.AsyncClient, monkeypatch):
-    """Com deliver=True, o TEXTO da mensagem é entregue ao paciente (WhatsApp/canais)."""
+    """Com deliver=True, o TEXTO da mensagem é entregue e o resultado é reportado."""
     delivered: list[str] = []
 
-    async def _fake_deliver(session, patient, subject, body):
-        delivered.append(body)
-        return True
+    async def _fake_deliver(session, patient, text):
+        delivered.append(text)
+        return "whatsapp"
 
-    monkeypatch.setattr("app.api.routes.messages.deliver_to_patient", _fake_deliver)
+    monkeypatch.setattr("app.api.routes.messages.deliver_whatsapp_status", _fake_deliver)
 
     headers = await _doctor(client)
     patient = (await client.post("/api/v1/patients", headers=headers, json={
-        "name": "João", "consent_given": True, "contact": "+5511999999999"})).json()
+        "name": "João", "consent_given": True, "contact": "+5543988580825"})).json()
 
-    # Envio manual: entrega o texto.
-    await client.post(f"/api/v1/patients/{patient['id']}/messages", headers=headers,
-                      json={"body": "Sua receita está pronta", "deliver": True})
+    # Envio manual: entrega o texto e devolve delivery="whatsapp".
+    r = await client.post(f"/api/v1/patients/{patient['id']}/messages", headers=headers,
+                          json={"body": "Sua receita está pronta", "deliver": True})
+    assert r.json()["delivery"] == "whatsapp"
     assert delivered == ["Sua receita está pronta"]
 
-    # Envio comum: NÃO entrega o texto (fica no app, aviso genérico).
-    await client.post(f"/api/v1/patients/{patient['id']}/messages", headers=headers,
-                      json={"body": "conteúdo interno"})
+    # Envio comum: NÃO entrega o texto (fica no app, sem delivery).
+    r2 = await client.post(f"/api/v1/patients/{patient['id']}/messages", headers=headers,
+                           json={"body": "conteúdo interno"})
+    assert r2.json()["delivery"] is None
     assert delivered == ["Sua receita está pronta"]
+
+
+def test_normalize_msisdn_adds_brazil_ddi():
+    from app.services.evolution import looks_deliverable, normalize_msisdn
+
+    assert normalize_msisdn("43988580825") == "5543988580825"      # DDD+celular sem DDI
+    assert normalize_msisdn("(43) 98858-0825") == "5543988580825"  # com máscara
+    assert normalize_msisdn("+55 43 98858-0825") == "5543988580825"  # já com DDI
+    assert normalize_msisdn("5543988580825") == "5543988580825"
+    assert looks_deliverable("43988580825") is True
+    assert looks_deliverable("98580825") is False  # sem DDD

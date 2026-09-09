@@ -341,6 +341,14 @@ export interface MessageAttachment {
   filename?: string | null;
 }
 
+export type DeliveryResult =
+  | "whatsapp"
+  | "no_contact"
+  | "unavailable"
+  | "not_connected"
+  | "bad_number"
+  | "failed";
+
 export interface ChatMessage {
   id: string;
   sender: MessageSender;
@@ -348,4 +356,5 @@ export interface ChatMessage {
   attachments: MessageAttachment[];
   read_at: string | null;
   created_at: string;
+  delivery?: DeliveryResult | null;
 }

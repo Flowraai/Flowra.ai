@@ -30,3 +30,6 @@ class MessageRead(BaseModel):
     attachments: list
     read_at: datetime | None = None
     created_at: datetime
+    # Resultado da entrega no WhatsApp (só no retorno do envio manual do médico):
+    # "whatsapp" | "no_contact" | "unavailable" | "not_connected" | "bad_number" | "failed".
+    delivery: str | None = None

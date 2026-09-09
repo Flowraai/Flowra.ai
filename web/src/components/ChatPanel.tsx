@@ -3,8 +3,17 @@ import { patients } from "../api/endpoints";
 import { ApiError } from "../api/client";
 import { ChatAttachment } from "./ChatAttachment";
 import { IconChat, IconSend } from "./icons";
-import type { ChatMessage } from "../api/types";
+import type { ChatMessage, DeliveryResult } from "../api/types";
 import "./ChatPanel.css";
+
+// Mensagem ao médico conforme o resultado da entrega no WhatsApp.
+const DELIVERY_MSG: Record<Exclude<DeliveryResult, "whatsapp">, string> = {
+  no_contact: "Paciente sem telefone cadastrado — a mensagem ficou só no app.",
+  unavailable: "WhatsApp não está habilitado no servidor — a mensagem ficou só no app.",
+  not_connected: "Conecte seu WhatsApp em Configurações para entregar pelo seu número. A mensagem ficou só no app.",
+  bad_number: "O telefone do paciente parece incompleto (DDD + número). A mensagem ficou só no app.",
+  failed: "Não foi possível entregar no WhatsApp agora. A mensagem ficou salva no app.",
+};
 
 export function ChatPanel({ patientId }: { patientId: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -13,6 +22,7 @@ export function ChatPanel({ patientId }: { patientId: string }) {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [viaWhatsapp, setViaWhatsapp] = useState(false);
+  const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,10 +47,18 @@ export function ChatPanel({ patientId }: { patientId: string }) {
     const text = draft.trim();
     if (!text || sending) return;
     setSending(true);
+    setNotice(null);
     try {
       const msg = await patients.sendMessage(patientId, text, viaWhatsapp);
       setMessages((prev) => [...prev, msg]);
       setDraft("");
+      if (viaWhatsapp) {
+        if (msg.delivery === "whatsapp") {
+          setNotice({ ok: true, text: "Entregue no WhatsApp do paciente ✓" });
+        } else if (msg.delivery) {
+          setNotice({ ok: false, text: DELIVERY_MSG[msg.delivery] });
+        }
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Não foi possível enviar.");
     } finally {
@@ -89,6 +107,9 @@ export function ChatPanel({ patientId }: { patientId: string }) {
           ))
         )}
       </div>
+      {notice ? (
+        <div className={`chat-notice ${notice.ok ? "ok" : "warn"}`}>{notice.text}</div>
+      ) : null}
       <form className="compose" onSubmit={onSend}>
         <label className="compose-wa" title="Entrega o texto no WhatsApp do paciente (pelo seu número, se conectado)">
           <input

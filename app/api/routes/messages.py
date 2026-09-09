@@ -16,7 +16,7 @@ from app.models.enums import MessageSender, MessageThread
 from app.models.message import Message
 from app.models.patient import Patient
 from app.schemas.message import MessageCreate, MessageRead
-from app.services.notifications import deliver_to_patient, send_plain
+from app.services.notifications import deliver_whatsapp_status, send_plain
 from app.services.push_service import push_to_patient
 
 router = APIRouter(tags=["chat"])
@@ -47,12 +47,13 @@ async def send_message(
     session.add(message)
     await session.flush()
 
-    if payload.deliver and patient.contact:
-        # Envio manual: entrega o TEXTO da mensagem no WhatsApp do paciente
-        # (pelo número do médico, se conectado; senão pelos canais do servidor).
-        await deliver_to_patient(session, patient, subject="", body=payload.body)
-    elif patient.contact:
-        # Padrão: aviso genérico (o conteúdo fica no app, sob login) — LGPD.
+    delivery: str | None = None
+    if payload.deliver:
+        # Envio manual: entrega o TEXTO no WhatsApp do paciente e reporta o resultado.
+        delivery = await deliver_whatsapp_status(session, patient, payload.body)
+    # Aviso genérico quando NÃO houve entrega do texto por WhatsApp (o conteúdo
+    # fica no app, sob login) — LGPD. Cobre o envio comum e o WhatsApp indisponível.
+    if delivery != "whatsapp" and patient.contact:
         await send_plain(
             target=patient.contact,
             subject="[Flowra Care] Nova mensagem do seu médico",
@@ -64,6 +65,8 @@ async def send_message(
         "[Flowra Care] Nova mensagem do seu médico",
         "Você recebeu uma nova mensagem do seu médico. Abra o app para responder.",
     )
+    # Campo transitório (não persistido) para o painel mostrar o resultado do envio.
+    message.delivery = delivery  # type: ignore[attr-defined]
     return message
 
 

@@ -30,6 +30,29 @@ def instance_name_for(doctor_id: uuid.UUID) -> str:
     return f"care_{doctor_id.hex[:16]}"
 
 
+def normalize_msisdn(number: str) -> str:
+    """Normaliza um telefone para o formato que o WhatsApp espera (só dígitos, com DDI).
+
+    Aceita como o médico costuma digitar no Brasil e completa o DDI 55 quando falta:
+      "(43) 98858-0825" / "43988580825"  -> "5543988580825"
+      "+55 43 98858-0825" / "5543988580825" -> "5543988580825"
+    Números que já tenham DDI (>= 12 dígitos) ou de outros países são mantidos.
+    """
+    digits = "".join(ch for ch in number if ch.isdigit())
+    if not digits:
+        return digits
+    if digits.startswith("55") and len(digits) >= 12:
+        return digits  # já tem DDI Brasil
+    if len(digits) in (10, 11):  # DDD + fixo(10)/celular(11), sem DDI
+        return "55" + digits
+    return digits  # já internacional ou formato incomum — não mexe
+
+
+def looks_deliverable(number: str) -> bool:
+    """Um número só é enviável se, após normalizar, tiver DDI+DDD+assinante (>= 12)."""
+    return len(normalize_msisdn(number)) >= 12
+
+
 def _base() -> str:
     return settings.evolution_api_url.rstrip("/")  # type: ignore[union-attr]
 
@@ -94,8 +117,7 @@ async def disconnect(name: str) -> None:
 
 
 async def send_text(name: str, number: str, text: str) -> None:
-    """Envia texto pela instância `name` para `number` (só dígitos, DDI+DDD)."""
-    digits = "".join(ch for ch in number if ch.isdigit())
+    """Envia texto pela instância `name` para `number` (normaliza DDI+DDD)."""
     await _request(
-        "POST", f"/message/sendText/{name}", json={"number": digits, "text": text}
+        "POST", f"/message/sendText/{name}", json={"number": normalize_msisdn(number), "text": text}
     )

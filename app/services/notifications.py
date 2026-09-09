@@ -75,8 +75,7 @@ async def deliver_to_patient(
 
     if not patient.contact:
         return False
-    phone_digits = "".join(ch for ch in patient.contact if ch.isdigit())
-    if evolution.configured() and len(phone_digits) >= 10:
+    if evolution.configured() and evolution.looks_deliverable(patient.contact):
         doctor = await session.get(Doctor, patient.doctor_id)
         if doctor is not None and doctor.whatsapp_instance:
             try:
@@ -90,6 +89,36 @@ async def deliver_to_patient(
                 )
     await send_plain(target=patient.contact, subject=subject, body=body)
     return True
+
+
+async def deliver_whatsapp_status(session: AsyncSession, patient: Patient, text: str) -> str:
+    """Tenta entregar `text` no WhatsApp do paciente pelo número do médico e diz o que houve.
+
+    Usado pelo envio manual, que precisa dar retorno ao médico. Resultados:
+      "whatsapp"      — entregue pelo WhatsApp do médico ✓
+      "no_contact"    — paciente sem telefone cadastrado
+      "unavailable"   — servidor sem Evolution configurada
+      "not_connected" — o médico ainda não conectou o WhatsApp dele
+      "bad_number"    — telefone do paciente sem DDI/DDD válido
+      "failed"        — a Evolution recusou/erro no envio
+    """
+    from app.services import evolution  # local: evita ciclo e custo quando não usado
+
+    if not patient.contact:
+        return "no_contact"
+    if not evolution.configured():
+        return "unavailable"
+    doctor = await session.get(Doctor, patient.doctor_id)
+    if doctor is None or not doctor.whatsapp_instance:
+        return "not_connected"
+    if not evolution.looks_deliverable(patient.contact):
+        return "bad_number"
+    try:
+        await evolution.send_text(doctor.whatsapp_instance, patient.contact, text)
+        return "whatsapp"
+    except Exception as exc:  # noqa: BLE001 — reporta a falha ao médico, não derruba o envio
+        logger.warning("Envio manual por WhatsApp falhou (paciente=%s): %s", patient.id, exc)
+        return "failed"
 
 
 def _render(alert: Alert) -> tuple[str, str]:
