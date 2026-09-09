@@ -29,8 +29,9 @@ def _message(patient: Patient, raw_token: str) -> tuple[str, str]:
         f"Olá, {patient.name}!\n\n"
         "Seu médico ativou o acompanhamento diário no Flowra Care. "
         "Todos os dias você responde um check-in rápido (menos de 1 minuto).\n\n"
-        f"Acesse por aqui:\n{build_onboarding_link(raw_token)}\n\n"
-        "Guarde este link — ele é pessoal e dá acesso ao seu check-in."
+        f"Abra este link para criar seu acesso (CPF + senha):\n{build_onboarding_link(raw_token)}\n\n"
+        "Na primeira vez você define uma senha; depois é só entrar com seu CPF. "
+        "Este link é pessoal — não compartilhe."
     )
     return subject, body
 

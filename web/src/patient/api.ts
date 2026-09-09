@@ -30,8 +30,11 @@ export class PatientApiError extends Error {
   }
 }
 
-async function pApi<T>(path: string, opts: { method?: string; body?: unknown } = {}): Promise<T> {
-  const { method = "GET", body } = opts;
+async function pApi<T>(
+  path: string,
+  opts: { method?: string; body?: unknown; silent401?: boolean } = {},
+): Promise<T> {
+  const { method = "GET", body, silent401 = false } = opts;
   const token = getPatientToken();
   const headers: Record<string, string> = {};
   if (token) headers["X-Patient-Token"] = token;
@@ -43,6 +46,18 @@ async function pApi<T>(path: string, opts: { method?: string; body?: unknown } =
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
+  // Nas telas de login/recuperação, o 401 é "credencial errada" — repassa a
+  // mensagem do servidor e NÃO apaga token (o usuário está justamente entrando).
+  if (res.status === 401 && silent401) {
+    let detail = "CPF ou senha incorretos.";
+    try {
+      const data = await res.json();
+      if (typeof data?.detail === "string") detail = data.detail;
+    } catch {
+      /* keep default */
+    }
+    throw new PatientApiError(401, detail);
+  }
   if (res.status === 401) {
     // Token inválido/expirado — limpa para cair na tela de acesso.
     setPatientToken(null);
@@ -143,6 +158,32 @@ export interface CalendarDay {
 }
 
 export type Answers = Record<string, string | number>;
+
+export interface PatientAccount {
+  name: string;
+  activated: boolean;
+  has_contact: boolean;
+}
+
+export interface PatientSession {
+  access_token: string;
+}
+
+export const patientAuth = {
+  account: () => pApi<PatientAccount>("/patient/account"),
+  activate: (cpf: string, password: string) =>
+    pApi<PatientSession>("/patient/activate", { method: "POST", body: { cpf, password }, silent401: true }),
+  login: (cpf: string, password: string) =>
+    pApi<PatientSession>("/patient/login", { method: "POST", body: { cpf, password }, silent401: true }),
+  forgot: (cpf: string) =>
+    pApi<{ message: string }>("/patient/forgot-password", { method: "POST", body: { cpf }, silent401: true }),
+  reset: (cpf: string, code: string, newPassword: string) =>
+    pApi<PatientSession>("/patient/reset-password", {
+      method: "POST",
+      body: { cpf, code, new_password: newPassword },
+      silent401: true,
+    }),
+};
 
 export const patientApi = {
   today: () => pApi<PatientToday>("/patient/today"),

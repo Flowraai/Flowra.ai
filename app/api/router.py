@@ -19,6 +19,7 @@ from app.api.routes import (
     messages,
     notifications,
     patient_app,
+    patient_auth,
     patients,
     prescriptions,
     protocols,
@@ -36,6 +37,7 @@ v1 = APIRouter(prefix="/api/v1")
 v1.include_router(auth.router)
 v1.include_router(billing.router)
 v1.include_router(admin.router)
+v1.include_router(patient_auth.router)
 v1.include_router(patient_app.router)
 v1.include_router(attachments.router)  # compartilhado (médico e paciente)
 v1.include_router(devices.router)

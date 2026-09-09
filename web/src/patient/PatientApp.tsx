@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
-import { getPatientToken, patientApi, PatientApiError, setPatientToken, type PatientToday } from "./api";
-import { Access } from "./Access";
+import {
+  getPatientToken,
+  patientApi,
+  patientAuth,
+  PatientApiError,
+  setPatientToken,
+  type PatientToday,
+} from "./api";
+import { PatientAuth } from "./PatientAuth";
 import { Today } from "./Today";
 import { Checkin } from "./Checkin";
 import { Medications } from "./Medications";
@@ -33,10 +40,12 @@ function captureTokenFromUrl(): void {
   }
 }
 
+type AuthState = "loading" | "app" | "login" | "activate";
+
 export function PatientApp() {
   const [ready, setReady] = useState(false);
-  const [hasToken, setHasToken] = useState(false);
-  const [expired, setExpired] = useState(false);
+  const [authState, setAuthState] = useState<AuthState>("loading");
+  const [authName, setAuthName] = useState<string | undefined>(undefined);
   const [today, setToday] = useState<PatientToday | null>(null);
   const [tab, setTab] = useState<Tab>("today");
   const [checkinOpen, setCheckinOpen] = useState(false);
@@ -55,27 +64,51 @@ export function PatientApp() {
     try {
       const data = await patientApi.today();
       setToday(data);
-      setHasToken(true);
-    } catch (e) {
-      if (e instanceof PatientApiError && e.status === 401) {
-        setExpired(true);
-        setHasToken(false);
-      } else {
-        // erro de rede — mantém sessão, mostra vazio
-        setHasToken(true);
-      }
+      setAuthState("app");
+    } catch {
+      // erro de rede — mantém sessão, mostra o app (vazio até recarregar)
+      setAuthState("app");
     } finally {
       setReady(true);
     }
   }
 
-  useEffect(() => {
-    captureTokenFromUrl();
+  // Decide a tela inicial: app (ativado), criar acesso (token válido não ativado)
+  // ou entrar (sem token / token inválido).
+  async function boot() {
     if (!getPatientToken()) {
+      setAuthState("login");
       setReady(true);
       return;
     }
-    loadToday();
+    try {
+      const acc = await patientAuth.account();
+      setAuthName(acc.name);
+      if (acc.activated) {
+        await loadToday();
+      } else {
+        setAuthState("activate");
+        setReady(true);
+      }
+    } catch (e) {
+      // 401 → token inválido/expirado: já foi limpo pela api; vai para login.
+      if (e instanceof PatientApiError && e.status === 401) setAuthState("login");
+      else setAuthState("app"); // erro de rede — tenta seguir com a sessão
+      setReady(true);
+    }
+  }
+
+  // Chamado após ativar/entrar/redefinir: guarda o token de sessão e abre o app.
+  async function onAuthed(token: string) {
+    setPatientToken(token);
+    setReady(false);
+    await loadToday();
+    setReady(true);
+  }
+
+  useEffect(() => {
+    captureTokenFromUrl();
+    boot();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -89,10 +122,10 @@ export function PatientApp() {
     );
   }
 
-  if (!hasToken) {
+  if (authState === "login" || authState === "activate") {
     return (
       <div className="pt-app">
-        <Access expired={expired} />
+        <PatientAuth initialMode={authState} patientName={authName} onAuthed={onAuthed} />
       </div>
     );
   }

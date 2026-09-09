@@ -50,6 +50,30 @@ generate_patient_token = generate_opaque_token
 hash_patient_token = hash_token
 
 
+# --- CPF (login do paciente) ---
+def normalize_cpf(cpf: str) -> str:
+    """Mantém só os dígitos do CPF."""
+    return "".join(ch for ch in cpf if ch.isdigit())
+
+
+def valid_cpf(cpf: str) -> bool:
+    """Valida CPF por dígitos verificadores (evita erro de digitação)."""
+    d = normalize_cpf(cpf)
+    if len(d) != 11 or d == d[0] * 11:
+        return False
+    for i in (9, 10):  # calcula os dois dígitos verificadores
+        s = sum(int(d[n]) * ((i + 1) - n) for n in range(i))
+        check = (s * 10) % 11 % 10
+        if check != int(d[i]):
+            return False
+    return True
+
+
+def hash_cpf(cpf: str) -> str:
+    """Hash determinístico do CPF (normalizado) para lookup — nunca guardamos em claro."""
+    return hash_token(normalize_cpf(cpf))
+
+
 # --- JWT (perfil médico) ---
 def create_access_token(subject: str, extra_claims: dict[str, Any] | None = None) -> str:
     now = datetime.now(timezone.utc)

@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, String, text
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -51,9 +51,26 @@ class Patient(UUIDMixin, TimestampMixin, Base):
         nullable=True,
     )
 
-    # Token de acesso do paciente (apenas o hash é persistido).
+    # Token de acesso do paciente (apenas o hash é persistido). Após a ativação,
+    # este passa a ser o token de SESSÃO (renovado a cada login); o token do
+    # convite é de primeira entrada e deixa de valer quando a sessão é emitida.
     access_token_hash: Mapped[str | None] = mapped_column(
         String(64), unique=True, index=True, nullable=True
+    )
+
+    # Login por CPF + senha. Guardamos só o HASH do CPF (LGPD — nunca o CPF em
+    # claro) para autenticar/lookup, e o hash bcrypt da senha. `activated_at`
+    # marca quando o paciente criou o acesso (deixou de usar só o token).
+    cpf_hash: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    activated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Recuperação de senha por código (WhatsApp/e-mail): só o hash do código e a
+    # validade. Autosserviço, sem depender do médico.
+    pwd_reset_code_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    pwd_reset_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
     # Índice de risco atual (denormalizado para ordenar o painel do médico).
@@ -79,6 +96,14 @@ class Patient(UUIDMixin, TimestampMixin, Base):
     )
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Um CPF só pode ter uma conta ativa (índice único parcial).
+    __table_args__ = (
+        Index(
+            "uq_patients_cpf_hash", "cpf_hash",
+            unique=True, postgresql_where=text("cpf_hash IS NOT NULL"),
+        ),
+    )
 
     @property
     def ai_consent(self) -> bool:
