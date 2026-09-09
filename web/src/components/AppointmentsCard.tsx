@@ -3,6 +3,7 @@ import { patients, appointments as apptApi } from "../api/endpoints";
 import { ApiError } from "../api/client";
 import type { Appointment, AppointmentKind, AppointmentStatus } from "../api/types";
 import { AddAppointmentModal } from "./AddAppointmentModal";
+import { NoteModal } from "./NoteModal";
 import { IconCalendar } from "./icons";
 import "./AppointmentsCard.css";
 
@@ -24,10 +25,17 @@ function fmt(iso: string): string {
   });
 }
 
-export function AppointmentsCard({ patientId }: { patientId: string }) {
+export function AppointmentsCard({
+  patientId,
+  onNoteAdded,
+}: {
+  patientId: string;
+  onNoteAdded?: () => void;
+}) {
   const [list, setList] = useState<Appointment[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [noteFor, setNoteFor] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   function load() {
@@ -88,16 +96,21 @@ export function AppointmentsCard({ patientId }: { patientId: string }) {
                     </span>
                   </div>
                   <span className={`appt-status ${st.cls}`}>{st.label}</span>
-                  {open ? (
-                    <div className="appt-actions">
-                      <button className="mini" disabled={busy === a.id} onClick={() => setStatus(a, "completed")}>
-                        Concluir
-                      </button>
-                      <button className="mini danger" disabled={busy === a.id} onClick={() => setStatus(a, "cancelled")}>
-                        Cancelar
-                      </button>
-                    </div>
-                  ) : null}
+                  <div className="appt-actions">
+                    <button className="mini" onClick={() => setNoteFor(a.id)}>
+                      Anotar
+                    </button>
+                    {open ? (
+                      <>
+                        <button className="mini" disabled={busy === a.id} onClick={() => setStatus(a, "completed")}>
+                          Concluir
+                        </button>
+                        <button className="mini danger" disabled={busy === a.id} onClick={() => setStatus(a, "cancelled")}>
+                          Cancelar
+                        </button>
+                      </>
+                    ) : null}
+                  </div>
                 </div>
               );
             })}
@@ -112,6 +125,18 @@ export function AppointmentsCard({ patientId }: { patientId: string }) {
           onCreated={() => {
             setShowAdd(false);
             load();
+          }}
+        />
+      ) : null}
+
+      {noteFor ? (
+        <NoteModal
+          patientId={patientId}
+          appointmentId={noteFor}
+          onClose={() => setNoteFor(null)}
+          onSaved={() => {
+            setNoteFor(null);
+            onNoteAdded?.();
           }}
         />
       ) : null}

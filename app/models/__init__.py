@@ -10,6 +10,7 @@ from app.models.attachment import Attachment
 from app.models.audit import AuditLog
 from app.models.auth_tokens import PasswordResetToken, RefreshToken
 from app.models.checkin import CheckIn
+from app.models.clinical_note import ClinicalNote
 from app.models.device_token import DeviceToken
 from app.models.doctor import Doctor
 from app.models.exam import Exam
@@ -51,6 +52,7 @@ __all__ = [
     "Attachment",
     "AuditLog",
     "CheckIn",
+    "ClinicalNote",
     "DeviceToken",
     "Doctor",
     "Exam",

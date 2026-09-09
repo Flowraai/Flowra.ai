@@ -43,3 +43,8 @@
   text-overflow: ellipsis; white-space: nowrap; text-align: left;
 }
 .np-hint { font-size: 12px !important; }
+
+.note-select { font: inherit; font-size: 14px; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 9px 11px; outline: none; }
+.note-select:focus { border-color: var(--accent); }
+.note-textarea { font: inherit; font-size: 14px; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; outline: none; resize: vertical; min-height: 90px; width: 100%; box-sizing: border-box; }
+.note-textarea:focus { border-color: var(--accent); }

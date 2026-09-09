@@ -26,3 +26,13 @@
 .wear-label { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .wear-cell b { font-size: 16px; }
 .wear-avg { font-size: 11px; color: var(--muted); }
+
+.note-list { display: flex; flex-direction: column; gap: 10px; }
+.note-item { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; }
+.note-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.note-when { font-size: 11.5px; color: var(--muted); }
+.note-actions { display: flex; gap: 4px; margin-left: auto; }
+.note-item .mini { border: 0; background: transparent; color: var(--muted); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 3px 7px; border-radius: 8px; }
+.note-item .mini:hover { color: var(--accent-ink); background: var(--accent-soft); }
+.note-item .mini.danger:hover { color: var(--risk-red); background: color-mix(in srgb, var(--risk-red) 10%, transparent); }
+.note-body { margin: 8px 0 0; font-size: 13.5px; color: var(--ink); white-space: pre-wrap; line-height: 1.45; }

@@ -9,6 +9,9 @@ import type {
   AppointmentStatus,
   ChatMessage,
   CheckIn,
+  ClinicalNote,
+  NoteCreateInput,
+  NoteUpdateInput,
   DoctorProfile,
   DoctorUpdateInput,
   Exam,
@@ -94,6 +97,18 @@ export const patients = {
   createPrescription: (id: string, input: PrescriptionCreateInput) =>
     api<Prescription>(`/patients/${id}/prescriptions`, { method: "POST", body: input }),
   wearable: (id: string) => api<WearableSummary>(`/patients/${id}/wearable`),
+  notes: (id: string, appointmentId?: string) =>
+    api<ClinicalNote[]>(
+      `/patients/${id}/notes${appointmentId ? `?appointment_id=${appointmentId}` : ""}`,
+    ),
+  createNote: (id: string, input: NoteCreateInput) =>
+    api<ClinicalNote>(`/patients/${id}/notes`, { method: "POST", body: input }),
+};
+
+export const notes = {
+  update: (noteId: string, patch: NoteUpdateInput) =>
+    api<ClinicalNote>(`/notes/${noteId}`, { method: "PATCH", body: patch }),
+  remove: (noteId: string) => api<void>(`/notes/${noteId}`, { method: "DELETE" }),
 };
 
 export const medications = {

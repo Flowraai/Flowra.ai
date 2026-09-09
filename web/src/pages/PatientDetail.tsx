@@ -6,6 +6,7 @@ import { ThemeToggle } from "../components/ThemeToggle";
 import { ChatPanel } from "../components/ChatPanel";
 import { MedicationCard } from "../components/MedicationCard";
 import { WearableCard } from "../components/WearableCard";
+import { ClinicalNotesCard } from "../components/ClinicalNotesCard";
 import { AppointmentsCard } from "../components/AppointmentsCard";
 import { ExamsCard } from "../components/ExamsCard";
 import { PrescriptionsCard } from "../components/PrescriptionsCard";
@@ -41,6 +42,7 @@ export function PatientDetail() {
   const navigate = useNavigate();
   const [reloadKey, setReloadKey] = useState(0);
   const [medReloadKey, setMedReloadKey] = useState(0);
+  const [notesReloadKey, setNotesReloadKey] = useState(0);
   const patient = useAsync(() => patients.get(id), [id, reloadKey]);
   const summary = useAsync(() => patients.summary(id), [id]);
   const checkins = useAsync(() => patients.checkins(id, 7), [id]);
@@ -203,13 +205,17 @@ export function PatientDetail() {
               </div>
 
               <ExamsCard patientId={id} />
+              <ClinicalNotesCard key={notesReloadKey} patientId={id} />
             </div>
 
             <div className="col">
               <ChatPanel patientId={id} />
               <MedicationCard key={medReloadKey} patientId={id} />
               <WearableCard patientId={id} />
-              <AppointmentsCard patientId={id} />
+              <AppointmentsCard
+                patientId={id}
+                onNoteAdded={() => setNotesReloadKey((k) => k + 1)}
+              />
               <PrescriptionsCard
                 patientId={id}
                 onMedicationAdded={() => setMedReloadKey((k) => k + 1)}

@@ -183,6 +183,30 @@ export interface AppointmentInput {
   notes?: string | null;
 }
 
+export type NoteKind = "note" | "diagnosis" | "other";
+
+export interface ClinicalNote {
+  id: string;
+  patient_id: string;
+  doctor_id: string;
+  appointment_id: string | null;
+  kind: NoteKind;
+  body: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NoteCreateInput {
+  kind: NoteKind;
+  body: string;
+  appointment_id?: string | null;
+}
+
+export interface NoteUpdateInput {
+  kind?: NoteKind;
+  body?: string;
+}
+
 export type ExamStatus = "requested" | "available";
 
 export interface Exam {
