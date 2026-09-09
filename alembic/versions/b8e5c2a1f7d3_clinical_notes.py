@@ -32,8 +32,8 @@ def upgrade() -> None:
                   sa.ForeignKey('appointments.id', ondelete='SET NULL'), nullable=True),
         sa.Column('kind', sa.String(length=20), nullable=False, server_default='note'),
         sa.Column('body', sa.Text(), nullable=False),
-        sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-        sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )
     op.create_index('ix_clinical_notes_tenant_id', 'clinical_notes', ['tenant_id'])
     op.create_index('ix_clinical_notes_patient_id', 'clinical_notes', ['patient_id'])

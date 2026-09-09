@@ -31,8 +31,8 @@ def upgrade() -> None:
         sa.Column('credential', sa.Text(), nullable=True),
         sa.Column('connected_at', sa.DateTime(timezone=True), nullable=False),
         sa.Column('last_sync_at', sa.DateTime(timezone=True), nullable=True),
-        sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-        sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )
     op.create_index('ix_wearable_connections_patient_id', 'wearable_connections',
                     ['patient_id'], unique=True)
@@ -51,8 +51,8 @@ def upgrade() -> None:
         sa.Column('resting_hr', sa.Integer(), nullable=True),
         sa.Column('hrv_ms', sa.Integer(), nullable=True),
         sa.Column('steps', sa.Integer(), nullable=True),
-        sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-        sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.UniqueConstraint('patient_id', 'day', name='uq_wearable_daily_patient_day'),
     )
     op.create_index('ix_wearable_daily_patient_id', 'wearable_daily', ['patient_id'])
