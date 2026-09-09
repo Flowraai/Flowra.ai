@@ -80,6 +80,9 @@ services:
       RUN_MIGRATIONS: "false"
       SEED_PROTOCOL: "false"
     command: ["python", "-m", "app.scripts.scheduler"]
+    # O worker não sobe servidor HTTP; desliga o healthcheck herdado da imagem da API.
+    healthcheck:
+      disable: true
     restart: always
 
   web:
