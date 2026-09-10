@@ -10,6 +10,8 @@ import type {
   PatientToday,
   Prescription,
   Protocol,
+  WearableDay,
+  WearableSummary,
 } from "./types";
 
 export const patientApi = {
@@ -45,4 +47,7 @@ export const patientApi = {
     api<Appointment>(`/patient/appointments/${id}/confirm`, { method: "POST" }),
   exams: () => api<Exam[]>("/patient/exams"),
   prescriptions: () => api<Prescription[]>("/patient/prescriptions"),
+  wearable: () => api<WearableSummary>("/patient/wearable"),
+  pushHealth: (source: string, days: WearableDay[]) =>
+    api<WearableSummary>("/patient/wearable/samples", { method: "POST", body: { source, days } }),
 };

@@ -71,6 +71,12 @@ npx uri-scheme open "flowracare://acesso?token=SEU_TOKEN" --ios   # ou --android
   Deixa explícito que não substitui o médico.
 - **Push** — registra o Expo push token no backend (`POST /patient/devices`); só
   funciona em dispositivo físico.
+- **Dispositivo (Hoje)** — conecta relógio/pulseira via **Health Connect** (Android),
+  que agrega Mi Fitness/Zepp (Mi Band/Xiaomi), Samsung Health e Google Fit. Lê sono,
+  FC de repouso, HRV e passos dos últimos 14 dias e envia via `POST /patient/wearable/samples`.
+  ⚠️ Módulo nativo (`react-native-health-connect`): **não roda no Expo Go** — use um
+  *dev build* (`eas build --profile development` ou `expo run:android`). O paciente
+  precisa ter o app **Health Connect** instalado e a pulseira sincronizando com ele.
 
 Tema claro/escuro segue o sistema. Retorno do check-in é **neutro** (não expõe o risco
 ao paciente). Em emergência, o app orienta procurar ajuda / CVV 188.

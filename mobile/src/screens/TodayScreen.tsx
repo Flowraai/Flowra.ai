@@ -4,6 +4,7 @@ import { patientApi } from "../api/endpoints";
 import { ApiError } from "../api/client";
 import type { PatientToday } from "../api/types";
 import { Button, Card, ErrorView, Loading, text } from "../components/ui";
+import { DeviceCard } from "../components/DeviceCard";
 import { useTheme } from "../theme";
 
 function greeting(): string {
@@ -63,6 +64,8 @@ export function TodayScreen({ onOpenCheckin, nonce }: { onOpenCheckin: () => voi
           </View>
         )}
       </Card>
+
+      <DeviceCard />
 
       <Text style={[t.muted, { fontSize: 12, textAlign: "center", marginTop: 8 }]}>
         Em emergência, procure ajuda imediata ou ligue 188 (CVV, 24h).
