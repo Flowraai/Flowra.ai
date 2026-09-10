@@ -3,8 +3,26 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class WearableDayIn(BaseModel):
+    """Um dia de dados enviado pelo app de celular (HealthKit/Health Connect)."""
+
+    day: date
+    sleep_minutes: int | None = Field(default=None, ge=0, le=1440)
+    resting_hr: int | None = Field(default=None, ge=20, le=250)
+    hrv_ms: int | None = Field(default=None, ge=0, le=500)
+    steps: int | None = Field(default=None, ge=0, le=200000)
+
+
+class WearableSamplesIn(BaseModel):
+    """Lote de dias enviado pelo app. `source` diz a origem no celular."""
+
+    source: Literal["health_connect", "healthkit", "mobile"] = "mobile"
+    days: list[WearableDayIn] = Field(min_length=1, max_length=120)
 
 
 class WearableDay(BaseModel):

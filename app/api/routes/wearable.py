@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,11 +12,31 @@ from app.api.deps import get_current_doctor, get_current_patient
 from app.db.session import get_db
 from app.models.doctor import Doctor
 from app.models.patient import Patient
-from app.schemas.wearable import WearableConnectResult, WearableDay, WearableSummary
+from app.schemas.wearable import (
+    WearableConnectResult,
+    WearableDay,
+    WearableSamplesIn,
+    WearableSummary,
+)
 from app.services import wearable_service
-from app.services.wearable_provider import PROVIDERS, active_provider_info
+from app.services.wearable_provider import PROVIDERS, DailySample, active_provider_info
 
 router = APIRouter(tags=["wearable"])
+
+
+_MOBILE_NAMES = {
+    "health_connect": "Health Connect (Android)",
+    "healthkit": "Apple Saúde",
+    "mobile": "App de celular",
+}
+
+
+def _provider_name(provider: str | None) -> str | None:
+    if not provider:
+        return None
+    if provider in PROVIDERS:
+        return PROVIDERS[provider].name
+    return _MOBILE_NAMES.get(provider, provider)
 
 
 def _to_summary(data: dict) -> WearableSummary:
@@ -24,7 +45,7 @@ def _to_summary(data: dict) -> WearableSummary:
     return WearableSummary(
         connected=data["connected"],
         provider=data.get("provider"),
-        provider_name=PROVIDERS.get(data.get("provider") or "", info).name if data.get("provider") else None,
+        provider_name=_provider_name(data.get("provider")),
         requires_oauth=info.requires_oauth,
         last_sync_at=data.get("last_sync_at"),
         latest=WearableDay.model_validate(latest) if latest is not None else None,
@@ -65,6 +86,31 @@ async def sync_wearable(
             status_code=status.HTTP_409_CONFLICT, detail="Nenhum dispositivo conectado."
         )
     await wearable_service.sync_patient(session, patient)
+    return _to_summary(await wearable_service.summary(session, patient))
+
+
+@router.post("/patient/wearable/samples", response_model=WearableSummary)
+async def push_samples(
+    payload: WearableSamplesIn,
+    patient: Patient = Depends(get_current_patient),
+    session: AsyncSession = Depends(get_db),
+) -> WearableSummary:
+    """Ingestão do app de celular: recebe os dias lidos do HealthKit/Health Connect
+    e grava o resumo diário (upsert). Cria a conexão na primeira vez."""
+    conn = await wearable_service.ensure_connection(session, patient, payload.source)
+    samples = [
+        DailySample(
+            day=d.day,
+            sleep_minutes=d.sleep_minutes,
+            resting_hr=d.resting_hr,
+            hrv_ms=d.hrv_ms,
+            steps=d.steps,
+        )
+        for d in payload.days
+    ]
+    await wearable_service.upsert_samples(session, patient, payload.source, samples)
+    conn.last_sync_at = datetime.now(timezone.utc)
+    await session.flush()
     return _to_summary(await wearable_service.summary(session, patient))
 
 

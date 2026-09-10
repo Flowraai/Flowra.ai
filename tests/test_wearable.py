@@ -68,6 +68,47 @@ async def test_disconnect(client: httpx.AsyncClient):
     assert after["connected"] is False
 
 
+async def test_mobile_push_samples(client: httpx.AsyncClient):
+    """App de celular envia os dias lidos do HealthKit/Health Connect (upsert)."""
+    headers = await _doctor(client)
+    patient = await _patient(client, headers)
+    ph = {"X-Patient-Token": patient["access_token"]}
+
+    r = await client.post("/api/v1/patient/wearable/samples", headers=ph, json={
+        "source": "health_connect",
+        "days": [
+            {"day": "2026-09-09", "sleep_minutes": 445, "resting_hr": 60, "hrv_ms": 42, "steps": 9100},
+            {"day": "2026-09-10", "sleep_minutes": 410, "steps": 5200},
+        ],
+    })
+    assert r.status_code == 200
+    data = r.json()
+    assert data["connected"] is True
+    assert data["latest"]["day"] == "2026-09-10" and data["latest"]["sleep_minutes"] == 410
+
+    # Reenvio do mesmo dia atualiza (não duplica) e não zera métricas ausentes.
+    r2 = await client.post("/api/v1/patient/wearable/samples", headers=ph, json={
+        "source": "health_connect",
+        "days": [{"day": "2026-09-10", "resting_hr": 58}],
+    })
+    latest = r2.json()["latest"]
+    assert latest["resting_hr"] == 58 and latest["sleep_minutes"] == 410  # sono preservado
+
+    # O médico vê os mesmos dados.
+    doc = (await client.get(f"/api/v1/patients/{patient['id']}/wearable", headers=headers)).json()
+    assert doc["connected"] is True and doc["latest"]["steps"] == 5200
+
+
+async def test_mobile_push_rejects_bad_values(client: httpx.AsyncClient):
+    headers = await _doctor(client)
+    patient = await _patient(client, headers)
+    ph = {"X-Patient-Token": patient["access_token"]}
+    r = await client.post("/api/v1/patient/wearable/samples", headers=ph, json={
+        "days": [{"day": "2026-09-10", "resting_hr": 999}],  # fora do intervalo
+    })
+    assert r.status_code == 422
+
+
 async def test_wearable_in_doctor_summary(client: httpx.AsyncClient):
     headers = await _doctor(client)
     patient = await _patient(client, headers)

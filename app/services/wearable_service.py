@@ -106,6 +106,23 @@ async def connect(session: AsyncSession, patient: Patient) -> tuple[WearableConn
     return conn, oauth_url
 
 
+async def ensure_connection(
+    session: AsyncSession, patient: Patient, provider: str
+) -> WearableConnection:
+    """Garante uma conexão para o paciente (usada pelo app de celular, sem OAuth)."""
+    conn = await get_connection(session, patient)
+    if conn is None:
+        conn = WearableConnection(
+            patient_id=patient.id,
+            tenant_id=patient.tenant_id,
+            provider=provider,
+            connected_at=datetime.now(timezone.utc),
+        )
+        session.add(conn)
+        await session.flush()
+    return conn
+
+
 async def sync_patient(
     session: AsyncSession, patient: Patient, days: int = DEFAULT_WINDOW
 ) -> int:
