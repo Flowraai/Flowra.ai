@@ -87,6 +87,21 @@ export function DeviceCard() {
             {busy ? "Conectando…" : "Conectar dispositivo"}
           </button>
         </>
+      ) : !latest ? (
+        <>
+          <p className="pt-muted" style={{ marginTop: 4, marginBottom: 12 }}>
+            ✓ Dispositivo conectado. Sincronizando os primeiros dados — isso pode levar alguns
+            minutos. Toque em atualizar em instantes.
+          </p>
+          <div className="dev-actions">
+            <button className="pt-btn ghost small" onClick={sync} disabled={busy}>
+              {busy ? "Atualizando…" : "Atualizar"}
+            </button>
+            <button className="pt-btn ghost small" onClick={disconnect} disabled={busy}>
+              Desconectar
+            </button>
+          </div>
+        </>
       ) : (
         <>
           <div className="dev-grid">

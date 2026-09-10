@@ -15,14 +15,70 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.patient import Patient
 from app.models.wearable import WearableConnection, WearableDaily
-from app.services.wearable_provider import get_wearable_provider
+from app.services.wearable_provider import DailySample, get_wearable_provider
 
 DEFAULT_WINDOW = 14
+
+
+async def find_by_external(
+    session: AsyncSession, provider: str, external_user_id: str
+) -> WearableConnection | None:
+    """Localiza a conexão pelo id do usuário no fornecedor (usado nos webhooks)."""
+    return await session.scalar(
+        select(WearableConnection).where(
+            WearableConnection.provider == provider,
+            WearableConnection.external_user_id == external_user_id,
+        )
+    )
+
+
+async def upsert_samples(
+    session: AsyncSession, patient: Patient, provider: str, samples: list[DailySample]
+) -> int:
+    """Grava/atualiza os resumos diários (só sobrescreve métricas presentes na amostra)."""
+    if not samples:
+        return 0
+    existing = {
+        r.day: r
+        for r in (
+            await session.execute(
+                select(WearableDaily).where(WearableDaily.patient_id == patient.id)
+            )
+        )
+        .scalars()
+        .all()
+    }
+    for s in samples:
+        row = existing.get(s.day)
+        if row is None:
+            row = WearableDaily(
+                patient_id=patient.id, tenant_id=patient.tenant_id, day=s.day, provider=provider,
+            )
+            session.add(row)
+            existing[s.day] = row
+        row.provider = provider
+        # Só sobrescreve o que veio preenchido (webhooks parciais não zeram dados).
+        if s.sleep_minutes is not None:
+            row.sleep_minutes = s.sleep_minutes
+        if s.resting_hr is not None:
+            row.resting_hr = s.resting_hr
+        if s.hrv_ms is not None:
+            row.hrv_ms = s.hrv_ms
+        if s.steps is not None:
+            row.steps = s.steps
+    await session.flush()
+    return len(samples)
 
 
 async def get_connection(session: AsyncSession, patient: Patient) -> WearableConnection | None:
     return await session.scalar(
         select(WearableConnection).where(WearableConnection.patient_id == patient.id)
+    )
+
+
+async def get_connection_by_patient_id(session: AsyncSession, patient_id) -> WearableConnection | None:
+    return await session.scalar(
+        select(WearableConnection).where(WearableConnection.patient_id == patient_id)
     )
 
 
@@ -59,41 +115,10 @@ async def sync_patient(
         return 0
     provider = get_wearable_provider(conn.provider)
     samples = await provider.sync(patient, conn, days)
-
-    existing = {
-        r.day: r
-        for r in (
-            await session.execute(
-                select(WearableDaily).where(WearableDaily.patient_id == patient.id)
-            )
-        )
-        .scalars()
-        .all()
-    }
-    for s in samples:
-        row = existing.get(s.day)
-        if row is None:
-            session.add(
-                WearableDaily(
-                    patient_id=patient.id,
-                    tenant_id=patient.tenant_id,
-                    day=s.day,
-                    provider=conn.provider,
-                    sleep_minutes=s.sleep_minutes,
-                    resting_hr=s.resting_hr,
-                    hrv_ms=s.hrv_ms,
-                    steps=s.steps,
-                )
-            )
-        else:
-            row.provider = conn.provider
-            row.sleep_minutes = s.sleep_minutes
-            row.resting_hr = s.resting_hr
-            row.hrv_ms = s.hrv_ms
-            row.steps = s.steps
+    n = await upsert_samples(session, patient, conn.provider, samples)
     conn.last_sync_at = datetime.now(timezone.utc)
     await session.flush()
-    return len(samples)
+    return n
 
 
 async def disconnect(session: AsyncSession, patient: Patient) -> None:

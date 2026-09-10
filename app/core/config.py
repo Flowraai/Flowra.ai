@@ -150,8 +150,13 @@ class Settings(BaseSettings):
     #   fitbit  = integração direta Fitbit (OAuth) — liga com client id/secret
     # Os provedores reais ficam PRONTOS PARA LIGAR; sem credencial, usa-se o demo.
     wearable_provider: str = "demo"
+    # Terra (agregador). Credenciais do painel dashboard.tryterra.co.
     terra_api_key: str | None = None
     terra_dev_id: str | None = None
+    # Segredo de assinatura do webhook (valida o header terra-signature).
+    terra_signing_secret: str | None = None
+    # Marcas oferecidas no widget (CSV, ex.: "GARMIN,FITBIT,SAMSUNG"). Vazio = todas.
+    terra_providers: str = ""
     fitbit_client_id: str | None = None
     fitbit_client_secret: str | None = None
 

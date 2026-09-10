@@ -11,7 +11,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -33,8 +33,10 @@ class WearableConnection(UUIDMixin, TimestampMixin, Base):
         index=True, nullable=False,
     )
     provider: Mapped[str] = mapped_column(String(40), nullable=False)
-    # Id do usuário no fornecedor e credencial (OAuth) — cifrados em repouso.
-    external_user_id: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)
+    # Id opaco do usuário no fornecedor (ex.: user_id da Terra) — não é PII em si e
+    # precisa ser consultável nos webhooks; fica em claro, indexado. A credencial
+    # (tokens OAuth) permanece cifrada em repouso.
+    external_user_id: Mapped[str | None] = mapped_column(Text, index=True, nullable=True)
     credential: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)
     connected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

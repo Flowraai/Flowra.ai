@@ -10,15 +10,20 @@ classe implementando `begin_connect`/`sync`.
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
-from datetime import date, timedelta
-from typing import TYPE_CHECKING, Protocol
+import logging
+from dataclasses import dataclass, replace
+from datetime import date, datetime, timedelta
+from typing import TYPE_CHECKING, Any, Protocol
+
+import httpx
 
 from app.core.config import settings
 
 if TYPE_CHECKING:
     from app.models.wearable import WearableConnection
     from app.models.patient import Patient
+
+logger = logging.getLogger("flowra_care.wearable")
 
 
 @dataclass(frozen=True)
@@ -116,14 +121,142 @@ class DemoProvider:
         return out
 
 
+def terra_configured() -> bool:
+    return bool(settings.terra_api_key and settings.terra_dev_id)
+
+
+# ---- Terra (agregador: Xiaomi, Samsung, Apple, Garmin, Fitbit…) ----
+_TERRA_BASE = "https://api.tryterra.co/v2"
+
+
+def _terra_headers() -> dict[str, str]:
+    return {
+        "dev-id": settings.terra_dev_id or "",
+        "x-api-key": settings.terra_api_key or "",
+        "Content-Type": "application/json",
+    }
+
+
+def _dig(d: Any, *path: str) -> Any:
+    """Navega d[a][b][c] com segurança (retorna None se faltar)."""
+    cur = d
+    for key in path:
+        if not isinstance(cur, dict):
+            return None
+        cur = cur.get(key)
+    return cur
+
+
+def _as_date(iso: str | None) -> date | None:
+    if not iso:
+        return None
+    try:
+        return datetime.fromisoformat(iso.replace("Z", "+00:00")).date()
+    except (ValueError, AttributeError):
+        return None
+
+
+def _to_int(v: Any) -> int | None:
+    try:
+        return int(round(float(v))) if v is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def map_terra_records(daily: list[dict], sleep: list[dict]) -> dict[date, DailySample]:
+    """Converte payloads /daily e /sleep da Terra em resumos por dia."""
+    out: dict[date, DailySample] = {}
+
+    for rec in daily or []:
+        d = _as_date(_dig(rec, "metadata", "start_time")) or _as_date(_dig(rec, "metadata", "end_time"))
+        if d is None:
+            continue
+        sample = out.get(d) or DailySample(day=d)
+        out[d] = replace(
+            sample,
+            resting_hr=_to_int(_dig(rec, "heart_rate_data", "summary", "resting_hr_bpm")),
+            hrv_ms=_to_int(
+                _dig(rec, "heart_rate_data", "summary", "avg_hrv_rmssd")
+                or _dig(rec, "heart_rate_data", "summary", "avg_hrv_sdnn")
+            ),
+            steps=_to_int(_dig(rec, "distance_data", "steps")),
+        )
+
+    for rec in sleep or []:
+        d = _as_date(_dig(rec, "metadata", "end_time")) or _as_date(_dig(rec, "metadata", "start_time"))
+        if d is None:
+            continue
+        secs = _dig(rec, "sleep_durations_data", "asleep", "duration_asleep_state_seconds")
+        minutes = _to_int(secs / 60) if isinstance(secs, (int, float)) else None
+        sample = out.get(d) or DailySample(day=d)
+        out[d] = replace(sample, sleep_minutes=minutes)
+
+    return out
+
+
+class TerraProvider:
+    """Agregador Terra. O paciente conecta a marca dele pelo widget (OAuth)."""
+
+    info = PROVIDERS["terra"]
+
+    async def begin_connect(self, patient: "Patient", connection: "WearableConnection") -> str | None:
+        """Gera a sessão do widget e devolve a URL para o paciente autorizar."""
+        body: dict[str, Any] = {
+            "reference_id": str(patient.id),
+            "language": "pt",
+        }
+        if settings.terra_providers:
+            body["providers"] = settings.terra_providers
+        if settings.patient_app_url_base:
+            body["auth_success_redirect_url"] = settings.patient_app_url_base
+            body["auth_failure_redirect_url"] = settings.patient_app_url_base
+        async with httpx.AsyncClient(timeout=20, headers=_terra_headers()) as http:
+            resp = await http.post(f"{_TERRA_BASE}/auth/generateWidgetSession", json=body)
+            resp.raise_for_status()
+            return resp.json().get("url")
+
+    async def _pull(self, path: str, user_id: str, days: int) -> list[dict]:
+        end = date.today()
+        start = end - timedelta(days=days)
+        params = {
+            "user_id": user_id,
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "to_webhook": "false",
+        }
+        async with httpx.AsyncClient(timeout=30, headers=_terra_headers()) as http:
+            resp = await http.get(f"{_TERRA_BASE}/{path}", params=params)
+            resp.raise_for_status()
+            return resp.json().get("data", []) or []
+
+    async def sync(
+        self, patient: "Patient", connection: "WearableConnection", days: int
+    ) -> list[DailySample]:
+        user_id = connection.external_user_id
+        if not user_id:
+            return []  # ainda não autorizou pelo widget (webhook define o user_id)
+        try:
+            daily = await self._pull("daily", user_id, days)
+            sleep = await self._pull("sleep", user_id, days)
+        except httpx.HTTPError as exc:
+            logger.warning("Falha ao buscar dados na Terra (paciente=%s): %s", patient.id, exc)
+            return []
+        return list(map_terra_records(daily, sleep).values())
+
+
 def get_wearable_provider(slug: str | None = None) -> WearableProvider:
-    """Provedor configurado (ou o demo). Provedores reais entram aqui quando ligados."""
+    """Provedor configurado (ou o demo se o real não estiver com credenciais)."""
     resolved = (slug or settings.wearable_provider or "demo").lower()
-    # terra/fitbit ficam prontos para ligar: enquanto não operantes, cai no demo.
-    if resolved in ("terra", "fitbit"):
-        return DemoProvider()  # TODO: retornar TerraProvider/FitbitProvider quando habilitados
+    if resolved == "terra" and terra_configured():
+        return TerraProvider()
+    # fitbit e demais ficam prontos para ligar; sem credencial, cai no demo.
     return DemoProvider()
 
 
 def active_provider_info() -> WearableProviderInfo:
-    return PROVIDERS.get((settings.wearable_provider or "demo").lower(), PROVIDERS["demo"])
+    slug = (settings.wearable_provider or "demo").lower()
+    info = PROVIDERS.get(slug, PROVIDERS["demo"])
+    # Reflete o estado real: só "disponível" quando as credenciais existem.
+    if slug == "terra":
+        return replace(info, available=terra_configured())
+    return info
