@@ -54,6 +54,24 @@ async def test_upcoming_excludes_past_and_cancelled(client: httpx.AsyncClient):
     assert len(upcoming) == 1
 
 
+async def test_range_returns_all_statuses_in_window(client: httpx.AsyncClient):
+    headers = await _doctor(client)
+    patient = await _patient(client, headers)
+    inside = await _appt(client, headers, patient["id"], _in(2))
+    past = await _appt(client, headers, patient["id"], _in(-2))  # dentro da janela, no passado
+    await _appt(client, headers, patient["id"], _in(40))         # fora da janela
+    await client.patch(f"/api/v1/appointments/{past['id']}", headers=headers,
+                       json={"status": "completed"})
+
+    start = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
+    end = (datetime.now(timezone.utc) + timedelta(days=10)).isoformat()
+    res = (await client.get("/api/v1/appointments/range", headers=headers,
+                            params={"start": start, "end": end})).json()
+    ids = {a["id"] for a in res}
+    assert inside["id"] in ids and past["id"] in ids  # inclui concluída (passada)
+    assert len(res) == 2  # a de +40 dias ficou de fora
+
+
 async def test_patient_sees_and_confirms(client: httpx.AsyncClient):
     headers = await _doctor(client)
     patient = await _patient(client, headers)

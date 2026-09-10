@@ -99,6 +99,27 @@ async def upcoming_appointments(
     return list(result.scalars().all())
 
 
+@router.get("/appointments/range", response_model=list[AppointmentRead])
+async def appointments_in_range(
+    start: datetime = Query(..., description="Início (inclusive), ISO 8601"),
+    end: datetime = Query(..., description="Fim (exclusivo), ISO 8601"),
+    doctor: Doctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db),
+) -> list[Appointment]:
+    """Todas as consultas do médico no período [start, end) — para o calendário
+    (inclui concluídas/canceladas, ao contrário de /upcoming)."""
+    result = await session.execute(
+        select(Appointment)
+        .where(
+            Appointment.doctor_id == doctor.id,
+            Appointment.scheduled_at >= start,
+            Appointment.scheduled_at < end,
+        )
+        .order_by(Appointment.scheduled_at)
+    )
+    return list(result.scalars().all())
+
+
 @router.patch("/appointments/{appointment_id}", response_model=AppointmentRead)
 async def update_appointment(
     appointment_id: uuid.UUID,

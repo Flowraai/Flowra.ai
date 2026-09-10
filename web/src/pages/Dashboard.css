@@ -36,3 +36,22 @@ td.patient .row { display: flex; align-items: center; gap: 12px; }
   .kpis { grid-template-columns: repeat(2, 1fr); }
   .seg { margin-left: 0; }
 }
+
+/* Alternador de visão (tabela/cartões) */
+.view-seg { margin-left: 8px; }
+
+/* Visão em cartões da lista de pacientes */
+.pt-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; padding: 4px 2px; }
+.pt-card-item {
+  position: relative; text-align: left; background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 14px; padding: 14px 14px 14px 18px; cursor: pointer; font: inherit; overflow: hidden;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.pt-card-item:hover { border-color: var(--accent); }
+.pt-card-stripe { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+.pt-card-top { display: flex; align-items: center; gap: 10px; }
+.pt-card-name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pt-card-name b { font-size: 14.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pt-card-name span { font-size: 12px; }
+.pt-card-name .warn { color: var(--risk-orange); font-weight: 600; }
+.pt-card-chips { display: flex; gap: 6px; flex-wrap: wrap; }

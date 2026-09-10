@@ -26,7 +26,23 @@ export function Dashboard() {
   const { data, loading, error } = useAsync(() => patients.list(), [reloadKey]);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [view, setView] = useState<"table" | "cards">(() => {
+    try {
+      return (localStorage.getItem("flowra-patients-view") as "table" | "cards") || "table";
+    } catch {
+      return "table";
+    }
+  });
   const [showNew, setShowNew] = useState(false);
+
+  function chooseView(v: "table" | "cards") {
+    setView(v);
+    try {
+      localStorage.setItem("flowra-patients-view", v);
+    } catch {
+      /* ignore */
+    }
+  }
 
   const list = data ?? [];
   const kpis = useMemo(() => {
@@ -101,6 +117,14 @@ export function Dashboard() {
               Inativos
             </button>
           </div>
+          <div className="seg view-seg">
+            <button className={view === "table" ? "on" : ""} onClick={() => chooseView("table")} title="Tabela">
+              ☰ Tabela
+            </button>
+            <button className={view === "cards" ? "on" : ""} onClick={() => chooseView("cards")} title="Cartões">
+              ▦ Cartões
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -114,6 +138,12 @@ export function Dashboard() {
           </div>
         ) : rows.length === 0 ? (
           <div className="state">Nenhum paciente encontrado.</div>
+        ) : view === "cards" ? (
+          <div className="pt-cards">
+            {rows.map((p) => (
+              <PatientCard key={p.id} p={p} onOpen={() => navigate(`/pacientes/${p.id}`)} />
+            ))}
+          </div>
         ) : (
           <div className="table">
             <table>
@@ -154,6 +184,40 @@ function Kpi({ color, label, value, note }: { color: string; label: string; valu
       </span>
       <span className="delta">{note}</span>
     </div>
+  );
+}
+
+function PatientCard({ p, onOpen }: { p: PatientPanelItem; onOpen: () => void }) {
+  const stripe: Record<RiskLevel, string> = {
+    green: "var(--risk-green)",
+    yellow: "var(--risk-yellow)",
+    orange: "var(--risk-orange)",
+    red: "var(--risk-red)",
+  };
+  return (
+    <button className="pt-card-item" onClick={onOpen}>
+      <span className="pt-card-stripe" style={{ background: stripe[p.current_risk] }} />
+      <div className="pt-card-top">
+        <div className="pt-avatar" style={{ width: 40, height: 40, fontSize: 14, background: avatarGradient(p.current_risk) }}>
+          {initials(p.name)}
+        </div>
+        <div className="pt-card-name">
+          <b>{p.name}</b>
+          <span className={`tnum ${p.inactive ? "warn" : "muted"}`}>{relativeDate(p.last_checkin_at)}</span>
+        </div>
+        <RiskBadge level={p.current_risk} />
+      </div>
+      <div className="pt-card-chips">
+        {p.open_alerts > 0 ? <span className="chip alert">{p.open_alerts} alerta(s)</span> : null}
+        {p.inactive ? (
+          <span className="chip alert">
+            {p.days_since_checkin != null ? `${p.days_since_checkin}d sem check-in` : "inativo"}
+          </span>
+        ) : (
+          <span className="chip">em dia</span>
+        )}
+      </div>
+    </button>
   );
 }
 

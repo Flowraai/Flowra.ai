@@ -6,6 +6,7 @@ import { appointments as apptApi, patients as patientsApi } from "../api/endpoin
 import { ApiError } from "../api/client";
 import { useAsync } from "../lib/useAsync";
 import type { Appointment, AppointmentKind, AppointmentStatus } from "../api/types";
+import { AgendaCalendar } from "../components/AgendaCalendar";
 import "./Agenda.css";
 
 const KIND: Record<AppointmentKind, string> = { consultation: "Consulta", return: "Retorno" };
@@ -38,6 +39,7 @@ export function Agenda() {
   const [busy, setBusy] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [when, setWhen] = useState("");
+  const [view, setView] = useState<"list" | "calendar">("list");
 
   function load() {
     setError(null);
@@ -115,15 +117,25 @@ export function Agenda() {
     >
       <div className="panel">
         <div className="panel-head">
-          <h3>Próximas consultas</h3>
+          <h3>{view === "calendar" ? "Calendário" : "Próximas consultas"}</h3>
           <span className="hint">
             {pending > 0
               ? `${pending} pedido(s) de remarcação aguardando`
               : "lembretes automáticos são enviados 24h antes"}
           </span>
+          <div className="seg">
+            <button className={view === "list" ? "on" : ""} onClick={() => setView("list")}>
+              Lista
+            </button>
+            <button className={view === "calendar" ? "on" : ""} onClick={() => setView("calendar")}>
+              Calendário
+            </button>
+          </div>
         </div>
 
-        {error ? (
+        {view === "calendar" ? (
+          <AgendaCalendar nameOf={nameOf} onOpenPatient={(id) => navigate(`/pacientes/${id}`)} />
+        ) : error ? (
           <div className="state">
             <span className="err">{error}</span>
           </div>

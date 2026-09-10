@@ -118,6 +118,10 @@ export const medications = {
 
 export const appointments = {
   upcoming: (limit = 100) => api<Appointment[]>(`/appointments/upcoming?limit=${limit}`),
+  range: (startIso: string, endIso: string) =>
+    api<Appointment[]>(
+      `/appointments/range?start=${encodeURIComponent(startIso)}&end=${encodeURIComponent(endIso)}`,
+    ),
   update: (
     id: string,
     patch: { status?: AppointmentStatus; scheduled_at?: string; location?: string | null },
