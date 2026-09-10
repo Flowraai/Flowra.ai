@@ -2,29 +2,28 @@
   "expo": {
     "name": "Flowra Care",
     "slug": "flowra-care",
+    "scheme": "flowracare",
     "version": "0.1.0",
     "orientation": "portrait",
-    "scheme": "flowracare",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
-    "splash": {
-      "backgroundColor": "#0e7c6e"
-    },
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "br.com.flowraai.care"
-    },
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": ["**/*"],
     "android": {
-      "package": "br.com.flowraai.care"
+      "package": "br.com.flowraai.care",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_SLEEP",
+        "android.permission.health.READ_RESTING_HEART_RATE",
+        "android.permission.health.READ_HEART_RATE_VARIABILITY"
+      ]
     },
     "plugins": [
-      "expo-secure-store",
-      "expo-notifications",
-      ["expo-image-picker", { "photosPermission": "O Flowra Care usa suas fotos para você anexar imagens ao chat com o médico." }],
-      ["expo-av", { "microphonePermission": "O Flowra Care usa o microfone para você gravar áudios no chat com o médico." }]
+      [
+        "react-native-health-connect"
+      ]
     ],
     "extra": {
-      "apiBaseUrl": "http://localhost:8000"
+      "apiBaseUrl": "https://care.flowraai.com.br"
     }
   }
 }

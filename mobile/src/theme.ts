@@ -1,57 +1,50 @@
-import { useColorScheme } from "react-native";
+import { StyleSheet } from "react-native";
 
-export interface Theme {
-  bg: string;
-  surface: string;
-  surface2: string;
-  ink: string;
-  muted: string;
-  line: string;
-  accent: string;
-  accentInk: string;
-  accentSoft: string;
-  onAccent: string;
-  green: string;
-  yellow: string;
-  orange: string;
-  red: string;
-}
-
-const light: Theme = {
-  bg: "#f4f7f6",
+export const colors = {
+  bg: "#f4f6f5",
   surface: "#ffffff",
-  surface2: "#eef3f1",
-  ink: "#14201d",
-  muted: "#5c6c68",
-  line: "#e2e9e6",
-  accent: "#0e7c6e",
-  accentInk: "#0a5a50",
-  accentSoft: "#e2f1ed",
-  onAccent: "#ffffff",
-  green: "#2e9e6b",
-  yellow: "#b9890a",
-  orange: "#da7429",
-  red: "#d3423a",
+  ink: "#132a26",
+  muted: "#6b7f79",
+  line: "#e2e8e5",
+  accent: "#178a6b",
+  accentSoft: "#d9efe8",
+  danger: "#c0392b",
+  good: "#178a6b",
 };
 
-const dark: Theme = {
-  bg: "#0d1413",
-  surface: "#141d1b",
-  surface2: "#1b2523",
-  ink: "#e8eeeb",
-  muted: "#94a39e",
-  line: "#26312f",
-  accent: "#34b3a2",
-  accentInk: "#6fd4c6",
-  accentSoft: "#17322d",
-  onAccent: "#06211d",
-  green: "#46ba80",
-  yellow: "#dbb03c",
-  orange: "#ef8e48",
-  red: "#ec6a62",
-};
-
-export function useTheme(): { theme: Theme; scheme: "light" | "dark" } {
-  const scheme = useColorScheme() === "dark" ? "dark" : "light";
-  return { theme: scheme === "dark" ? dark : light, scheme };
-}
+export const s = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.bg },
+  pad: { padding: 18 },
+  h1: { fontSize: 26, fontWeight: "800", color: colors.ink },
+  sub: { fontSize: 15, color: colors.muted, marginTop: 2 },
+  card: {
+    backgroundColor: colors.surface, borderRadius: 16, padding: 16, marginTop: 14,
+    borderWidth: 1, borderColor: colors.line,
+  },
+  cardTitle: { fontSize: 16, fontWeight: "700", color: colors.ink, marginBottom: 6 },
+  muted: { color: colors.muted, fontSize: 14 },
+  input: {
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: colors.ink, marginTop: 10,
+  },
+  btn: {
+    backgroundColor: colors.accent, borderRadius: 12, paddingVertical: 14, alignItems: "center",
+    marginTop: 12,
+  },
+  btnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  btnGhost: {
+    backgroundColor: "transparent", borderWidth: 1, borderColor: colors.line, borderRadius: 12,
+    paddingVertical: 12, alignItems: "center", marginTop: 10,
+  },
+  btnGhostText: { color: colors.ink, fontSize: 15, fontWeight: "600" },
+  link: { color: colors.accent, fontSize: 14, fontWeight: "600", marginTop: 14, textAlign: "center" },
+  error: { color: colors.danger, fontSize: 14, marginTop: 10 },
+  done: { color: colors.good, fontSize: 16, fontWeight: "700" },
+  metricGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 6 },
+  metric: {
+    width: "47%", backgroundColor: colors.bg, borderRadius: 12, borderWidth: 1, borderColor: colors.line,
+    paddingVertical: 12, alignItems: "center",
+  },
+  metricVal: { fontSize: 18, fontWeight: "800", color: colors.ink },
+  metricLabel: { fontSize: 12, color: colors.muted, marginTop: 2 },
+});
