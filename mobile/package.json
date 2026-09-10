@@ -2,23 +2,31 @@
   "name": "flowra-care-mobile",
   "version": "0.1.0",
   "private": true,
+  "description": "App do paciente — Flowra Care (Expo / React Native)",
   "main": "index.ts",
   "scripts": {
-    "start": "expo start --dev-client",
-    "android": "expo run:android",
-    "prebuild": "expo prebuild --platform android",
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "expo": "~51.0.0",
+    "expo": "~51.0.28",
+    "expo-av": "~14.0.7",
     "expo-constants": "~16.0.2",
+    "expo-device": "~6.0.2",
+    "expo-document-picker": "~12.0.2",
+    "expo-image-picker": "~15.0.7",
+    "expo-linking": "~6.3.1",
+    "expo-notifications": "~0.28.19",
     "expo-secure-store": "~13.0.2",
     "expo-status-bar": "~1.12.1",
     "react": "18.2.0",
-    "react-native": "0.74.5",
-    "react-native-health-connect": "^3.3.1"
+    "react-native": "0.74.5"
   },
   "devDependencies": {
+    "@babel/core": "^7.24.0",
     "@types/react": "~18.2.79",
     "typescript": "~5.3.3"
   }
