@@ -8,6 +8,7 @@ import { MedicationCard } from "../components/MedicationCard";
 import { WearableCard } from "../components/WearableCard";
 import { ClinicalNotesCard } from "../components/ClinicalNotesCard";
 import { ScalesCard } from "../components/ScalesCard";
+import { EvolutionCard } from "../components/EvolutionCard";
 import { AppointmentsCard } from "../components/AppointmentsCard";
 import { ExamsCard } from "../components/ExamsCard";
 import { PrescriptionsCard } from "../components/PrescriptionsCard";
@@ -205,6 +206,7 @@ export function PatientDetail() {
                 )}
               </div>
 
+              <EvolutionCard patientId={id} />
               <ExamsCard patientId={id} />
               <ScalesCard patientId={id} />
               <ClinicalNotesCard key={notesReloadKey} patientId={id} />

@@ -9,6 +9,11 @@
   --accent-ink: #0a5a50;
   --accent-soft: #e2f1ed;
 
+  /* Séries de gráfico (validadas p/ daltonismo) — humor, ansiedade, sono */
+  --chart-humor: #0a8f72;
+  --chart-anx: #6d5bd0;
+  --chart-sleep: #2f6fb0;
+
   --risk-green: #2e9e6b;
   --risk-yellow: #b9890a;
   --risk-orange: #da7429;
@@ -26,6 +31,7 @@
     --muted: #94a39e; --line: #26312f; --accent: #34b3a2; --accent-ink: #6fd4c6;
     --accent-soft: #17322d; --risk-green: #46ba80; --risk-yellow: #dbb03c;
     --risk-orange: #ef8e48; --risk-red: #ec6a62;
+    --chart-humor: #1f9c86; --chart-anx: #7a67e0; --chart-sleep: #5b9bd8;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -14px rgba(0, 0, 0, 0.6);
   }
 }
@@ -34,6 +40,7 @@
   --muted: #94a39e; --line: #26312f; --accent: #34b3a2; --accent-ink: #6fd4c6;
   --accent-soft: #17322d; --risk-green: #46ba80; --risk-yellow: #dbb03c;
   --risk-orange: #ef8e48; --risk-red: #ec6a62;
+  --chart-humor: #1f9c86; --chart-anx: #7a67e0; --chart-sleep: #5b9bd8;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -14px rgba(0, 0, 0, 0.6);
 }
 :root[data-theme="light"] {
@@ -41,6 +48,7 @@
   --muted: #5c6c68; --line: #e2e9e6; --accent: #0e7c6e; --accent-ink: #0a5a50;
   --accent-soft: #e2f1ed; --risk-green: #2e9e6b; --risk-yellow: #b9890a;
   --risk-orange: #da7429; --risk-red: #d3423a;
+  --chart-humor: #0a8f72; --chart-anx: #6d5bd0; --chart-sleep: #2f6fb0;
   --shadow: 0 1px 2px rgba(18, 32, 29, 0.04), 0 6px 20px -12px rgba(18, 32, 29, 0.18);
 }
 
