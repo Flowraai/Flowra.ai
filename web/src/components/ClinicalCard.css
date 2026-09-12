@@ -36,3 +36,19 @@
 .note-item .mini:hover { color: var(--accent-ink); background: var(--accent-soft); }
 .note-item .mini.danger:hover { color: var(--risk-red); background: color-mix(in srgb, var(--risk-red) 10%, transparent); }
 .note-body { margin: 8px 0 0; font-size: 13.5px; color: var(--ink); white-space: pre-wrap; line-height: 1.45; }
+
+.scale-pick { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.scale-pick-item { text-align: left; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; font: inherit; }
+.scale-pick-item:hover { border-color: var(--accent); }
+.scale-pick-item b { font-size: 13.5px; color: var(--ink); }
+.scale-pick-item .muted { font-size: 12px; }
+.scale-list { display: flex; flex-direction: column; gap: 12px; }
+.scale-group { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.scale-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.scale-top b { font-size: 13.5px; color: var(--ink); }
+.scale-score { font-size: 13px; font-weight: 700; }
+.scale-trend { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.scale-trend .muted { font-size: 11.5px; }
+.scale-pending { display: flex; align-items: center; gap: 8px; }
+.scale-pending .mini { border: 0; background: transparent; color: var(--muted); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 3px 7px; border-radius: 8px; }
+.scale-pending .mini.danger:hover { color: var(--risk-red); background: color-mix(in srgb, var(--risk-red) 10%, transparent); }

@@ -183,6 +183,38 @@ export interface AppointmentInput {
   notes?: string | null;
 }
 
+export interface ScaleBand {
+  min: number;
+  max: number;
+  label: string;
+  level: RiskLevel;
+}
+
+export interface ScaleDef {
+  code: string;
+  name: string;
+  description: string;
+  period: string;
+  items: string[];
+  options: string[];
+  bands: ScaleBand[];
+  max_score: number;
+  flag_item: number | null;
+}
+
+export interface ScaleEntry {
+  id: string;
+  scale_code: string;
+  scale_name: string;
+  status: "pending" | "done";
+  score: number | null;
+  severity: string | null;
+  level: RiskLevel | null;
+  flagged: boolean;
+  requested_at: string;
+  completed_at: string | null;
+}
+
 export type NoteKind = "note" | "diagnosis" | "other";
 
 export interface ClinicalNote {

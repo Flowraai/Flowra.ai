@@ -41,6 +41,7 @@ from app.models.patient import Patient
 from app.models.plan import Plan
 from app.models.prescription import Prescription
 from app.models.protocol import Protocol, ProtocolQuestion
+from app.models.scale_entry import ScaleEntry
 from app.models.subscription import Subscription
 from app.models.tenant import Tenant
 from app.models.user import User
@@ -66,6 +67,7 @@ __all__ = [
     "Prescription",
     "Protocol",
     "ProtocolQuestion",
+    "ScaleEntry",
     "RefreshToken",
     "Subscription",
     "Tenant",

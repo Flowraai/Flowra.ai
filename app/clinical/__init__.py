@@ -1,0 +1,1 @@
+"""Instrumentos clínicos (escalas validadas)."""

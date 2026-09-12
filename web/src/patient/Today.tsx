@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { patientApi, PatientApiError, type Appointment, type PatientToday } from "./api";
 import { DeviceCard } from "./DeviceCard";
+import { PatientScales } from "./Scales";
 
 function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] ?? name;
@@ -126,6 +127,8 @@ export function Today({
           ))}
         </div>
       ) : null}
+
+      <PatientScales />
 
       <DeviceCard />
 

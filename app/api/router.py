@@ -24,6 +24,7 @@ from app.api.routes import (
     patients,
     prescriptions,
     protocols,
+    scales,
     survey,
     terra_webhook,
     wearable,
@@ -46,6 +47,7 @@ v1.include_router(attachments.router)  # compartilhado (médico e paciente)
 v1.include_router(devices.router)
 v1.include_router(protocols.router)
 v1.include_router(survey.router)
+v1.include_router(scales.router)
 v1.include_router(wearable.router)
 v1.include_router(terra_webhook.router)
 v1.include_router(whatsapp.router)

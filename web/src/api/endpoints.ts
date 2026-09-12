@@ -12,6 +12,8 @@ import type {
   ClinicalNote,
   NoteCreateInput,
   NoteUpdateInput,
+  ScaleDef,
+  ScaleEntry,
   DoctorProfile,
   DoctorUpdateInput,
   Exam,
@@ -103,6 +105,14 @@ export const patients = {
     ),
   createNote: (id: string, input: NoteCreateInput) =>
     api<ClinicalNote>(`/patients/${id}/notes`, { method: "POST", body: input }),
+  scales: (id: string) => api<ScaleEntry[]>(`/patients/${id}/scales`),
+  requestScale: (id: string, scaleCode: string) =>
+    api<ScaleEntry>(`/patients/${id}/scales`, { method: "POST", body: { scale_code: scaleCode } }),
+};
+
+export const scales = {
+  catalog: () => api<ScaleDef[]>("/scales"),
+  cancel: (entryId: string) => api<void>(`/scales/${entryId}`, { method: "DELETE" }),
 };
 
 export const notes = {

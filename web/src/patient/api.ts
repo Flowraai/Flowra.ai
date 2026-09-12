@@ -159,6 +159,26 @@ export interface CalendarDay {
 
 export type Answers = Record<string, string | number>;
 
+export interface ScaleDef {
+  code: string;
+  name: string;
+  description: string;
+  period: string;
+  items: string[];
+  options: string[];
+  bands: { min: number; max: number; label: string; level: string }[];
+  max_score: number;
+  flag_item: number | null;
+}
+export interface ScalePending {
+  id: string;
+  scale: ScaleDef;
+}
+export interface ScaleSubmitResult {
+  message: string;
+  safety: string | null;
+}
+
 export interface WearableDay {
   day: string; // YYYY-MM-DD
   sleep_minutes: number | null;
@@ -241,6 +261,9 @@ export const patientApi = {
   aiHistory: () => pApi<ChatMessage[]>("/patient/ai-chat"),
   sendAi: (body: string) =>
     pApi<ChatMessage>("/patient/ai-chat", { method: "POST", body: { body, attachments: [] } }),
+  pendingScales: () => pApi<ScalePending[]>("/patient/scales"),
+  submitScale: (entryId: string, answers: number[]) =>
+    pApi<ScaleSubmitResult>(`/patient/scales/${entryId}`, { method: "POST", body: { answers } }),
   wearable: () => pApi<WearableSummary>("/patient/wearable"),
   wearableConnect: () =>
     pApi<WearableConnectResult>("/patient/wearable/connect", { method: "POST" }),
