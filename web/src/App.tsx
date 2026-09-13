@@ -9,6 +9,7 @@ import { CertificatePrint } from "./pages/CertificatePrint";
 import { Alerts } from "./pages/Alerts";
 import { Agenda } from "./pages/Agenda";
 import { Messages } from "./pages/Messages";
+import { FinancialPanel } from "./pages/FinancialPanel";
 import { Settings } from "./pages/Settings";
 import { SurveyPage } from "./pages/Survey";
 import { Subscribe } from "./pages/Subscribe";
@@ -132,6 +133,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <SurveyPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/financeiro"
+            element={
+              <RequireAuth>
+                <FinancialPanel />
               </RequireAuth>
             }
           />

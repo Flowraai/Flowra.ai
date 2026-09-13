@@ -119,6 +119,55 @@ async def test_percentage_recompute_on_edit(client: httpx.AsyncClient):
     assert upd.json()["doctor_cents"] == 10000
 
 
+async def test_doctor_list_and_summary(client: httpx.AsyncClient):
+    headers = await _doctor(client)
+    # Particular: consulta realizada, valor R$ 200, recebido via PIX.
+    p1 = await _patient(client, headers, name="Ana")
+    a1 = await _appointment(client, headers, p1["id"])
+    await _complete(client, headers, a1["id"])
+    ch1 = (await client.get(f"/api/v1/patients/{p1['id']}/charges", headers=headers)).json()[0]
+    await client.patch(f"/api/v1/charges/{ch1['id']}", headers=headers, json={"gross_cents": 20000})
+    await client.patch(f"/api/v1/charges/{ch1['id']}", headers=headers,
+                       json={"status": "received", "payment_method": "pix"})
+
+    # Convênio: repasse fixo R$ 90 a receber.
+    plan = await _plan(client, headers, default_consultation_cents=15000)
+    p2 = await _patient(client, headers, name="Bruno", health_plan_id=plan["id"])
+    a2 = await _appointment(client, headers, p2["id"])
+    await _complete(client, headers, a2["id"])
+
+    # Lista do médico com nome do paciente.
+    lst = (await client.get("/api/v1/charges", headers=headers)).json()
+    assert len(lst) == 2
+    assert {c["patient_name"] for c in lst} == {"Ana", "Bruno"}
+
+    # Filtro por status.
+    pend = (await client.get("/api/v1/charges?status=pending", headers=headers)).json()
+    assert len(pend) == 1 and pend[0]["patient_name"] == "Bruno"
+
+    # Resumo agregado.
+    s = (await client.get("/api/v1/charges/summary", headers=headers)).json()
+    assert s["received_cents"] == 20000 and s["to_receive_cents"] == 9000
+    assert s["particular"]["received_cents"] == 20000
+    assert s["convenio"]["to_receive_cents"] == 9000
+    assert len(s["by_plan"]) == 2
+    assert len(s["monthly"]) == 1
+    assert s["monthly"][0]["received_cents"] == 20000 and s["monthly"][0]["pending_cents"] == 9000
+
+
+async def test_summary_excludes_cancelled(client: httpx.AsyncClient):
+    headers = await _doctor(client)
+    p = await _patient(client, headers)
+    a = await _appointment(client, headers, p["id"])
+    await _complete(client, headers, a["id"])
+    ch = (await client.get(f"/api/v1/patients/{p['id']}/charges", headers=headers)).json()[0]
+    await client.patch(f"/api/v1/charges/{ch['id']}", headers=headers,
+                       json={"gross_cents": 10000})
+    await client.patch(f"/api/v1/charges/{ch['id']}", headers=headers, json={"status": "cancelled"})
+    s = (await client.get("/api/v1/charges/summary", headers=headers)).json()
+    assert s["received_cents"] == 0 and s["to_receive_cents"] == 0 and s["cancelled_count"] == 1
+
+
 async def test_manual_generate_and_isolation(client: httpx.AsyncClient):
     headers = await _doctor(client)
     patient = await _patient(client, headers)

@@ -124,6 +124,33 @@ export interface ChargeUpdateInput {
   notes?: string | null;
 }
 
+export interface ChargeBucket {
+  to_receive_cents: number;
+  received_cents: number;
+  count: number;
+}
+
+export interface ChargePlanBucket extends ChargeBucket {
+  health_plan_id: string | null;
+  name: string;
+}
+
+export interface ChargeMonth {
+  month: string; // "YYYY-MM"
+  received_cents: number;
+  pending_cents: number;
+}
+
+export interface ChargeSummary {
+  to_receive_cents: number;
+  received_cents: number;
+  cancelled_count: number;
+  particular: ChargeBucket;
+  convenio: ChargeBucket;
+  by_plan: ChargePlanBucket[];
+  monthly: ChargeMonth[];
+}
+
 export interface Patient {
   id: string;
   tenant_id: string;

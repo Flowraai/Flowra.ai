@@ -8,7 +8,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,7 +19,14 @@ from app.models.consultation_charge import ConsultationCharge
 from app.models.doctor import Doctor
 from app.models.health_plan import HealthPlan
 from app.models.patient import Patient
-from app.schemas.consultation_charge import ChargeRead, ChargeUpdate
+from app.schemas.consultation_charge import (
+    ChargeBucket,
+    ChargeMonth,
+    ChargePlanBucket,
+    ChargeRead,
+    ChargeSummary,
+    ChargeUpdate,
+)
 from app.services.consultation_charge_service import compute_doctor_cents, generate_for_appointment
 
 router = APIRouter(tags=["charges"])
@@ -67,6 +74,94 @@ async def list_patient_charges(
     )
     names = await _plan_names(session, rows)
     return [_read(c, names.get(c.health_plan_id)) for c in rows]
+
+
+@router.get("/charges", response_model=list[ChargeRead])
+async def list_doctor_charges(
+    status_filter: str | None = Query(default=None, alias="status"),
+    start: datetime | None = None,
+    end: datetime | None = None,
+    doctor: Doctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db),
+) -> list[ChargeRead]:
+    """Lançamentos do médico (painel financeiro), com filtro por status e período."""
+    stmt = select(ConsultationCharge).where(ConsultationCharge.doctor_id == doctor.id)
+    if status_filter:
+        stmt = stmt.where(ConsultationCharge.status == status_filter)
+    if start is not None:
+        stmt = stmt.where(ConsultationCharge.created_at >= start)
+    if end is not None:
+        stmt = stmt.where(ConsultationCharge.created_at <= end)
+    stmt = stmt.order_by(ConsultationCharge.created_at.desc())
+    rows = list((await session.execute(stmt)).scalars().all())
+    plan_names = await _plan_names(session, rows)
+    pt_names = await _patient_names(session, rows)
+    out = []
+    for c in rows:
+        r = _read(c, plan_names.get(c.health_plan_id))
+        r.patient_name = pt_names.get(c.patient_id)
+        out.append(r)
+    return out
+
+
+@router.get("/charges/summary", response_model=ChargeSummary)
+async def charges_summary(
+    start: datetime | None = None,
+    end: datetime | None = None,
+    doctor: Doctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db),
+) -> ChargeSummary:
+    """Agrega o financeiro do período: a receber × recebido, por tipo/convênio e
+    a série mensal para o gráfico. Recorte por competência (created_at)."""
+    stmt = select(ConsultationCharge).where(ConsultationCharge.doctor_id == doctor.id)
+    if start is not None:
+        stmt = stmt.where(ConsultationCharge.created_at >= start)
+    if end is not None:
+        stmt = stmt.where(ConsultationCharge.created_at <= end)
+    rows = list((await session.execute(stmt)).scalars().all())
+    plan_names = await _plan_names(session, rows)
+
+    particular = ChargeBucket()
+    convenio = ChargeBucket()
+    cancelled = 0
+    by_plan: dict[uuid.UUID | None, ChargePlanBucket] = {}
+    months: dict[str, ChargeMonth] = {}
+
+    for c in rows:
+        if c.status == "cancelled":
+            cancelled += 1
+            continue
+        bucket = convenio if c.kind == "convenio" else particular
+        pkey = c.health_plan_id
+        if pkey not in by_plan:
+            name = plan_names.get(pkey) if pkey else "Particular"
+            by_plan[pkey] = ChargePlanBucket(health_plan_id=pkey, name=name or "Convênio")
+        pbucket = by_plan[pkey]
+        month = c.created_at.strftime("%Y-%m")
+        if month not in months:
+            months[month] = ChargeMonth(month=month)
+        m = months[month]
+
+        for b in (bucket, pbucket):
+            b.count += 1
+        if c.status == "received":
+            bucket.received_cents += c.doctor_cents
+            pbucket.received_cents += c.doctor_cents
+            m.received_cents += c.doctor_cents
+        else:  # pending
+            bucket.to_receive_cents += c.doctor_cents
+            pbucket.to_receive_cents += c.doctor_cents
+            m.pending_cents += c.doctor_cents
+
+    return ChargeSummary(
+        to_receive_cents=particular.to_receive_cents + convenio.to_receive_cents,
+        received_cents=particular.received_cents + convenio.received_cents,
+        cancelled_count=cancelled,
+        particular=particular,
+        convenio=convenio,
+        by_plan=sorted(by_plan.values(), key=lambda b: b.received_cents + b.to_receive_cents, reverse=True),
+        monthly=[months[k] for k in sorted(months)],
+    )
 
 
 @router.post(
@@ -145,3 +240,16 @@ async def _plan_names(
         await session.execute(select(HealthPlan.id, HealthPlan.name).where(HealthPlan.id.in_(ids)))
     ).all()
     return {pid: name for pid, name in rows}
+
+
+async def _patient_names(
+    session: AsyncSession, charges: list[ConsultationCharge]
+) -> dict[uuid.UUID, str]:
+    ids = {c.patient_id for c in charges}
+    if not ids:
+        return {}
+    # patient.name é EncryptedText — carregar via ORM decifra em memória.
+    rows = list(
+        (await session.execute(select(Patient).where(Patient.id.in_(ids)))).scalars().all()
+    )
+    return {p.id: p.name for p in rows}

@@ -38,3 +38,32 @@ class ChargeUpdate(BaseModel):
     status: ChargeStatus | None = None
     payment_method: PaymentMethod | None = None
     notes: str | None = Field(default=None, max_length=500)
+
+
+class ChargeBucket(BaseModel):
+    """Totais de repasse (centavos) de um recorte (por tipo ou convênio)."""
+
+    to_receive_cents: int = 0
+    received_cents: int = 0
+    count: int = 0
+
+
+class ChargePlanBucket(ChargeBucket):
+    health_plan_id: uuid.UUID | None = None
+    name: str  # "Particular" ou o nome do convênio
+
+
+class ChargeMonth(BaseModel):
+    month: str  # "YYYY-MM"
+    received_cents: int = 0
+    pending_cents: int = 0
+
+
+class ChargeSummary(BaseModel):
+    to_receive_cents: int = 0
+    received_cents: int = 0
+    cancelled_count: int = 0
+    particular: ChargeBucket
+    convenio: ChargeBucket
+    by_plan: list[ChargePlanBucket]
+    monthly: list[ChargeMonth]

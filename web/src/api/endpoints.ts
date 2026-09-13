@@ -12,6 +12,7 @@ import type {
   CheckIn,
   Certificate,
   CertificateInput,
+  ChargeSummary,
   ChargeUpdateInput,
   ConsultationCharge,
   ClinicalNote,
@@ -141,7 +142,20 @@ export const scales = {
   cancel: (entryId: string) => api<void>(`/scales/${entryId}`, { method: "DELETE" }),
 };
 
+function chargeQuery(p?: { status?: string; start?: string; end?: string }): string {
+  const q = new URLSearchParams();
+  if (p?.status) q.set("status", p.status);
+  if (p?.start) q.set("start", p.start);
+  if (p?.end) q.set("end", p.end);
+  const s = q.toString();
+  return s ? `?${s}` : "";
+}
+
 export const charges = {
+  list: (p?: { status?: string; start?: string; end?: string }) =>
+    api<ConsultationCharge[]>(`/charges${chargeQuery(p)}`),
+  summary: (p?: { start?: string; end?: string }) =>
+    api<ChargeSummary>(`/charges/summary${chargeQuery(p)}`),
   update: (id: string, patch: ChargeUpdateInput) =>
     api<ConsultationCharge>(`/charges/${id}`, { method: "PATCH", body: patch }),
 };
