@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { patients } from "../api/endpoints";
+import { patients, scales as scalesApi } from "../api/endpoints";
 import { ApiError } from "../api/client";
-import type { CheckIn } from "../api/types";
+import type { CheckIn, ScaleDef, ScaleEntry } from "../api/types";
 import { IconChart } from "./icons";
 import "./EvolutionCard.css";
+
+// Cor por escala (validadas p/ daltonismo: violeta × âmbar, ΔE ~28).
+const SCALE_COLOR: Record<string, string> = {
+  phq9: "var(--chart-anx)",
+  gad7: "var(--fin-pending)",
+};
+const SCALE_FALLBACK = ["var(--chart-sleep)", "var(--risk-red)"];
+const SCALE_MAX_FALLBACK: Record<string, number> = { phq9: 27, gad7: 21 };
 
 type Pt = { t: number; v: number };
 type Series = { key: string; label: string; color: string; pts: Pt[] };
@@ -35,6 +43,8 @@ function LineChart({
   yTicks,
   unit,
   height = 150,
+  showMarkers = false,
+  endLabels = true,
 }: {
   series: Series[];
   xDomain: [number, number];
@@ -43,6 +53,8 @@ function LineChart({
   yTicks: number[];
   unit: string;
   height?: number;
+  showMarkers?: boolean;
+  endLabels?: boolean;
 }) {
   const W = 560;
   const mL = 30, mR = 46, mT = 10, mB = 20;
@@ -114,11 +126,19 @@ function LineChart({
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
+              {/* marcadores em cada ponto (para séries esparsas, ex.: escalas) */}
+              {showMarkers
+                ? s.pts.map((p, i) => (
+                    <circle key={i} cx={X(p.t)} cy={Y(p.v)} r="3.2" style={{ fill: s.color }} stroke="var(--surface)" strokeWidth="1.5" />
+                  ))
+                : null}
               {/* ponto + rótulo direto no último valor */}
               <circle cx={X(s.pts[s.pts.length - 1].t)} cy={Y(s.pts[s.pts.length - 1].v)} r="3.4" style={{ fill: s.color }} stroke="var(--surface)" strokeWidth="2" />
-              <text x={W - mR + 5} y={Y(s.pts[s.pts.length - 1].v) + 3} className="evo-endlabel" style={{ fill: s.color }}>
-                {s.pts[s.pts.length - 1].v}
-              </text>
+              {endLabels ? (
+                <text x={W - mR + 5} y={Y(s.pts[s.pts.length - 1].v) + 3} className="evo-endlabel" style={{ fill: s.color }}>
+                  {s.pts[s.pts.length - 1].v}
+                </text>
+              ) : null}
               {hoverT != null && s.pts.find((p) => p.t === hoverT) ? (
                 <circle cx={X(hoverT)} cy={Y(s.pts.find((p) => p.t === hoverT)!.v)} r="4" style={{ fill: s.color }} stroke="var(--surface)" strokeWidth="2" />
               ) : null}
@@ -144,6 +164,8 @@ function LineChart({
 
 export function EvolutionCard({ patientId }: { patientId: string }) {
   const [checkins, setCheckins] = useState<CheckIn[] | null>(null);
+  const [scaleEntries, setScaleEntries] = useState<ScaleEntry[]>([]);
+  const [catalog, setCatalog] = useState<ScaleDef[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState(30);
   const [asTable, setAsTable] = useState(false);
@@ -154,6 +176,8 @@ export function EvolutionCard({ patientId }: { patientId: string }) {
       .checkins(patientId, 90)
       .then(setCheckins)
       .catch((e) => setError(e instanceof ApiError ? e.message : "Falha ao carregar a evolução."));
+    patients.scales(patientId).then(setScaleEntries).catch(() => setScaleEntries([]));
+    scalesApi.catalog().then(setCatalog).catch(() => setCatalog([]));
   }, [patientId]);
 
   const model = useMemo(() => {
@@ -168,10 +192,32 @@ export function EvolutionCard({ patientId }: { patientId: string }) {
     const anx = pick("anxiety");
     const sleep = pick("sleep_hours");
     const xDomain: [number, number] = [since, Date.now()];
-    return { rows, mood, anx, sleep, xDomain };
-  }, [checkins, days]);
 
-  const has = model.mood.length + model.anx.length + model.sleep.length > 0;
+    // Escalas normalizadas a % do máximo (eixo comum; maior = mais sintomas).
+    const maxOf = (code: string) =>
+      catalog.find((s) => s.code === code)?.max_score ?? SCALE_MAX_FALLBACK[code] ?? 27;
+    const byCode = new Map<string, { name: string; pts: Pt[] }>();
+    for (const e of scaleEntries) {
+      if (e.status !== "done" || e.score == null || !e.completed_at) continue;
+      const t = new Date(e.completed_at).getTime();
+      if (t < since) continue;
+      const g = byCode.get(e.scale_code) ?? { name: e.scale_name.split(" — ")[0], pts: [] };
+      g.pts.push({ t, v: Math.round((e.score / maxOf(e.scale_code)) * 100) });
+      byCode.set(e.scale_code, g);
+    }
+    let fb = 0;
+    const scaleSeries: Series[] = [...byCode.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([code, g]) => ({
+        key: code,
+        label: g.name,
+        color: SCALE_COLOR[code] ?? SCALE_FALLBACK[fb++ % SCALE_FALLBACK.length],
+        pts: g.pts.sort((p, q) => p.t - q.t),
+      }));
+    return { rows, mood, anx, sleep, xDomain, scaleSeries };
+  }, [checkins, days, scaleEntries, catalog]);
+
+  const has = model.mood.length + model.anx.length + model.sleep.length + model.scaleSeries.length > 0;
   const cHumor = "var(--chart-humor)";
   const cAnx = "var(--chart-anx)";
   const cSleep = "var(--chart-sleep)";
@@ -201,6 +247,9 @@ export function EvolutionCard({ patientId }: { patientId: string }) {
               <div className="evo-legend">
                 <span><i style={{ background: cHumor }} /> Humor</span>
                 <span><i style={{ background: cAnx }} /> Ansiedade</span>
+                {model.scaleSeries.map((s) => (
+                  <span key={s.key}><i style={{ background: s.color }} /> {s.label}</span>
+                ))}
               </div>
               <button className="mini" onClick={() => setAsTable((v) => !v)}>
                 {asTable ? "Ver gráfico" : "Ver tabela"}
@@ -237,6 +286,24 @@ export function EvolutionCard({ patientId }: { patientId: string }) {
                   yTicks={[0, 5, 10]}
                   unit=""
                 />
+                {model.scaleSeries.length > 0 ? (
+                  <>
+                    <div className="evo-title">
+                      Escalas <span className="muted">(% do máximo — maior = mais sintomas)</span>
+                    </div>
+                    <LineChart
+                      series={model.scaleSeries}
+                      xDomain={model.xDomain}
+                      yMin={0}
+                      yMax={100}
+                      yTicks={[0, 50, 100]}
+                      unit="%"
+                      height={130}
+                      showMarkers
+                      endLabels={false}
+                    />
+                  </>
+                ) : null}
                 {model.sleep.length > 0 ? (
                   <>
                     <div className="evo-title">Sono <span className="muted">(horas por noite)</span></div>
