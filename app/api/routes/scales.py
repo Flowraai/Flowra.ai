@@ -49,6 +49,7 @@ def _def(scale: Scale) -> ScaleDef:
         bands=[ScaleBandOut(min=b.min, max=b.max, label=b.label, level=b.level) for b in scale.bands],
         max_score=scale.max_score,
         flag_item=scale.flag_item,
+        higher_is_worse=scale.higher_is_worse,
     )
 
 

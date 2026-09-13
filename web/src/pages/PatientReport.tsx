@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { patients } from "../api/endpoints";
+import { patients, scales as scalesApi } from "../api/endpoints";
 import { RISK_LABEL } from "../lib/format";
 import type {
   Appointment, CheckIn, ClinicalNote, MedicationAdherence, MedicationPlan,
-  Patient, PatientSummary, ScaleEntry,
+  Patient, PatientSummary, ScaleDef, ScaleEntry,
 } from "../api/types";
 import "./PatientReport.css";
 
@@ -50,12 +50,13 @@ export function PatientReport() {
   const [meds, setMeds] = useState<MedicationPlan[]>([]);
   const [appts, setAppts] = useState<Appointment[]>([]);
   const [notes, setNotes] = useState<ClinicalNote[]>([]);
+  const [catalog, setCatalog] = useState<ScaleDef[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
     (async () => {
-      const [p, s, c, sc, ad, m, ap, nt] = await Promise.allSettled([
+      const [p, s, c, sc, ad, m, ap, nt, cat] = await Promise.allSettled([
         patients.get(id),
         patients.summary(id),
         patients.checkins(id, 60),
@@ -64,6 +65,7 @@ export function PatientReport() {
         patients.medications(id),
         patients.appointments(id),
         patients.notes(id),
+        scalesApi.catalog(),
       ]);
       if (!active) return;
       if (p.status === "fulfilled") setPatient(p.value);
@@ -74,6 +76,7 @@ export function PatientReport() {
       if (m.status === "fulfilled") setMeds(m.value);
       if (ap.status === "fulfilled") setAppts(ap.value);
       if (nt.status === "fulfilled") setNotes(nt.value);
+      if (cat.status === "fulfilled") setCatalog(cat.value);
       setLoading(false);
     })();
     return () => { active = false; };
@@ -86,15 +89,27 @@ export function PatientReport() {
     return { n: rows.length, mood: avg(pick("mood")), anx: avg(pick("anxiety")), sleep: avg(pick("sleep_hours")) };
   }, [checkins]);
 
-  // Última pontuação por escala (done).
+  // Última pontuação por escala (done) + tendência vs. a aplicação anterior.
   const lastScales = useMemo(() => {
-    const byCode = new Map<string, ScaleEntry>();
+    const worseOf = new Map(catalog.map((s) => [s.code, s.higher_is_worse]));
+    const byCode = new Map<string, ScaleEntry[]>();
     for (const e of scales) {
       if (e.status !== "done") continue;
-      const cur = byCode.get(e.scale_code);
-      if (!cur || (e.completed_at ?? "") > (cur.completed_at ?? "")) byCode.set(e.scale_code, e);
+      (byCode.get(e.scale_code) ?? byCode.set(e.scale_code, []).get(e.scale_code)!).push(e);
     }
-    return [...byCode.values()];
+    return [...byCode.values()].map((entries) => {
+      const done = entries.sort((a, b) => (a.completed_at ?? "").localeCompare(b.completed_at ?? ""));
+      const last = done[done.length - 1];
+      const prev = done.length > 1 ? done[done.length - 2] : null;
+      let trend: string | null = null;
+      let delta: number | null = null;
+      if (prev && last.score != null && prev.score != null) {
+        delta = last.score - prev.score;
+        const worse = worseOf.get(last.scale_code) ?? true;
+        trend = delta === 0 ? "flat" : (delta > 0) === worse ? "worse" : "better";
+      }
+      return { e: last, trend, delta };
+    });
   }, [scales]);
 
   const activeMeds = meds.filter((m) => m.active);
@@ -163,13 +178,19 @@ export function PatientReport() {
           <section className="rep-sec">
             <h2>Escalas clínicas</h2>
             <table className="rep-table">
-              <thead><tr><th>Instrumento</th><th>Pontuação</th><th>Gravidade</th><th>Data</th></tr></thead>
+              <thead><tr><th>Instrumento</th><th>Pontuação</th><th>Gravidade</th><th>Tendência</th><th>Data</th></tr></thead>
               <tbody>
-                {lastScales.map((e) => (
+                {lastScales.map(({ e, trend, delta }) => (
                   <tr key={e.id}>
                     <td>{e.scale_name}</td>
                     <td>{e.score}</td>
                     <td>{e.severity}{e.flagged ? " ⚠️" : ""}</td>
+                    <td>
+                      {trend === "worse" ? `↑ ${Math.abs(delta ?? 0)} (piora)`
+                        : trend === "better" ? `↓ ${Math.abs(delta ?? 0)} (melhora)`
+                        : trend === "flat" ? "= estável"
+                        : "—"}
+                    </td>
                     <td>{e.completed_at ? fmtDate(e.completed_at) : "—"}</td>
                   </tr>
                 ))}

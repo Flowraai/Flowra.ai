@@ -96,18 +96,34 @@ async def _gather(session: AsyncSession, patient: Patient) -> dict:
         .scalars()
         .all()
     )
-    latest_scales: dict[str, ScaleEntry] = {}
+    # Guarda as duas últimas de cada escala para calcular a tendência.
+    by_code: dict[str, list[ScaleEntry]] = {}
     for e in scale_rows:
-        latest_scales.setdefault(e.scale_code, e)
-    scales = [
-        {
-            "name": (get_scale(code).name.split(" — ")[0] if get_scale(code) else code),
-            "score": e.score,
-            "severity": e.severity,
-            "flagged": e.flagged,
-        }
-        for code, e in latest_scales.items()
-    ]
+        by_code.setdefault(e.scale_code, []).append(e)
+    scales = []
+    for code, entries in by_code.items():
+        latest = entries[0]
+        prev = entries[1] if len(entries) > 1 else None
+        scale = get_scale(code)
+        delta = trend = None
+        if prev is not None and latest.score is not None and prev.score is not None:
+            diff = latest.score - prev.score
+            worse = scale.higher_is_worse if scale else True
+            delta = diff
+            if diff == 0:
+                trend = "flat"
+            elif (diff > 0) == worse:
+                trend = "worse"
+            else:
+                trend = "better"
+        scales.append({
+            "name": scale.name.split(" — ")[0] if scale else code,
+            "score": latest.score,
+            "severity": latest.severity,
+            "flagged": latest.flagged,
+            "delta": delta,
+            "trend": trend,
+        })
 
     w = await wearable_service.summary(session, patient, 7)
     wearable = (
@@ -166,7 +182,18 @@ def _render_deterministic(patient: Patient, ctx: dict) -> str:
         parts.append(f"{ctx['open_alerts']} alerta(s) em aberto.")
     scales = ctx.get("scales")
     if scales:
-        bits = [f"{s['name']} {s['score']} ({s['severity']})" for s in scales if s["score"] is not None]
+        bits = []
+        for s in scales:
+            if s["score"] is None:
+                continue
+            bit = f"{s['name']} {s['score']} ({s['severity']})"
+            if s.get("trend") == "worse":
+                bit += f" ↑{abs(s['delta'])} (piora)"
+            elif s.get("trend") == "better":
+                bit += f" ↓{abs(s['delta'])} (melhora)"
+            elif s.get("trend") == "flat":
+                bit += " = (estável)"
+            bits.append(bit)
         if bits:
             parts.append("Escalas: " + "; ".join(bits) + ".")
         if any(s["flagged"] for s in scales):

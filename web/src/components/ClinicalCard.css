@@ -47,6 +47,10 @@
 .scale-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .scale-top b { font-size: 13.5px; color: var(--ink); }
 .scale-score { font-size: 13px; font-weight: 700; }
+.scale-trend-badge { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+.scale-trend-badge.worse { color: var(--risk-red); background: color-mix(in srgb, var(--risk-red) 13%, var(--surface)); }
+.scale-trend-badge.better { color: var(--risk-green); background: color-mix(in srgb, var(--risk-green) 14%, var(--surface)); }
+.scale-trend-badge.flat { color: var(--muted); background: var(--surface-2); }
 .scale-trend { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .scale-trend .muted { font-size: 11.5px; }
 .scale-pending { display: flex; align-items: center; gap: 8px; }

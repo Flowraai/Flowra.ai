@@ -25,6 +25,7 @@ class ScaleDef(BaseModel):
     bands: list[ScaleBandOut]
     max_score: int
     flag_item: int | None = None
+    higher_is_worse: bool = True
 
 
 class ScaleRequestIn(BaseModel):

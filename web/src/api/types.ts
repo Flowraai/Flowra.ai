@@ -216,6 +216,7 @@ export interface ScaleDef {
   bands: ScaleBand[];
   max_score: number;
   flag_item: number | null;
+  higher_is_worse: boolean;
 }
 
 export interface ScaleEntry {

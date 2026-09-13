@@ -270,16 +270,32 @@ function SummaryBody({ text, ctx }: { text: string; ctx: Record<string, unknown>
   if (rate != null) chips.push(`adesão ${Math.round(rate * 100)}%`);
   const crises = num(ctx["crises_recent"]);
   if (crises) chips.push(`${crises} crise(s)`);
+  const scales = Array.isArray(ctx["scales"]) ? (ctx["scales"] as Record<string, unknown>[]) : [];
   return (
     <>
       <span style={{ lineHeight: 1.6 }}>{text}</span>
-      {chips.length > 0 ? (
+      {chips.length > 0 || scales.length > 0 ? (
         <div className="ai-foot">
           {chips.map((c) => (
             <span className="chip" key={c}>
               {c}
             </span>
           ))}
+          {scales.map((s, i) => {
+            const score = num(s["score"]);
+            if (score == null) return null;
+            const delta = num(s["delta"]);
+            const trend = s["trend"] as string | null;
+            const arrow =
+              trend === "worse" ? ` ↑${Math.abs(delta ?? 0)}` : trend === "better" ? ` ↓${Math.abs(delta ?? 0)}` : "";
+            const cls = trend === "worse" ? "chip alert" : trend === "better" ? "chip ok" : "chip";
+            return (
+              <span className={cls} key={`sc-${i}`} title={String(s["severity"] ?? "")}>
+                {String(s["name"])} {score}
+                {arrow}
+              </span>
+            );
+          })}
         </div>
       ) : null}
     </>

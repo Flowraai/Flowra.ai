@@ -158,6 +158,34 @@ async def test_scale_appears_in_doctor_summary(client: httpx.AsyncClient):
         assert "Escalas:" in s["summary"] and "GAD-7 12" in s["summary"]
 
 
+async def test_scale_trend_between_two_applications(client: httpx.AsyncClient):
+    headers = await _doctor(client)
+    patient = await _patient(client, headers)
+    ph = {"X-Patient-Token": patient["access_token"]}
+
+    async def apply(answers: list[int]) -> None:
+        req = (await client.post(f"/api/v1/patients/{patient['id']}/scales", headers=headers,
+                                 json={"scale_code": "gad7"})).json()
+        await client.post(f"/api/v1/patient/scales/{req['id']}", headers=ph, json={"answers": answers})
+
+    # 1ª aplicação: 14 (grave). 2ª: 7 (leve) → melhora (score caiu).
+    await apply([2, 2, 2, 2, 2, 2, 2])  # 14
+    # Recua a 1ª para o passado para garantir a ordem por completed_at.
+    async with AsyncSessionLocal() as s:
+        first = await s.scalar(
+            select(ScaleEntry).where(ScaleEntry.patient_id == patient["id"], ScaleEntry.status == "done")
+        )
+        first.completed_at = datetime.now(timezone.utc) - timedelta(days=14)
+        await s.commit()
+    await apply([1, 1, 1, 1, 1, 1, 1])  # 7
+
+    s = (await client.get(f"/api/v1/patients/{patient['id']}/summary", headers=headers)).json()
+    gad = next(x for x in s["context"]["scales"] if x["name"] == "GAD-7")
+    assert gad["score"] == 7 and gad["delta"] == -7 and gad["trend"] == "better"
+    if s["generated_by"] == "deterministic":
+        assert "GAD-7 7" in s["summary"] and "melhora" in s["summary"]
+
+
 async def test_non_recurring_not_recreated(client: httpx.AsyncClient):
     headers = await _doctor(client)
     patient = await _patient(client, headers)

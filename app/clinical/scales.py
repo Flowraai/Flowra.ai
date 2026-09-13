@@ -29,6 +29,9 @@ class Scale:
     bands: tuple[Band, ...]
     flag_item: int | None      # índice (0-based) que, se > 0, sinaliza risco
     flag_note: str | None
+    # Direção clínica: em PHQ-9/GAD-7 pontuação maior = pior. Guardado
+    # explicitamente para a tendência (↑ piora / ↓ melhora) não assumir a direção.
+    higher_is_worse: bool = True
 
     @property
     def max_score(self) -> int:

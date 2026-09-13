@@ -17,6 +17,28 @@ function when(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
 }
 
+// Tendência entre as duas últimas aplicações. Em PHQ-9/GAD-7, score maior = pior;
+// `worse` guarda a direção clínica para não assumir nada.
+function TrendBadge({ done, worse }: { done: ScaleEntry[]; worse: boolean }) {
+  if (done.length < 2) return null;
+  const last = done[done.length - 1].score;
+  const prev = done[done.length - 2].score;
+  if (last == null || prev == null) return null;
+  const delta = last - prev;
+  if (delta === 0) {
+    return <span className="scale-trend-badge flat" title="Sem mudança vs. anterior">= estável</span>;
+  }
+  const worsened = delta > 0 === worse;
+  return (
+    <span
+      className={`scale-trend-badge ${worsened ? "worse" : "better"}`}
+      title={`${worsened ? "Piora" : "Melhora"} de ${Math.abs(delta)} ponto(s) vs. a aplicação anterior`}
+    >
+      {worsened ? "↑" : "↓"} {Math.abs(delta)} {worsened ? "piora" : "melhora"}
+    </span>
+  );
+}
+
 export function ScalesCard({ patientId }: { patientId: string }) {
   const [catalog, setCatalog] = useState<ScaleDef[]>([]);
   const [list, setList] = useState<ScaleEntry[] | null>(null);
@@ -40,6 +62,12 @@ export function ScalesCard({ patientId }: { patientId: string }) {
   const maxOf = useMemo(() => {
     const m = new Map<string, number>();
     catalog.forEach((s) => m.set(s.code, s.max_score));
+    return m;
+  }, [catalog]);
+
+  const worseOf = useMemo(() => {
+    const m = new Map<string, boolean>();
+    catalog.forEach((s) => m.set(s.code, s.higher_is_worse));
     return m;
   }, [catalog]);
 
@@ -139,6 +167,7 @@ export function ScalesCard({ patientId }: { patientId: string }) {
                     ) : (
                       <span className="muted" style={{ fontSize: 12.5 }}>aguardando 1ª resposta</span>
                     )}
+                    <TrendBadge done={g.done} worse={worseOf.get(g.code) ?? true} />
                   </div>
                   {g.done.length > 1 ? (
                     <div className="scale-trend">
