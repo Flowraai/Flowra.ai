@@ -10,6 +10,16 @@ export interface PatientToday {
   last_checkin_at: string | null;
 }
 
+export interface PatientAccount {
+  name: string;
+  activated: boolean;
+  has_contact: boolean;
+}
+
+export interface PatientSession {
+  access_token: string;
+}
+
 export interface Question {
   id: string;
   code: string;

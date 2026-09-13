@@ -4,7 +4,6 @@ import * as Linking from "expo-linking";
 import { loadToken, saveToken, clearToken } from "./src/storage";
 import { registerForPush } from "./src/push";
 import { tokenFromUrl } from "./src/linking";
-import { patientApi } from "./src/api/endpoints";
 import { useTheme } from "./src/theme";
 import { Loading } from "./src/components/ui";
 import { AccessScreen } from "./src/screens/AccessScreen";
@@ -26,21 +25,14 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
-  const [connecting, setConnecting] = useState(false);
+  // Token de convite (deep link): abre a tela de acesso em "criar acesso".
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
 
-  const connectWithToken = useCallback(async (token: string): Promise<boolean> => {
-    setConnecting(true);
-    try {
-      await patientApi.today(token); // valida o código do link
-      await saveToken(token);
-      setAuthed(true);
-      registerForPush();
-      return true;
-    } catch {
-      return false;
-    } finally {
-      setConnecting(false);
-    }
+  const onAuthed = useCallback(async (sessionToken: string) => {
+    await saveToken(sessionToken);
+    setInviteToken(null);
+    setAuthed(true);
+    registerForPush();
   }, []);
 
   useEffect(() => {
@@ -52,37 +44,35 @@ export default function App() {
         registerForPush();
         return;
       }
-      // Sem sessão salva: tenta o código de um deep link de abertura.
+      // Sem sessão salva: um deep link de abertura vira convite (primeira entrada).
       const initialUrl = await Linking.getInitialURL();
       const linked = tokenFromUrl(initialUrl);
-      if (linked && (await connectWithToken(linked))) return;
-      if (active) setAuthed(false);
+      if (active) {
+        if (linked) setInviteToken(linked);
+        setAuthed(false);
+      }
     }
     bootstrap();
 
-    // Deep link com o app já aberto.
+    // Deep link com o app já aberto: leva à criação de acesso.
     const sub = Linking.addEventListener("url", ({ url }) => {
       const t = tokenFromUrl(url);
-      if (t) connectWithToken(t);
+      if (t) {
+        setInviteToken(t);
+        setAuthed(false);
+      }
     });
     return () => {
       active = false;
       sub.remove();
     };
-  }, [connectWithToken]);
+  }, []);
 
-  if (authed === null || connecting) {
+  if (authed === null) {
     return <Splash />;
   }
   if (!authed) {
-    return (
-      <AccessScreen
-        onAuthed={() => {
-          setAuthed(true);
-          registerForPush();
-        }}
-      />
-    );
+    return <AccessScreen inviteToken={inviteToken} onAuthed={onAuthed} />;
   }
   return <Main onLogout={() => clearToken().then(() => setAuthed(false))} />;
 }

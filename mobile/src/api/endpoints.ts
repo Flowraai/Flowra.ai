@@ -7,6 +7,8 @@ import type {
   Exam,
   IntakeStatus,
   MedicationDose,
+  PatientAccount,
+  PatientSession,
   PatientToday,
   Prescription,
   Protocol,
@@ -16,6 +18,25 @@ import type {
 
 export const patientApi = {
   today: (token?: string) => api<PatientToday>("/patient/today", { token }),
+  // --- Autenticação por CPF + senha (mesmo fluxo da web) ---
+  // Estado da conta a partir do token de convite (decide criar acesso × entrar).
+  account: (inviteToken: string) => api<PatientAccount>("/patient/account", { token: inviteToken }),
+  // Primeira entrada: o token do convite autoriza a definição de CPF + senha.
+  activate: (inviteToken: string, cpf: string, password: string) =>
+    api<PatientSession>("/patient/activate", {
+      method: "POST",
+      body: { cpf, password },
+      token: inviteToken,
+    }),
+  login: (cpf: string, password: string) =>
+    api<PatientSession>("/patient/login", { method: "POST", body: { cpf, password } }),
+  forgotPassword: (cpf: string) =>
+    api<{ message: string }>("/patient/forgot-password", { method: "POST", body: { cpf } }),
+  resetPassword: (cpf: string, code: string, newPassword: string) =>
+    api<PatientSession>("/patient/reset-password", {
+      method: "POST",
+      body: { cpf, code, new_password: newPassword },
+    }),
   protocol: () => api<Protocol>("/patient/protocol"),
   submitCheckin: (structured: Record<string, unknown>, freeText: string | null) =>
     api<CheckInResult>("/patient/checkins", {
