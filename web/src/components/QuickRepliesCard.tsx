@@ -8,6 +8,7 @@ const DEFAULTS: MessagePrefs = {
   send_onboarding: true,
   send_medication_reminder: true,
   send_appointment_reminder: true,
+  send_checkin_reminder: true,
   signature: null,
   quick_replies: [],
 };

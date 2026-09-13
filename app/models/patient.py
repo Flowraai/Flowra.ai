@@ -83,6 +83,10 @@ class Patient(UUIDMixin, TimestampMixin, Base):
     last_checkin_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Último lembrete diário de check-in enviado (dedupe: no máximo 1 por dia).
+    checkin_reminder_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Consentimento LGPD (dado de saúde é categoria sensível).
     consent_given_at: Mapped[datetime | None] = mapped_column(

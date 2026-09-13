@@ -13,6 +13,7 @@ class MessagePrefs(BaseModel):
     send_onboarding: bool = True            # convite/link de acesso ao cadastrar
     send_medication_reminder: bool = True   # lembrete "hora do medicamento"
     send_appointment_reminder: bool = True  # lembrete de consulta (24h antes)
+    send_checkin_reminder: bool = True      # lembrete diário "faça seu check-in"
     # Assinatura opcional acrescentada ao fim das mensagens (ex.: "Dra. Ana — CRM 000").
     signature: str | None = Field(default=None, max_length=120)
     # Respostas rápidas (modelos) que o médico insere no chat com um toque.

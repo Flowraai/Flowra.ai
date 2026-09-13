@@ -14,6 +14,7 @@ export interface MessagePrefs {
   send_onboarding: boolean;
   send_medication_reminder: boolean;
   send_appointment_reminder: boolean;
+  send_checkin_reminder: boolean;
   signature: string | null;
   quick_replies: string[];
 }

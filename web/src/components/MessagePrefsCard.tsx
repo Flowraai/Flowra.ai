@@ -8,6 +8,7 @@ const DEFAULTS: MessagePrefs = {
   send_onboarding: true,
   send_medication_reminder: true,
   send_appointment_reminder: true,
+  send_checkin_reminder: true,
   signature: null,
   quick_replies: [],
 };
@@ -27,6 +28,11 @@ const TOGGLES: { key: keyof MessagePrefs; label: string; hint: string }[] = [
     key: "send_appointment_reminder",
     label: "Lembrete de consulta (24h antes)",
     hint: "Pede que o paciente confirme a presença ou peça para remarcar.",
+  },
+  {
+    key: "send_checkin_reminder",
+    label: "Lembrete diário de check-in",
+    hint: "Avisa quem ainda não fez o check-in do dia (no fim da tarde).",
   },
 ];
 

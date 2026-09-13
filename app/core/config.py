@@ -78,6 +78,9 @@ class Settings(BaseSettings):
     inactivity_alert_days: int = 2      # dias sem check-in que disparam alerta
     medication_missed_alert_streak: int = 3  # faltas seguidas que disparam alerta
     appointment_reminder_hours: int = 24     # antecedência do lembrete de consulta
+    # Hora (UTC) a partir da qual o lembrete diário de check-in é enviado a quem
+    # ainda não fez o check-in do dia. 21h UTC ≈ 18h no horário de Brasília.
+    checkin_reminder_hour_utc: int = 21
 
     # Receita: provedor de emissão. internal (registro sem valor legal, default) |
     # certified (plataforma certificada com ICP-Brasil — requer credenciais).
