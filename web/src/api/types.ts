@@ -96,6 +96,34 @@ export interface HealthPlanInput {
   default_consultation_cents?: number | null;
 }
 
+export type ChargeStatus = "pending" | "received" | "cancelled";
+export type PaymentMethod = "pix" | "dinheiro" | "cartao" | "convenio";
+
+export interface ConsultationCharge {
+  id: string;
+  patient_id: string;
+  appointment_id: string | null;
+  health_plan_id: string | null;
+  kind: "particular" | "convenio";
+  gross_cents: number;
+  doctor_cents: number;
+  status: ChargeStatus;
+  payment_method: string | null;
+  received_at: string | null;
+  notes: string | null;
+  created_at: string;
+  patient_name: string | null;
+  health_plan_name: string | null;
+}
+
+export interface ChargeUpdateInput {
+  gross_cents?: number;
+  doctor_cents?: number;
+  status?: ChargeStatus;
+  payment_method?: PaymentMethod;
+  notes?: string | null;
+}
+
 export interface Patient {
   id: string;
   tenant_id: string;

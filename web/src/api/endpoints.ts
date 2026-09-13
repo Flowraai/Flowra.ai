@@ -12,6 +12,8 @@ import type {
   CheckIn,
   Certificate,
   CertificateInput,
+  ChargeUpdateInput,
+  ConsultationCharge,
   ClinicalNote,
   NoteCreateInput,
   NoteUpdateInput,
@@ -121,6 +123,9 @@ export const patients = {
       method: "POST",
       body: { scale_code: scaleCode, recurring_days: recurringDays ?? null },
     }),
+  charges: (id: string) => api<ConsultationCharge[]>(`/patients/${id}/charges`),
+  generateCharge: (appointmentId: string) =>
+    api<ConsultationCharge>(`/appointments/${appointmentId}/charge`, { method: "POST" }),
   scaleTargets: (id: string) => api<ScaleTarget[]>(`/patients/${id}/scale-targets`),
   setScaleTarget: (id: string, scaleCode: string, targetScore: number) =>
     api<ScaleTarget>(`/patients/${id}/scale-targets/${scaleCode}`, {
@@ -134,6 +139,11 @@ export const patients = {
 export const scales = {
   catalog: () => api<ScaleDef[]>("/scales"),
   cancel: (entryId: string) => api<void>(`/scales/${entryId}`, { method: "DELETE" }),
+};
+
+export const charges = {
+  update: (id: string, patch: ChargeUpdateInput) =>
+    api<ConsultationCharge>(`/charges/${id}`, { method: "PATCH", body: patch }),
 };
 
 export const healthPlans = {

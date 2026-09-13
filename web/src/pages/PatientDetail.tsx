@@ -11,6 +11,7 @@ import { ScalesCard } from "../components/ScalesCard";
 import { EvolutionCard } from "../components/EvolutionCard";
 import { CertificatesCard } from "../components/CertificatesCard";
 import { AppointmentsCard } from "../components/AppointmentsCard";
+import { FinanceCard } from "../components/FinanceCard";
 import { ExamsCard } from "../components/ExamsCard";
 import { PrescriptionsCard } from "../components/PrescriptionsCard";
 import { EditPatientModal } from "../components/EditPatientModal";
@@ -231,6 +232,7 @@ export function PatientDetail() {
                 patientId={id}
                 onNoteAdded={() => setNotesReloadKey((k) => k + 1)}
               />
+              <FinanceCard patientId={id} />
               <PrescriptionsCard
                 patientId={id}
                 onMedicationAdded={() => setMedReloadKey((k) => k + 1)}

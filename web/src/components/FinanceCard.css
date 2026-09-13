@@ -1,0 +1,35 @@
+.fin-totals { display: flex; gap: 10px; margin-bottom: 12px; }
+.fin-total {
+  flex: 1; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 2px; background: var(--surface-2);
+}
+.fin-total-lab { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.fin-total-val { font-size: 18px; font-weight: 800; }
+.fin-total-val.warn { color: var(--risk-orange); }
+.fin-total-val.ok { color: var(--risk-green); }
+
+.fin-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.fin-item { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--surface); }
+.fin-item.st-cancelled { opacity: 0.6; }
+.fin-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fin-row + .fin-row { margin-top: 4px; }
+.fin-badge { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; }
+.fin-badge.convenio { color: var(--accent-ink); background: var(--accent-soft); }
+.fin-badge.particular { color: var(--muted); background: var(--surface-2); }
+.fin-date { font-size: 12px; color: var(--muted); }
+.fin-status { margin-left: auto; font-size: 11.5px; font-weight: 700; }
+.fin-status.st-pending { color: var(--risk-orange); }
+.fin-status.st-received { color: var(--risk-green); }
+.fin-status.st-cancelled { color: var(--muted); }
+.fin-value { font-size: 15px; font-weight: 800; color: var(--ink); }
+
+.fin-actions, .fin-edit { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 9px; }
+.fin-edit input { width: 150px; font: inherit; font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; }
+.fin-actions .mini, .fin-edit .mini {
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--ink);
+  font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 5px 9px; border-radius: 8px;
+}
+.fin-actions .mini:hover { border-color: var(--accent); background: var(--accent-soft); }
+.fin-actions .mini.ok { color: var(--risk-green); }
+.fin-actions .mini.ok:hover { border-color: var(--risk-green); background: color-mix(in srgb, var(--risk-green) 10%, transparent); }
+.fin-actions .mini.danger:hover { color: var(--risk-red); border-color: var(--risk-red); background: color-mix(in srgb, var(--risk-red) 8%, transparent); }

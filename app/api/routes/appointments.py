@@ -16,6 +16,7 @@ from app.models.doctor import Doctor
 from app.models.enums import AppointmentStatus
 from app.models.patient import Patient
 from app.schemas.appointment import AppointmentCreate, AppointmentRead, AppointmentUpdate
+from app.services.consultation_charge_service import generate_for_appointment
 
 router = APIRouter(tags=["appointments"])
 
@@ -130,6 +131,7 @@ async def update_appointment(
     appt = await _owned_appointment(session, doctor, appointment_id)
     changes = payload.model_dump(exclude_unset=True)
     rescheduled = "scheduled_at" in changes and changes["scheduled_at"] != appt.scheduled_at
+    was_completed = appt.status is AppointmentStatus.COMPLETED
     for field, value in changes.items():
         setattr(appt, field, value)
     # Ao remarcar (novo horário), reenvia o lembrete e encerra o pedido pendente.
@@ -139,4 +141,9 @@ async def update_appointment(
         appt.reschedule_note = None
         if appt.status is AppointmentStatus.CONFIRMED:
             appt.status = AppointmentStatus.SCHEDULED  # novo horário volta a "agendada"
+    # Ao marcar como realizada, gera o lançamento financeiro (idempotente).
+    if appt.status is AppointmentStatus.COMPLETED and not was_completed:
+        patient = await session.get(Patient, appt.patient_id)
+        if patient is not None:
+            await generate_for_appointment(session, appt, patient)
     return appt
