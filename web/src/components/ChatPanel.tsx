@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { patients } from "../api/endpoints";
+import { useAuth } from "../auth/AuthContext";
 import { ApiError } from "../api/client";
 import { ChatAttachment } from "./ChatAttachment";
 import { IconChat, IconSend } from "./icons";
@@ -23,7 +24,15 @@ export function ChatPanel({ patientId }: { patientId: string }) {
   const [sending, setSending] = useState(false);
   const [viaWhatsapp, setViaWhatsapp] = useState(false);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
+  const [showReplies, setShowReplies] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const { doctor } = useAuth();
+  const quickReplies = doctor?.message_prefs?.quick_replies ?? [];
+
+  function insertReply(text: string) {
+    setDraft((prev) => (prev.trim() ? `${prev} ${text}` : text));
+    setShowReplies(false);
+  }
 
   useEffect(() => {
     let active = true;
@@ -110,7 +119,27 @@ export function ChatPanel({ patientId }: { patientId: string }) {
       {notice ? (
         <div className={`chat-notice ${notice.ok ? "ok" : "warn"}`}>{notice.text}</div>
       ) : null}
+      {showReplies && quickReplies.length > 0 ? (
+        <div className="qr-pop">
+          {quickReplies.map((t, i) => (
+            <button key={i} type="button" className="qr-pop-item" onClick={() => insertReply(t)}>
+              {t}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <form className="compose" onSubmit={onSend}>
+        {quickReplies.length > 0 ? (
+          <button
+            type="button"
+            className="qr-btn"
+            title="Respostas rápidas"
+            aria-label="Respostas rápidas"
+            onClick={() => setShowReplies((v) => !v)}
+          >
+            ⚡
+          </button>
+        ) : null}
         <label className="compose-wa" title="Entrega o texto no WhatsApp do paciente (pelo seu número, se conectado)">
           <input
             type="checkbox"

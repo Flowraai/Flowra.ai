@@ -15,6 +15,7 @@ export interface MessagePrefs {
   send_medication_reminder: boolean;
   send_appointment_reminder: boolean;
   signature: string | null;
+  quick_replies: string[];
 }
 
 export interface DoctorProfile {

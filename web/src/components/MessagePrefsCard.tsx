@@ -9,6 +9,7 @@ const DEFAULTS: MessagePrefs = {
   send_medication_reminder: true,
   send_appointment_reminder: true,
   signature: null,
+  quick_replies: [],
 };
 
 const TOGGLES: { key: keyof MessagePrefs; label: string; hint: string }[] = [

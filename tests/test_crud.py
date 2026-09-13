@@ -118,3 +118,12 @@ async def test_message_prefs_defaults_and_update(client: httpx.AsyncClient):
     # Persiste entre requisições.
     me2 = (await client.get("/api/v1/auth/me", headers=headers)).json()
     assert me2["message_prefs"]["send_medication_reminder"] is False
+
+
+async def test_quick_replies_saved_and_cleaned(client: httpx.AsyncClient):
+    headers = await _doctor(client)
+    r = await client.patch("/api/v1/auth/me", headers=headers, json={
+        "message_prefs": {"quick_replies": ["  Tome a medicação  ", "", "Como está hoje?"]}})
+    assert r.status_code == 200
+    qr = r.json()["message_prefs"]["quick_replies"]
+    assert qr == ["Tome a medicação", "Como está hoje?"]  # trim + remove vazios

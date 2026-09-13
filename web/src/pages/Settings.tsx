@@ -4,6 +4,7 @@ import { ThemeToggle } from "../components/ThemeToggle";
 import { PrescriptionIntegrationCard } from "../components/PrescriptionIntegrationCard";
 import { WhatsAppConnectCard } from "../components/WhatsAppConnectCard";
 import { MessagePrefsCard } from "../components/MessagePrefsCard";
+import { QuickRepliesCard } from "../components/QuickRepliesCard";
 import { useAuth } from "../auth/AuthContext";
 import { auth } from "../api/endpoints";
 import { ApiError } from "../api/client";
@@ -105,6 +106,7 @@ export function Settings() {
 
       <WhatsAppConnectCard />
       <MessagePrefsCard />
+      <QuickRepliesCard />
       <PrescriptionIntegrationCard />
     </AppShell>
   );

@@ -20,3 +20,10 @@
 .msg-toggle b { font-size: 14px; }
 
 @media (max-width: 620px) { .set-row { grid-template-columns: 1fr; } }
+.qr-add { display: flex; gap: 8px; }
+.qr-add input { flex: 1; }
+.qr-list { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.qr-item { display: flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.qr-item span { flex: 1; font-size: 13.5px; color: var(--ink); }
+.qr-item button { border: 0; background: transparent; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; padding: 0 4px; }
+.qr-item button:hover { color: var(--risk-red); }

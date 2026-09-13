@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class MessagePrefs(BaseModel):
@@ -15,6 +15,13 @@ class MessagePrefs(BaseModel):
     send_appointment_reminder: bool = True  # lembrete de consulta (24h antes)
     # Assinatura opcional acrescentada ao fim das mensagens (ex.: "Dra. Ana — CRM 000").
     signature: str | None = Field(default=None, max_length=120)
+    # Respostas rápidas (modelos) que o médico insere no chat com um toque.
+    quick_replies: list[str] = Field(default_factory=list, max_length=30)
+
+    @field_validator("quick_replies")
+    @classmethod
+    def _clean_replies(cls, v: list[str]) -> list[str]:
+        return [t.strip()[:500] for t in v if isinstance(t, str) and t.strip()][:30]
 
 
 class DoctorRead(BaseModel):
