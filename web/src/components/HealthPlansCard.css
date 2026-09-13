@@ -1,0 +1,14 @@
+.hp-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.hp-form { border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: 12px 0; background: var(--surface-2); }
+.hp-list { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.hp-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px; background: var(--surface);
+}
+.hp-item.off { opacity: 0.62; }
+.hp-main b { font-size: 14px; color: var(--ink); }
+.hp-sub { font-size: 12.5px; color: var(--muted); font-weight: 600; margin-top: 2px; }
+.hp-tag { margin-left: 8px; font-size: 10.5px; font-weight: 700; color: var(--muted); background: var(--surface-2); border-radius: 999px; padding: 1px 7px; }
+.hp-actions { display: flex; gap: 4px; flex: none; }
+.hp-actions .mini { border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 5px 10px; border-radius: 8px; }
+.hp-actions .mini:hover { border-color: var(--accent); background: var(--accent-soft); }

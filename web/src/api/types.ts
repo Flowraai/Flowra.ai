@@ -74,6 +74,28 @@ export interface AttentionItem {
   reasons: AttentionReason[];
 }
 
+export type PayoutType = "fixed" | "percentage";
+
+export interface HealthPlan {
+  id: string;
+  name: string;
+  ans_code: string | null;
+  payout_type: PayoutType;
+  payout_value_cents: number | null;
+  payout_percent: number | null;
+  default_consultation_cents: number | null;
+  active: boolean;
+}
+
+export interface HealthPlanInput {
+  name: string;
+  ans_code?: string | null;
+  payout_type: PayoutType;
+  payout_value_cents?: number | null;
+  payout_percent?: number | null;
+  default_consultation_cents?: number | null;
+}
+
 export interface Patient {
   id: string;
   tenant_id: string;
@@ -87,6 +109,10 @@ export interface Patient {
   consent_given_at: string | null;
   is_active: boolean;
   created_at: string;
+  health_plan_id: string | null;
+  health_plan: HealthPlan | null;
+  insurance_card: string | null;
+  insurance_valid_until: string | null;
 }
 
 export interface CheckIn {
@@ -130,6 +156,9 @@ export interface PatientCreateInput {
   contact?: string | null;
   consent_given: boolean;
   consent_version?: string | null;
+  health_plan_id?: string | null;
+  insurance_card?: string | null;
+  insurance_valid_until?: string | null;
 }
 
 export interface PatientUpdateInput {
@@ -137,6 +166,9 @@ export interface PatientUpdateInput {
   contact?: string | null;
   birth_date?: string | null;
   is_active?: boolean;
+  health_plan_id?: string | null;
+  insurance_card?: string | null;
+  insurance_valid_until?: string | null;
 }
 
 export interface PatientExport {

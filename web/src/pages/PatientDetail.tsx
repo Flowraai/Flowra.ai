@@ -78,7 +78,11 @@ export function PatientDetail() {
       setExporting(false);
     }
   }
-  const meta = [age(p?.birth_date ?? null), p?.contact].filter(Boolean) as string[];
+  const meta = [
+    age(p?.birth_date ?? null),
+    p?.contact,
+    p ? (p.health_plan ? `Convênio: ${p.health_plan.name}` : "Particular") : null,
+  ].filter(Boolean) as string[];
   const patientAlerts = (alertList.data ?? []).filter((a) => a.patient_id === id);
   const openAlerts = patientAlerts.filter((a) => a.status !== "resolved");
 

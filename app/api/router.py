@@ -17,6 +17,7 @@ from app.api.routes import (
     devices,
     exams,
     health,
+    health_plans,
     medications,
     messages,
     notifications,
@@ -66,5 +67,6 @@ v1.include_router(prescriptions.router, dependencies=_gated)
 v1.include_router(messages.router, dependencies=_gated)
 v1.include_router(clinical_notes.router, dependencies=_gated)
 v1.include_router(certificates.router, dependencies=_gated)
+v1.include_router(health_plans.router, dependencies=_gated)
 
 api_router.include_router(v1)

@@ -23,6 +23,8 @@ import type {
   Exam,
   ExamInput,
   ExamStatus,
+  HealthPlan,
+  HealthPlanInput,
   MedicationAdherence,
   MedicationPlan,
   MedicationPlanInput,
@@ -132,6 +134,16 @@ export const patients = {
 export const scales = {
   catalog: () => api<ScaleDef[]>("/scales"),
   cancel: (entryId: string) => api<void>(`/scales/${entryId}`, { method: "DELETE" }),
+};
+
+export const healthPlans = {
+  list: (includeInactive = false) =>
+    api<HealthPlan[]>(`/health-plans${includeInactive ? "?include_inactive=true" : ""}`),
+  create: (input: HealthPlanInput) =>
+    api<HealthPlan>("/health-plans", { method: "POST", body: input }),
+  update: (id: string, patch: Partial<HealthPlanInput> & { active?: boolean }) =>
+    api<HealthPlan>(`/health-plans/${id}`, { method: "PATCH", body: patch }),
+  remove: (id: string) => api<void>(`/health-plans/${id}`, { method: "DELETE" }),
 };
 
 export const certificates = {

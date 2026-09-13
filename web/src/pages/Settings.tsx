@@ -5,6 +5,7 @@ import { PrescriptionIntegrationCard } from "../components/PrescriptionIntegrati
 import { WhatsAppConnectCard } from "../components/WhatsAppConnectCard";
 import { MessagePrefsCard } from "../components/MessagePrefsCard";
 import { QuickRepliesCard } from "../components/QuickRepliesCard";
+import { HealthPlansCard } from "../components/HealthPlansCard";
 import { useAuth } from "../auth/AuthContext";
 import { auth } from "../api/endpoints";
 import { ApiError } from "../api/client";
@@ -104,6 +105,7 @@ export function Settings() {
         </form>
       </div>
 
+      <HealthPlansCard />
       <WhatsAppConnectCard />
       <MessagePrefsCard />
       <QuickRepliesCard />

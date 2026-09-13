@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from app.models.alert import Alert
     from app.models.checkin import CheckIn
     from app.models.doctor import Doctor
+    from app.models.health_plan import HealthPlan
     from app.models.protocol import Protocol
 
 
@@ -97,6 +98,18 @@ class Patient(UUIDMixin, TimestampMixin, Base):
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
+    # Convênio do paciente. Nulo = particular (paga direto ao médico). A
+    # carteirinha é dado pessoal → cifrada em repouso (LGPD).
+    health_plan_id: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("health_plans.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    insurance_card: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)
+    insurance_valid_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     # Um CPF só pode ter uma conta ativa (índice único parcial).
     __table_args__ = (
         Index(
@@ -112,6 +125,7 @@ class Patient(UUIDMixin, TimestampMixin, Base):
 
     doctor: Mapped["Doctor"] = relationship(back_populates="patients")
     active_protocol: Mapped["Protocol | None"] = relationship()
+    health_plan: Mapped["HealthPlan | None"] = relationship(lazy="selectin")
     checkins: Mapped[list["CheckIn"]] = relationship(
         back_populates="patient",
         cascade="all, delete-orphan",

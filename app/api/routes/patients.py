@@ -21,6 +21,7 @@ from app.models.attachment import Attachment
 from app.models.checkin import CheckIn
 from app.models.doctor import Doctor
 from app.models.enums import AlertStatus, AuditAction
+from app.models.health_plan import HealthPlan
 from app.models.patient import Patient
 from app.schemas.alert import AlertRead
 from app.schemas.checkin import CheckInRead
@@ -58,6 +59,18 @@ async def _get_owned_patient(
     return patient
 
 
+async def _validate_health_plan(
+    session: AsyncSession, doctor: Doctor, health_plan_id: uuid.UUID | None
+) -> HealthPlan | None:
+    """Valida que o convênio existe e é do próprio médico; devolve-o (ou None)."""
+    if health_plan_id is None:
+        return None
+    plan = await session.get(HealthPlan, health_plan_id)
+    if plan is None or plan.doctor_id != doctor.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Convênio não encontrado.")
+    return plan
+
+
 @router.post("", response_model=PatientCreated, status_code=status.HTTP_201_CREATED)
 async def create_patient(
     payload: PatientCreate,
@@ -70,6 +83,8 @@ async def create_patient(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Consentimento LGPD explícito é obrigatório para cadastrar o paciente.",
         )
+
+    health_plan = await _validate_health_plan(session, doctor, payload.health_plan_id)
 
     # Usa a pesquisa configurada pelo médico (cria a cópia editável na 1ª vez).
     protocol = await get_or_create_tenant_protocol(session, doctor.tenant_id)
@@ -86,7 +101,12 @@ async def create_patient(
         consent_given_at=datetime.now(timezone.utc),
         consent_version=payload.consent_version,
         ai_consent_at=datetime.now(timezone.utc) if payload.ai_consent else None,
+        health_plan_id=payload.health_plan_id,
+        insurance_card=payload.insurance_card,
+        insurance_valid_until=payload.insurance_valid_until,
     )
+    # Popula a relação para a serialização não disparar lazy-load fora do contexto async.
+    patient.health_plan = health_plan
     session.add(patient)
     await session.flush()
 
@@ -205,6 +225,15 @@ async def update_patient(
     if data.get("ai_consent") is not None:
         # LGPD-4 — registra/revoga o consentimento de IA externa do paciente.
         patient.ai_consent_at = datetime.now(timezone.utc) if data["ai_consent"] else None
+    if "health_plan_id" in data:
+        # Presente com None = tornar particular.
+        plan = await _validate_health_plan(session, doctor, data["health_plan_id"])
+        patient.health_plan = plan
+        patient.health_plan_id = data["health_plan_id"]
+    if "insurance_card" in data:
+        patient.insurance_card = data["insurance_card"]
+    if "insurance_valid_until" in data:
+        patient.insurance_valid_until = data["insurance_valid_until"]
 
     await audit.record(
         session,

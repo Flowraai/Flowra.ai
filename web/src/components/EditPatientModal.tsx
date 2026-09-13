@@ -1,7 +1,7 @@
-import { useState, type FormEvent } from "react";
-import { patients } from "../api/endpoints";
+import { useEffect, useState, type FormEvent } from "react";
+import { patients, healthPlans } from "../api/endpoints";
 import { ApiError } from "../api/client";
-import type { Patient } from "../api/types";
+import type { HealthPlan, Patient } from "../api/types";
 import "./NewPatientModal.css";
 import "./EditPatientModal.css";
 
@@ -20,9 +20,22 @@ export function EditPatientModal({
   const [contact, setContact] = useState(patient.contact ?? "");
   const [birth, setBirth] = useState(patient.birth_date ? patient.birth_date.slice(0, 10) : "");
   const [active, setActive] = useState(patient.is_active);
+  const [plans, setPlans] = useState<HealthPlan[]>([]);
+  const [planId, setPlanId] = useState(patient.health_plan_id ?? "");
+  const [card, setCard] = useState(patient.insurance_card ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  useEffect(() => {
+    healthPlans.list().then((list) => {
+      // Mantém o convênio atual do paciente na lista mesmo se estiver inativo.
+      if (patient.health_plan && !list.some((p) => p.id === patient.health_plan!.id)) {
+        list = [...list, patient.health_plan];
+      }
+      setPlans(list);
+    }).catch(() => setPlans([]));
+  }, [patient.health_plan]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -35,6 +48,8 @@ export function EditPatientModal({
         contact: contact.trim() || null,
         birth_date: birth ? new Date(birth).toISOString() : null,
         is_active: active,
+        health_plan_id: planId || null,
+        insurance_card: planId ? card.trim() || null : null,
       });
       onSaved();
     } catch (err) {
@@ -71,6 +86,21 @@ export function EditPatientModal({
           Nascimento <span className="muted">(opcional)</span>
           <input type="date" value={birth} onChange={(e) => setBirth(e.target.value)} />
         </label>
+        <label>
+          Convênio
+          <select value={planId} onChange={(e) => setPlanId(e.target.value)}>
+            <option value="">Particular</option>
+            {plans.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}{p.active ? "" : " (inativo)"}</option>
+            ))}
+          </select>
+        </label>
+        {planId ? (
+          <label>
+            Carteirinha <span className="muted">(opcional)</span>
+            <input value={card} onChange={(e) => setCard(e.target.value)} placeholder="nº da carteira" />
+          </label>
+        ) : null}
         <label className="np-consent">
           <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
           <span>Paciente <b>ativo</b> (em acompanhamento). Desmarque para pausar sem excluir.</span>

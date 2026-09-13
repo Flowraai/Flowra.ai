@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.models.enums import RiskLevel
 from app.schemas.alert import AlertRead
 from app.schemas.checkin import CheckInRead
+from app.schemas.health_plan import HealthPlanRead
 
 
 class PatientCreate(BaseModel):
@@ -27,6 +28,10 @@ class PatientCreate(BaseModel):
         default=False,
         description="Consentimento do paciente para uso de IA externa (opcional).",
     )
+    # Convênio (nulo = particular) + carteirinha e validade.
+    health_plan_id: uuid.UUID | None = None
+    insurance_card: str | None = Field(default=None, max_length=60)
+    insurance_valid_until: datetime | None = None
 
 
 class PatientUpdate(BaseModel):
@@ -35,6 +40,10 @@ class PatientUpdate(BaseModel):
     birth_date: datetime | None = None
     is_active: bool | None = None
     ai_consent: bool | None = None
+    # `health_plan_id` presente com None significa "tornar particular".
+    health_plan_id: uuid.UUID | None = None
+    insurance_card: str | None = Field(default=None, max_length=60)
+    insurance_valid_until: datetime | None = None
 
 
 class PatientToday(BaseModel):
@@ -61,6 +70,10 @@ class PatientRead(BaseModel):
     ai_consent: bool = False
     is_active: bool
     created_at: datetime
+    health_plan_id: uuid.UUID | None = None
+    health_plan: HealthPlanRead | None = None
+    insurance_card: str | None = None
+    insurance_valid_until: datetime | None = None
 
 
 class PatientCreated(PatientRead):
