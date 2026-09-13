@@ -11,6 +11,7 @@ const REASON_ICON: Record<AttentionReason["code"], string> = {
   alert: "🚨",
   risk: "▲",
   scale: "📋",
+  target: "🎯",
   inactive: "🕗",
   adherence: "💊",
 };

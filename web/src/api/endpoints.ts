@@ -17,6 +17,7 @@ import type {
   NoteUpdateInput,
   ScaleDef,
   ScaleEntry,
+  ScaleTarget,
   DoctorProfile,
   DoctorUpdateInput,
   Exam,
@@ -118,6 +119,14 @@ export const patients = {
       method: "POST",
       body: { scale_code: scaleCode, recurring_days: recurringDays ?? null },
     }),
+  scaleTargets: (id: string) => api<ScaleTarget[]>(`/patients/${id}/scale-targets`),
+  setScaleTarget: (id: string, scaleCode: string, targetScore: number) =>
+    api<ScaleTarget>(`/patients/${id}/scale-targets/${scaleCode}`, {
+      method: "PUT",
+      body: { target_score: targetScore },
+    }),
+  deleteScaleTarget: (id: string, scaleCode: string) =>
+    api<void>(`/patients/${id}/scale-targets/${scaleCode}`, { method: "DELETE" }),
 };
 
 export const scales = {

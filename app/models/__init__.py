@@ -43,6 +43,7 @@ from app.models.plan import Plan
 from app.models.prescription import Prescription
 from app.models.protocol import Protocol, ProtocolQuestion
 from app.models.scale_entry import ScaleEntry
+from app.models.scale_target import ScaleTarget
 from app.models.subscription import Subscription
 from app.models.tenant import Tenant
 from app.models.user import User
@@ -70,6 +71,7 @@ __all__ = [
     "Protocol",
     "ProtocolQuestion",
     "ScaleEntry",
+    "ScaleTarget",
     "RefreshToken",
     "Subscription",
     "Tenant",

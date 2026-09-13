@@ -54,9 +54,15 @@ export interface PatientPanelItem {
 }
 
 export interface AttentionReason {
-  code: "alert" | "risk" | "scale" | "inactive" | "adherence";
+  code: "alert" | "risk" | "scale" | "target" | "inactive" | "adherence";
   label: string;
   severity: "high" | "medium" | "low";
+}
+
+export interface ScaleTarget {
+  scale_code: string;
+  scale_name: string;
+  target_score: number;
 }
 
 export interface AttentionItem {

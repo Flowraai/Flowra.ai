@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { patients, scales as scalesApi } from "../api/endpoints";
 import { ApiError } from "../api/client";
-import type { RiskLevel, ScaleDef, ScaleEntry } from "../api/types";
+import type { RiskLevel, ScaleDef, ScaleEntry, ScaleTarget } from "../api/types";
 import { Sparkline } from "./Sparkline";
 import { IconClipboard } from "./icons";
 import "./ClinicalCard.css";
@@ -42,10 +42,13 @@ function TrendBadge({ done, worse }: { done: ScaleEntry[]; worse: boolean }) {
 export function ScalesCard({ patientId }: { patientId: string }) {
   const [catalog, setCatalog] = useState<ScaleDef[]>([]);
   const [list, setList] = useState<ScaleEntry[] | null>(null);
+  const [targets, setTargets] = useState<ScaleTarget[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
   const [recur, setRecur] = useState(0); // 0 = uma vez
   const [busy, setBusy] = useState(false);
+  const [editingTarget, setEditingTarget] = useState<string | null>(null);
+  const [targetInput, setTargetInput] = useState("");
 
   function load() {
     setError(null);
@@ -54,10 +57,46 @@ export function ScalesCard({ patientId }: { patientId: string }) {
       .then(setList)
       .catch((e) => setError(e instanceof ApiError ? e.message : "Falha ao carregar as escalas."));
   }
+  function loadTargets() {
+    patients.scaleTargets(patientId).then(setTargets).catch(() => setTargets([]));
+  }
   useEffect(() => {
     scalesApi.catalog().then(setCatalog).catch(() => setCatalog([]));
     load();
+    loadTargets();
   }, [patientId]);
+
+  const targetOf = useMemo(() => {
+    const m = new Map<string, number>();
+    targets.forEach((t) => m.set(t.scale_code, t.target_score));
+    return m;
+  }, [targets]);
+
+  async function saveTarget(code: string) {
+    const v = Number(targetInput);
+    if (!Number.isFinite(v) || v < 0) return;
+    setBusy(true);
+    try {
+      await patients.setScaleTarget(patientId, code, v);
+      setEditingTarget(null);
+      loadTargets();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Não foi possível salvar a meta.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeTarget(code: string) {
+    setBusy(true);
+    try {
+      await patients.deleteScaleTarget(patientId, code);
+      setEditingTarget(null);
+      loadTargets();
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const maxOf = useMemo(() => {
     const m = new Map<string, number>();
@@ -183,6 +222,65 @@ export function ScalesCard({ patientId }: { patientId: string }) {
                       </span>
                     </div>
                   ) : null}
+                  {(() => {
+                    const target = targetOf.get(g.code);
+                    const worse = worseOf.get(g.code) ?? true;
+                    const cmp = worse ? "≤" : "≥";
+                    const onTarget =
+                      target != null && last?.score != null
+                        ? worse
+                          ? last.score <= target
+                          : last.score >= target
+                        : null;
+                    if (editingTarget === g.code) {
+                      return (
+                        <div className="scale-target-row">
+                          <span className="muted" style={{ fontSize: 12.5 }}>Meta {cmp}</span>
+                          <input
+                            className="scale-target-input"
+                            type="number"
+                            min={0}
+                            max={max}
+                            value={targetInput}
+                            onChange={(e) => setTargetInput(e.target.value)}
+                            autoFocus
+                          />
+                          <button className="mini" disabled={busy} onClick={() => saveTarget(g.code)}>
+                            Salvar
+                          </button>
+                          {target != null ? (
+                            <button className="mini danger" disabled={busy} onClick={() => removeTarget(g.code)}>
+                              Remover
+                            </button>
+                          ) : null}
+                          <button className="mini" disabled={busy} onClick={() => setEditingTarget(null)}>
+                            Cancelar
+                          </button>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="scale-target-row">
+                        {target != null ? (
+                          <span className={`scale-target ${onTarget === false ? "off" : "ok"}`}>
+                            🎯 Meta {cmp} {target}
+                            {onTarget === true ? " · na meta ✓" : onTarget === false ? " · fora da meta" : ""}
+                          </span>
+                        ) : (
+                          <span className="muted" style={{ fontSize: 12 }}>Sem meta definida</span>
+                        )}
+                        <button
+                          className="mini"
+                          onClick={() => {
+                            setTargetInput(target != null ? String(target) : "");
+                            setEditingTarget(g.code);
+                          }}
+                        >
+                          {target != null ? "Editar meta" : "Definir meta"}
+                        </button>
+                      </div>
+                    );
+                  })()}
                   {g.pending.map((p) => (
                     <div className="scale-pending" key={p.id}>
                       <span className="chip">aguardando resposta · pedido {when(p.requested_at)}</span>

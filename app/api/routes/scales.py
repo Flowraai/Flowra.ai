@@ -17,6 +17,7 @@ from app.models.doctor import Doctor
 from app.models.enums import AlertUrgency, RiskLevel
 from app.models.patient import Patient
 from app.models.scale_entry import ScaleEntry
+from app.models.scale_target import ScaleTarget
 from app.schemas.scale import (
     ScaleBandOut,
     ScaleDef,
@@ -25,6 +26,8 @@ from app.schemas.scale import (
     ScaleRequestIn,
     ScaleSubmitIn,
     ScaleSubmitResult,
+    ScaleTargetIn,
+    ScaleTargetRead,
 )
 from app.services import scale_service
 from app.services.notifications import dispatch_alert, doctor_notification_contacts
@@ -148,6 +151,91 @@ async def cancel_scale(
             status_code=status.HTTP_409_CONFLICT, detail="Só é possível cancelar uma pendente."
         )
     await session.delete(entry)
+
+
+# ---- Metas (limiares) de escala ----
+@router.get("/patients/{patient_id}/scale-targets", response_model=list[ScaleTargetRead])
+async def list_scale_targets(
+    patient_id: uuid.UUID,
+    doctor: Doctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db),
+) -> list[ScaleTargetRead]:
+    await _owned_patient(session, doctor, patient_id)
+    rows = list(
+        (
+            await session.execute(
+                select(ScaleTarget).where(ScaleTarget.patient_id == patient_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        ScaleTargetRead(
+            scale_code=t.scale_code,
+            scale_name=(get_scale(t.scale_code).name if get_scale(t.scale_code) else t.scale_code),
+            target_score=t.target_score,
+        )
+        for t in rows
+    ]
+
+
+@router.put("/patients/{patient_id}/scale-targets/{scale_code}", response_model=ScaleTargetRead)
+async def set_scale_target(
+    patient_id: uuid.UUID,
+    scale_code: str,
+    payload: ScaleTargetIn,
+    doctor: Doctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db),
+) -> ScaleTargetRead:
+    patient = await _owned_patient(session, doctor, patient_id)
+    scale = get_scale(scale_code)
+    if scale is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Escala desconhecida.")
+    if payload.target_score > scale.max_score:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"A meta deve estar entre 0 e {scale.max_score}.",
+        )
+    target = await session.scalar(
+        select(ScaleTarget).where(
+            ScaleTarget.patient_id == patient_id, ScaleTarget.scale_code == scale_code
+        )
+    )
+    if target is None:
+        target = ScaleTarget(
+            tenant_id=patient.tenant_id,
+            patient_id=patient_id,
+            doctor_id=doctor.id,
+            scale_code=scale_code,
+            target_score=payload.target_score,
+        )
+        session.add(target)
+    else:
+        target.target_score = payload.target_score
+    return ScaleTargetRead(
+        scale_code=scale_code, scale_name=scale.name, target_score=payload.target_score
+    )
+
+
+@router.delete(
+    "/patients/{patient_id}/scale-targets/{scale_code}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_scale_target(
+    patient_id: uuid.UUID,
+    scale_code: str,
+    doctor: Doctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db),
+) -> None:
+    await _owned_patient(session, doctor, patient_id)
+    target = await session.scalar(
+        select(ScaleTarget).where(
+            ScaleTarget.patient_id == patient_id, ScaleTarget.scale_code == scale_code
+        )
+    )
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meta não encontrada.")
+    await session.delete(target)
 
 
 # ---- Paciente ----

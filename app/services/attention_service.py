@@ -21,6 +21,7 @@ from app.models.enums import AlertStatus, AlertUrgency, MedicationIntakeStatus, 
 from app.models.medication import MedicationIntake
 from app.models.patient import Patient
 from app.models.scale_entry import ScaleEntry
+from app.models.scale_target import ScaleTarget
 from app.services.inactivity_service import days_since_checkin, is_inactive
 
 # Pesos de cada sinal (maior = mais urgente). Um alerta imediato em aberto é o
@@ -30,6 +31,7 @@ _W_ALERT_ROUTINE = 35
 _W_RISK_RED = 50
 _W_RISK_ORANGE = 25
 _W_SCALE_FLAGGED = 45
+_W_SCALE_OFF_TARGET = 30
 _W_INACTIVE = 35
 _W_ADHERENCE = 25
 
@@ -96,8 +98,20 @@ async def compute_attention(
         .all()
     )
     latest_scale: dict[uuid.UUID, ScaleEntry] = {}
+    latest_by_pc: dict[tuple[uuid.UUID, str], ScaleEntry] = {}
     for e in scale_rows:
         latest_scale.setdefault(e.patient_id, e)
+        latest_by_pc.setdefault((e.patient_id, e.scale_code), e)
+
+    # Metas (limiares) por paciente/escala — para sinalizar "fora da meta".
+    target_rows = list(
+        (await session.execute(select(ScaleTarget).where(ScaleTarget.patient_id.in_(ids))))
+        .scalars()
+        .all()
+    )
+    targets_by_patient: dict[uuid.UUID, list[ScaleTarget]] = {}
+    for tg in target_rows:
+        targets_by_patient.setdefault(tg.patient_id, []).append(tg)
 
     # Adesão à medicação nos últimos 30 dias por paciente (uma consulta).
     since = now - timedelta(days=_ADHERENCE_DAYS)
@@ -162,6 +176,26 @@ async def compute_attention(
                 "label": f"{_scale_short_name(se.scale_code)} sinalizou risco",
                 "severity": "high",
             })
+
+        # Fora da meta definida pelo médico (measurement-based care).
+        for tg in targets_by_patient.get(p.id, []):
+            latest = latest_by_pc.get((p.id, tg.scale_code))
+            if latest is None or latest.score is None:
+                continue
+            scale = get_scale(tg.scale_code)
+            worse = scale.higher_is_worse if scale else True
+            off = latest.score > tg.target_score if worse else latest.score < tg.target_score
+            if off:
+                score += _W_SCALE_OFF_TARGET
+                sign = ">" if worse else "<"
+                reasons.append({
+                    "code": "target",
+                    "label": (
+                        f"{_scale_short_name(tg.scale_code)} fora da meta "
+                        f"({latest.score} {sign} {tg.target_score})"
+                    ),
+                    "severity": "medium",
+                })
 
         if is_inactive(p, now):
             days = days_since_checkin(p, now)

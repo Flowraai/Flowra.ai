@@ -57,5 +57,15 @@
 .scale-pending .mini { border: 0; background: transparent; color: var(--muted); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 3px 7px; border-radius: 8px; }
 .scale-pending .mini.danger:hover { color: var(--risk-red); background: color-mix(in srgb, var(--risk-red) 10%, transparent); }
 
+.scale-target-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.scale-target { font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+.scale-target.ok { color: var(--risk-green); background: color-mix(in srgb, var(--risk-green) 13%, var(--surface)); }
+.scale-target.off { color: var(--risk-orange); background: color-mix(in srgb, var(--risk-orange) 14%, var(--surface)); }
+.scale-target-input { width: 64px; font: inherit; font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; }
+.scale-target-row .mini { border: 0; background: transparent; color: var(--accent-ink); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 3px 7px; border-radius: 8px; }
+.scale-target-row .mini:hover { background: var(--accent-soft); }
+.scale-target-row .mini.danger { color: var(--muted); }
+.scale-target-row .mini.danger:hover { color: var(--risk-red); background: color-mix(in srgb, var(--risk-red) 10%, transparent); }
+
 .scale-recur { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--muted); margin-bottom: 2px; }
 .scale-recur select { font: inherit; font-size: 12.5px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; }

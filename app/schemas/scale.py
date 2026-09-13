@@ -64,3 +64,15 @@ class ScalePending(BaseModel):
 class ScaleSubmitResult(BaseModel):
     message: str
     safety: str | None = None  # orientação de segurança quando há sinal de risco
+
+
+class ScaleTargetIn(BaseModel):
+    """Meta (pontuação-alvo) definida pelo médico para uma escala."""
+
+    target_score: int = Field(ge=0, le=100)
+
+
+class ScaleTargetRead(BaseModel):
+    scale_code: str
+    scale_name: str
+    target_score: int
