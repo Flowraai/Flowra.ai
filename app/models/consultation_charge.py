@@ -50,6 +50,11 @@ class ConsultationCharge(UUIDMixin, TimestampMixin, Base):
         PgUUID(as_uuid=True), ForeignKey("health_plans.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # Lote de faturamento (nulo = ainda não faturado). Só para convênio.
+    batch_id: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("billing_batches.id", ondelete="SET NULL"),
+        index=True, nullable=True,
+    )
 
     kind: Mapped[str] = mapped_column(String(12), nullable=False)
     gross_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

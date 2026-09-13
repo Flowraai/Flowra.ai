@@ -96,7 +96,7 @@ export interface HealthPlanInput {
   default_consultation_cents?: number | null;
 }
 
-export type ChargeStatus = "pending" | "received" | "cancelled";
+export type ChargeStatus = "pending" | "billed" | "received" | "denied" | "cancelled";
 export type PaymentMethod = "pix" | "dinheiro" | "cartao" | "convenio";
 
 export interface ConsultationCharge {
@@ -104,6 +104,7 @@ export interface ConsultationCharge {
   patient_id: string;
   appointment_id: string | null;
   health_plan_id: string | null;
+  batch_id: string | null;
   kind: "particular" | "convenio";
   gross_cents: number;
   doctor_cents: number;
@@ -144,11 +145,36 @@ export interface ChargeMonth {
 export interface ChargeSummary {
   to_receive_cents: number;
   received_cents: number;
+  denied_cents: number;
   cancelled_count: number;
+  denied_count: number;
   particular: ChargeBucket;
   convenio: ChargeBucket;
   by_plan: ChargePlanBucket[];
   monthly: ChargeMonth[];
+}
+
+export interface BillingBatch {
+  id: string;
+  health_plan_id: string;
+  reference: string | null;
+  status: "open" | "closed";
+  created_at: string;
+  health_plan_name: string | null;
+  charge_count: number;
+  billed_cents: number;
+  received_cents: number;
+  denied_cents: number;
+}
+
+export interface BatchDetail extends BillingBatch {
+  charges: ConsultationCharge[];
+}
+
+export interface BatchCreateInput {
+  health_plan_id: string;
+  reference?: string | null;
+  charge_ids?: string[];
 }
 
 export interface Patient {

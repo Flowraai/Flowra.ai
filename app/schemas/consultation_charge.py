@@ -8,7 +8,9 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-ChargeStatus = Literal["pending", "received", "cancelled"]
+# pending: a receber · billed: faturado (em lote, aguardando convênio)
+# received: recebido · denied: glosado · cancelled: cancelado
+ChargeStatus = Literal["pending", "billed", "received", "denied", "cancelled"]
 PaymentMethod = Literal["pix", "dinheiro", "cartao", "convenio"]
 
 
@@ -19,6 +21,7 @@ class ChargeRead(BaseModel):
     patient_id: uuid.UUID
     appointment_id: uuid.UUID | None = None
     health_plan_id: uuid.UUID | None = None
+    batch_id: uuid.UUID | None = None
     kind: str
     gross_cents: int
     doctor_cents: int
@@ -62,8 +65,37 @@ class ChargeMonth(BaseModel):
 class ChargeSummary(BaseModel):
     to_receive_cents: int = 0
     received_cents: int = 0
+    denied_cents: int = 0
     cancelled_count: int = 0
+    denied_count: int = 0
     particular: ChargeBucket
     convenio: ChargeBucket
     by_plan: list[ChargePlanBucket]
     monthly: list[ChargeMonth]
+
+
+class BatchCreate(BaseModel):
+    health_plan_id: uuid.UUID
+    reference: str | None = Field(default=None, max_length=40)
+    # Cobranças a incluir. Vazio/omitido = todas as pendentes do convênio.
+    charge_ids: list[uuid.UUID] | None = None
+
+
+class BatchRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    health_plan_id: uuid.UUID
+    reference: str | None = None
+    status: str
+    created_at: datetime
+    # Preenchidos pela rota.
+    health_plan_name: str | None = None
+    charge_count: int = 0
+    billed_cents: int = 0  # ainda aguardando (billed)
+    received_cents: int = 0
+    denied_cents: int = 0
+
+
+class BatchDetail(BatchRead):
+    charges: list[ChargeRead] = Field(default_factory=list)

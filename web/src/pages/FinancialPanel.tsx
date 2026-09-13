@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { FinanceChart } from "../components/FinanceChart";
+import { BatchesCard } from "../components/BatchesCard";
 import { useAsync } from "../lib/useAsync";
 import { charges as chargesApi } from "../api/endpoints";
 import type { ChargeStatus, ConsultationCharge, PaymentMethod } from "../api/types";
@@ -16,7 +17,9 @@ function when(iso: string): string {
 }
 
 type Period = "30d" | "mes" | "3m" | "tudo";
-const STATUS_LABEL: Record<string, string> = { pending: "A receber", received: "Recebido", cancelled: "Cancelado" };
+const STATUS_LABEL: Record<string, string> = {
+  pending: "A receber", billed: "Faturado", received: "Recebido", denied: "Glosado", cancelled: "Cancelado",
+};
 const METHODS: { v: PaymentMethod; label: string }[] = [
   { v: "pix", label: "PIX" }, { v: "dinheiro", label: "Dinheiro" },
   { v: "cartao", label: "Cartão" }, { v: "convenio", label: "Convênio" },
@@ -58,6 +61,12 @@ export function FinancialPanel() {
     }
   }
 
+  async function glosar(id: string) {
+    const reason = window.prompt("Motivo da glosa (opcional):", "");
+    if (reason === null) return; // cancelou
+    await mark(id, { status: "denied", notes: reason.trim() || null });
+  }
+
   return (
     <AppShell title="Financeiro" subtitle="A receber, recebido e faturamento por período" actions={<ThemeToggle />}>
       <div className="fp-periods">
@@ -74,9 +83,10 @@ export function FinancialPanel() {
         <div className="state"><span className="err">{summary.error}</span></div>
       ) : s ? (
         <>
-          <div className="fp-kpis">
+          <div className="fp-kpis fp-kpis-4">
             <Kpi color="var(--fin-pending)" label="A receber" value={brl(s.to_receive_cents)} />
             <Kpi color="var(--fin-received)" label="Recebido" value={brl(s.received_cents)} />
+            <Kpi color="var(--risk-red)" label="Glosado" value={brl(s.denied_cents)} note={`${s.denied_count} consulta(s)`} />
             <Kpi color="var(--accent)" label="Total" value={brl(s.to_receive_cents + s.received_cents)} />
           </div>
 
@@ -113,11 +123,15 @@ export function FinancialPanel() {
         </>
       ) : null}
 
+      <div style={{ marginBottom: 16 }}>
+        <BatchesCard onChange={() => setReload((k) => k + 1)} />
+      </div>
+
       <div className="card fp-list-card">
         <div className="hd">
           <h4>Lançamentos</h4>
           <div className="fp-statusfilter">
-            {([["", "Todos"], ["pending", "A receber"], ["received", "Recebido"], ["cancelled", "Cancelado"]] as const).map(
+            {([["", "Todos"], ["pending", "A receber"], ["billed", "Faturado"], ["received", "Recebido"], ["denied", "Glosado"], ["cancelled", "Cancelado"]] as const).map(
               ([v, label]) => (
                 <button key={v} className={statusFilter === v ? "on" : ""} onClick={() => setStatusFilter(v)}>
                   {label}
@@ -157,7 +171,15 @@ export function FinancialPanel() {
                               {m.label}
                             </button>
                           ))
-                        ) : c.status === "received" ? (
+                        ) : c.status === "billed" ? (
+                          <>
+                            <button title="Recebido do convênio"
+                                    onClick={() => mark(c.id, { status: "received", payment_method: "convenio" })}>
+                              Recebi
+                            </button>
+                            <button title="Registrar glosa" onClick={() => glosar(c.id)}>Glosar</button>
+                          </>
+                        ) : c.status === "received" || c.status === "denied" ? (
                           <button onClick={() => mark(c.id, { status: "pending" })}>Reabrir</button>
                         ) : null}
                       </td>
@@ -173,12 +195,13 @@ export function FinancialPanel() {
   );
 }
 
-function Kpi({ color, label, value }: { color: string; label: string; value: string }) {
+function Kpi({ color, label, value, note }: { color: string; label: string; value: string; note?: string }) {
   return (
     <div className="fp-kpi">
       <span className="fp-kpi-stripe" style={{ background: color }} />
       <span className="fp-kpi-lab">{label}</span>
       <span className="fp-kpi-val tnum" style={{ color }}>{value}</span>
+      {note ? <span className="fp-kpi-note">{note}</span> : null}
     </div>
   );
 }

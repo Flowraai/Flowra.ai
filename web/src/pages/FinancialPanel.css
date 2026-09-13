@@ -9,6 +9,8 @@
 .fp-periods button.on { background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent); }
 
 .fp-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+.fp-kpis-4 { grid-template-columns: repeat(4, 1fr); }
+.fp-kpi-note { font-size: 11px; color: var(--muted); }
 .fp-kpi {
   position: relative; background: var(--surface); border: 1px solid var(--line);
   border-radius: 14px; padding: 14px 16px 14px 18px; overflow: hidden;
@@ -19,7 +21,7 @@
 .fp-kpi-val { font-size: 24px; font-weight: 800; letter-spacing: -0.01em; }
 
 .fp-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; margin-bottom: 16px; }
-@media (max-width: 780px) { .fp-grid { grid-template-columns: 1fr; } .fp-kpis { grid-template-columns: 1fr; } }
+@media (max-width: 780px) { .fp-grid { grid-template-columns: 1fr; } .fp-kpis, .fp-kpis-4 { grid-template-columns: 1fr 1fr; } }
 
 .fp-plans { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .fp-plans li { border-bottom: 1px solid var(--line); padding-bottom: 10px; }
@@ -54,3 +56,22 @@
   font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; padding: 4px 8px; border-radius: 7px;
 }
 .fp-actions button:hover { border-color: var(--accent); background: var(--accent-soft); }
+
+/* Faturamento de convênios (lotes) */
+.bt-sub { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
+.bt-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.bt-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; }
+.bt-item b { font-size: 13.5px; }
+.bt-batch { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.bt-batch-top { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.bt-batch-top .fp-st { margin-left: 4px; }
+.bt-date { margin-left: auto; font-size: 12px; }
+.bt-batch-vals { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 5px; font-size: 12.5px; font-weight: 600; }
+.bt-batch-vals .ok { color: var(--fin-received); }
+.bt-batch-vals .warn { color: var(--fin-pending); }
+.bt-batch-vals .glosa { color: var(--risk-red); }
+.mini.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.mini.primary:hover { opacity: 0.9; }
+.mini { border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 5px 10px; border-radius: 8px; }
+.fp-st.st-billed { color: var(--fin-pending); }
+.fp-st.st-denied { color: var(--risk-red); }

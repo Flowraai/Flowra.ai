@@ -124,12 +124,18 @@ async def charges_summary(
     particular = ChargeBucket()
     convenio = ChargeBucket()
     cancelled = 0
+    denied_count = 0
+    denied_cents = 0
     by_plan: dict[uuid.UUID | None, ChargePlanBucket] = {}
     months: dict[str, ChargeMonth] = {}
 
     for c in rows:
         if c.status == "cancelled":
             cancelled += 1
+            continue
+        if c.status == "denied":
+            denied_count += 1
+            denied_cents += c.doctor_cents
             continue
         bucket = convenio if c.kind == "convenio" else particular
         pkey = c.health_plan_id
@@ -148,7 +154,7 @@ async def charges_summary(
             bucket.received_cents += c.doctor_cents
             pbucket.received_cents += c.doctor_cents
             m.received_cents += c.doctor_cents
-        else:  # pending
+        else:  # pending ou billed (faturado, ainda a receber)
             bucket.to_receive_cents += c.doctor_cents
             pbucket.to_receive_cents += c.doctor_cents
             m.pending_cents += c.doctor_cents
@@ -156,7 +162,9 @@ async def charges_summary(
     return ChargeSummary(
         to_receive_cents=particular.to_receive_cents + convenio.to_receive_cents,
         received_cents=particular.received_cents + convenio.received_cents,
+        denied_cents=denied_cents,
         cancelled_count=cancelled,
+        denied_count=denied_count,
         particular=particular,
         convenio=convenio,
         by_plan=sorted(by_plan.values(), key=lambda b: b.received_cents + b.to_receive_cents, reverse=True),

@@ -9,6 +9,7 @@ from app.models.appointment import Appointment
 from app.models.attachment import Attachment
 from app.models.audit import AuditLog
 from app.models.auth_tokens import PasswordResetToken, RefreshToken
+from app.models.billing_batch import BillingBatch
 from app.models.certificate import Certificate
 from app.models.checkin import CheckIn
 from app.models.clinical_note import ClinicalNote
@@ -56,6 +57,7 @@ __all__ = [
     "Appointment",
     "Attachment",
     "AuditLog",
+    "BillingBatch",
     "Certificate",
     "CheckIn",
     "ClinicalNote",
