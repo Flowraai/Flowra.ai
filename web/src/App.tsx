@@ -5,6 +5,7 @@ import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { PatientDetail } from "./pages/PatientDetail";
 import { PatientReport } from "./pages/PatientReport";
+import { CertificatePrint } from "./pages/CertificatePrint";
 import { Alerts } from "./pages/Alerts";
 import { Agenda } from "./pages/Agenda";
 import { Messages } from "./pages/Messages";
@@ -91,6 +92,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <PatientReport />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/pacientes/:id/atestado/:certId"
+            element={
+              <RequireAuth>
+                <CertificatePrint />
               </RequireAuth>
             }
           />

@@ -1,0 +1,85 @@
+"""Atestados e declarações (lado do médico)."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.deps import get_current_doctor
+from app.db.session import get_db
+from app.models.certificate import Certificate
+from app.models.doctor import Doctor
+from app.models.patient import Patient
+from app.schemas.certificate import CertificateCreate, CertificateRead
+
+router = APIRouter(tags=["certificates"])
+
+
+async def _owned_patient(session: AsyncSession, doctor: Doctor, patient_id: uuid.UUID) -> Patient:
+    patient = await session.get(Patient, patient_id)
+    if patient is None or patient.doctor_id != doctor.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente não encontrado.")
+    return patient
+
+
+@router.post(
+    "/patients/{patient_id}/certificates", response_model=CertificateRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_certificate(
+    patient_id: uuid.UUID,
+    payload: CertificateCreate,
+    doctor: Doctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db),
+) -> Certificate:
+    patient = await _owned_patient(session, doctor, patient_id)
+    if payload.kind == "afastamento" and not payload.days:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Informe os dias de afastamento.",
+        )
+    cert = Certificate(
+        tenant_id=patient.tenant_id,
+        patient_id=patient.id,
+        doctor_id=doctor.id,
+        kind=payload.kind,
+        days=payload.days,
+        start_date=payload.start_date,
+        cid=(payload.cid or "").strip() or None,
+        notes=(payload.notes or "").strip() or None,
+        issued_at=datetime.now(timezone.utc),
+    )
+    session.add(cert)
+    await session.flush()
+    return cert
+
+
+@router.get("/patients/{patient_id}/certificates", response_model=list[CertificateRead])
+async def list_certificates(
+    patient_id: uuid.UUID,
+    doctor: Doctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db),
+) -> list[Certificate]:
+    await _owned_patient(session, doctor, patient_id)
+    result = await session.execute(
+        select(Certificate)
+        .where(Certificate.patient_id == patient_id)
+        .order_by(Certificate.issued_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+@router.get("/certificates/{certificate_id}", response_model=CertificateRead)
+async def get_certificate(
+    certificate_id: uuid.UUID,
+    doctor: Doctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db),
+) -> Certificate:
+    cert = await session.get(Certificate, certificate_id)
+    if cert is None or cert.doctor_id != doctor.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Atestado não encontrado.")
+    return cert

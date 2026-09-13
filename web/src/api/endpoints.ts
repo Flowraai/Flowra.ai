@@ -9,6 +9,8 @@ import type {
   AppointmentStatus,
   ChatMessage,
   CheckIn,
+  Certificate,
+  CertificateInput,
   ClinicalNote,
   NoteCreateInput,
   NoteUpdateInput,
@@ -105,6 +107,9 @@ export const patients = {
     ),
   createNote: (id: string, input: NoteCreateInput) =>
     api<ClinicalNote>(`/patients/${id}/notes`, { method: "POST", body: input }),
+  certificates: (id: string) => api<Certificate[]>(`/patients/${id}/certificates`),
+  createCertificate: (id: string, input: CertificateInput) =>
+    api<Certificate>(`/patients/${id}/certificates`, { method: "POST", body: input }),
   scales: (id: string) => api<ScaleEntry[]>(`/patients/${id}/scales`),
   requestScale: (id: string, scaleCode: string, recurringDays?: number | null) =>
     api<ScaleEntry>(`/patients/${id}/scales`, {
@@ -116,6 +121,10 @@ export const patients = {
 export const scales = {
   catalog: () => api<ScaleDef[]>("/scales"),
   cancel: (entryId: string) => api<void>(`/scales/${entryId}`, { method: "DELETE" }),
+};
+
+export const certificates = {
+  get: (id: string) => api<Certificate>(`/certificates/${id}`),
 };
 
 export const notes = {

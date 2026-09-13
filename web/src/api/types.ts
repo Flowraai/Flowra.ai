@@ -216,6 +216,29 @@ export interface ScaleEntry {
   completed_at: string | null;
 }
 
+export type CertKind = "afastamento" | "comparecimento";
+
+export interface Certificate {
+  id: string;
+  patient_id: string;
+  doctor_id: string;
+  kind: CertKind;
+  days: number | null;
+  start_date: string | null;
+  cid: string | null;
+  notes: string | null;
+  issued_at: string;
+  created_at: string;
+}
+
+export interface CertificateInput {
+  kind: CertKind;
+  days?: number | null;
+  start_date?: string | null;
+  cid?: string | null;
+  notes?: string | null;
+}
+
 export type NoteKind = "note" | "diagnosis" | "other";
 
 export interface ClinicalNote {

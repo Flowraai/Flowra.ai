@@ -9,6 +9,7 @@ import { WearableCard } from "../components/WearableCard";
 import { ClinicalNotesCard } from "../components/ClinicalNotesCard";
 import { ScalesCard } from "../components/ScalesCard";
 import { EvolutionCard } from "../components/EvolutionCard";
+import { CertificatesCard } from "../components/CertificatesCard";
 import { AppointmentsCard } from "../components/AppointmentsCard";
 import { ExamsCard } from "../components/ExamsCard";
 import { PrescriptionsCard } from "../components/PrescriptionsCard";
@@ -214,6 +215,7 @@ export function PatientDetail() {
               <EvolutionCard patientId={id} />
               <ExamsCard patientId={id} />
               <ScalesCard patientId={id} />
+              <CertificatesCard patientId={id} />
               <ClinicalNotesCard key={notesReloadKey} patientId={id} />
             </div>
 

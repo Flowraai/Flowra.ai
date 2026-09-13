@@ -10,6 +10,7 @@ from app.api.routes import (
     alerts,
     appointments,
     attachments,
+    certificates,
     clinical_notes,
     auth,
     billing,
@@ -64,5 +65,6 @@ v1.include_router(exams.router, dependencies=_gated)
 v1.include_router(prescriptions.router, dependencies=_gated)
 v1.include_router(messages.router, dependencies=_gated)
 v1.include_router(clinical_notes.router, dependencies=_gated)
+v1.include_router(certificates.router, dependencies=_gated)
 
 api_router.include_router(v1)
