@@ -53,6 +53,21 @@ export interface PatientPanelItem {
   inactive: boolean;
 }
 
+export interface AttentionReason {
+  code: "alert" | "risk" | "scale" | "inactive" | "adherence";
+  label: string;
+  severity: "high" | "medium" | "low";
+}
+
+export interface AttentionItem {
+  id: string;
+  name: string;
+  current_risk: RiskLevel;
+  last_checkin_at: string | null;
+  score: number;
+  reasons: AttentionReason[];
+}
+
 export interface Patient {
   id: string;
   tenant_id: string;

@@ -83,6 +83,27 @@ class PatientPanelItem(BaseModel):
     inactive: bool = False
 
 
+class AttentionReason(BaseModel):
+    """Motivo pelo qual o paciente precisa de atenção hoje."""
+
+    code: str  # alert | risk | scale | inactive | adherence
+    label: str  # texto pronto para o médico ("2 alertas em aberto")
+    severity: str  # high | medium | low — só para a cor no painel
+
+
+class AttentionItem(BaseModel):
+    """Paciente que precisa de atenção, com o porquê explícito."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    current_risk: RiskLevel
+    last_checkin_at: datetime | None = None
+    score: int
+    reasons: list[AttentionReason]
+
+
 class PatientTokenRead(BaseModel):
     access_token: str
 

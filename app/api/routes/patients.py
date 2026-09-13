@@ -25,6 +25,7 @@ from app.models.patient import Patient
 from app.schemas.alert import AlertRead
 from app.schemas.checkin import CheckInRead
 from app.schemas.patient import (
+    AttentionItem,
     PatientCreate,
     PatientCreated,
     PatientExport,
@@ -36,6 +37,7 @@ from app.schemas.patient import (
     PatientUpdate,
 )
 from app.services import audit
+from app.services.attention_service import compute_attention
 from app.services.inactivity_service import days_since_checkin, is_inactive, scan_inactivity
 from app.services.onboarding_service import build_onboarding_link, send_onboarding
 from app.services.storage import get_storage_backend
@@ -149,6 +151,18 @@ async def list_patients(
         )
     )
     return items[offset : offset + limit]
+
+
+@router.get("/attention", response_model=list[AttentionItem])
+async def attention_panel(
+    limit: int = Query(20, ge=1, le=100),
+    doctor: Doctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db),
+) -> list[AttentionItem]:
+    """Quem precisa de atenção hoje: pacientes priorizados por urgência, com os
+    motivos explícitos (alertas, risco, escala sinalizada, inatividade, adesão)."""
+    items = await compute_attention(session, doctor.id)
+    return [AttentionItem(**item) for item in items[:limit]]
 
 
 @router.get("/{patient_id}", response_model=PatientRead)

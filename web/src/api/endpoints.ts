@@ -7,6 +7,7 @@ import type {
   Appointment,
   AppointmentInput,
   AppointmentStatus,
+  AttentionItem,
   ChatMessage,
   CheckIn,
   Certificate,
@@ -70,6 +71,7 @@ export const auth = {
 
 export const patients = {
   list: () => api<PatientPanelItem[]>("/patients"),
+  attention: () => api<AttentionItem[]>("/patients/attention"),
   create: (input: PatientCreateInput) =>
     api<PatientCreated>("/patients", { method: "POST", body: input }),
   get: (id: string) => api<Patient>(`/patients/${id}`),

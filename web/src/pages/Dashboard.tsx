@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
+import { AttentionPanel } from "../components/AttentionPanel";
 import { RiskBadge } from "../components/RiskBadge";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { NewPatientModal } from "../components/NewPatientModal";
@@ -90,6 +91,8 @@ export function Dashboard() {
         </>
       }
     >
+      <AttentionPanel reloadKey={reloadKey} />
+
       <div className="kpis">
         <Kpi color="var(--risk-red)" label="Alertas em aberto" value={kpis.openAlerts} note="somando todos os pacientes" />
         <Kpi color="var(--risk-orange)" label="Em risco elevado" value={kpis.elevated} note="🟠 laranja + 🔴 vermelho" />
