@@ -105,6 +105,11 @@ export function PatientDetail() {
               Reenviar acesso
             </button>
           ) : null}
+          {p ? (
+            <button className="btn ghost" onClick={() => navigate(`/pacientes/${id}/relatorio`)}>
+              Relatório
+            </button>
+          ) : null}
           <button className="btn ghost" onClick={exportData} disabled={exporting || !p}>
             {exporting ? "Exportando…" : "Exportar dados (LGPD)"}
           </button>

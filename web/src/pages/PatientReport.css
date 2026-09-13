@@ -1,0 +1,54 @@
+.rep { min-height: 100vh; background: var(--bg); padding: 20px 0 60px; }
+.rep-loading { display: flex; gap: 10px; align-items: center; justify-content: center; min-height: 60vh; color: var(--muted); }
+
+.rep-toolbar {
+  max-width: 800px; margin: 0 auto 16px; display: flex; justify-content: space-between; gap: 10px;
+  padding: 0 16px;
+}
+
+/* Documento A4 */
+.rep-doc {
+  max-width: 800px; margin: 0 auto; background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 12px; padding: 40px 44px;
+  box-shadow: var(--shadow); line-height: 1.5;
+}
+.rep-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; border-bottom: 2px solid var(--accent); padding-bottom: 12px; }
+.rep-clinic { font-size: 17px; font-weight: 800; color: var(--accent-ink); }
+.rep-doctor { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.rep-meta-right { font-size: 12px; color: var(--muted); text-align: right; }
+
+.rep-title { font-size: 22px; font-weight: 800; margin: 22px 0 6px; }
+.rep-patient { font-size: 14.5px; margin-bottom: 8px; }
+.rep-patient b { font-size: 16px; }
+.rep-patient span { color: var(--muted); }
+.rep-risk { display: inline-block; margin-left: 10px; color: var(--ink) !important; font-weight: 600; }
+
+.rep-sec { margin-top: 22px; break-inside: avoid; }
+.rep-sec h2 { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--accent-ink); border-bottom: 1px solid var(--line); padding-bottom: 5px; margin: 0 0 10px; }
+.rep-sec p { margin: 0 0 6px; font-size: 14px; }
+.rep-muted { color: var(--muted); }
+
+.rep-kv, .rep-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.rep-kv td { padding: 5px 0; border-bottom: 1px solid var(--line); }
+.rep-kv td:first-child { color: var(--muted); width: 60%; }
+.rep-kv td:last-child { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.rep-table th, .rep-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.rep-table th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+
+.rep-list { margin: 4px 0 0; padding-left: 18px; font-size: 14px; }
+.rep-list li { margin-bottom: 3px; }
+
+.rep-note { break-inside: avoid; margin-bottom: 10px; }
+.rep-note-h { display: flex; justify-content: space-between; font-size: 12.5px; }
+.rep-note-h span { color: var(--muted); }
+.rep-note p { margin: 3px 0 0; font-size: 13.5px; white-space: pre-wrap; }
+
+.rep-foot { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 10px; font-size: 11px; color: var(--muted); }
+
+@media print {
+  .no-print { display: none !important; }
+  .rep { background: #fff; padding: 0; }
+  .rep-doc { max-width: none; margin: 0; border: 0; border-radius: 0; box-shadow: none; padding: 0; color: #000; }
+  .rep-sec h2, .rep-clinic { color: #000; }
+  @page { margin: 18mm 16mm; }
+}
