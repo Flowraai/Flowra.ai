@@ -24,6 +24,7 @@ from app.db.session import AsyncSessionLocal
 from app.services.appointment_service import scan_appointment_reminders
 from app.services.inactivity_service import scan_inactivity
 from app.services.medication_service import scan_due_medications
+from app.services.scale_service import scan_due_scales
 
 logger = logging.getLogger("flowra_care.scheduler")
 
@@ -43,6 +44,7 @@ async def run_once() -> None:
     await _run_scan("medicacao", scan_due_medications)
     await _run_scan("consultas", scan_appointment_reminders)
     await _run_scan("inatividade", scan_inactivity)
+    await _run_scan("escalas", scan_due_scales)
 
 
 async def main() -> None:

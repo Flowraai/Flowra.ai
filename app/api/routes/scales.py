@@ -26,6 +26,7 @@ from app.schemas.scale import (
     ScaleSubmitIn,
     ScaleSubmitResult,
 )
+from app.services import scale_service
 from app.services.notifications import dispatch_alert, doctor_notification_contacts
 
 router = APIRouter(tags=["scales"])
@@ -62,6 +63,7 @@ def _read(entry: ScaleEntry) -> ScaleEntryRead:
         severity=entry.severity,
         level=entry.level,
         flagged=entry.flagged,
+        recurring_days=entry.recurring_days,
         requested_at=entry.requested_at,
         completed_at=entry.completed_at,
     )
@@ -113,7 +115,8 @@ async def request_scale(
     session: AsyncSession = Depends(get_db),
 ) -> ScaleEntryRead:
     patient = await _owned_patient(session, doctor, patient_id)
-    if get_scale(payload.scale_code) is None:
+    scale = get_scale(payload.scale_code)
+    if scale is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Escala inválida.")
     entry = ScaleEntry(
         tenant_id=patient.tenant_id,
@@ -121,10 +124,12 @@ async def request_scale(
         doctor_id=doctor.id,
         scale_code=payload.scale_code,
         status="pending",
+        recurring_days=payload.recurring_days,
         requested_at=datetime.now(timezone.utc),
     )
     session.add(entry)
     await session.flush()
+    await scale_service.notify_patient(session, patient, scale.name)
     return _read(entry)
 
 

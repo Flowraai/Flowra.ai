@@ -29,6 +29,8 @@ class ScaleDef(BaseModel):
 
 class ScaleRequestIn(BaseModel):
     scale_code: str
+    # Repetir a cada N dias (7/14/30…). None = aplicação única.
+    recurring_days: int | None = Field(default=None, ge=1, le=180)
 
 
 class ScaleSubmitIn(BaseModel):
@@ -46,6 +48,7 @@ class ScaleEntryRead(BaseModel):
     severity: str | None = None
     level: str | None = None
     flagged: bool = False
+    recurring_days: int | None = None
     requested_at: datetime
     completed_at: datetime | None = None
 

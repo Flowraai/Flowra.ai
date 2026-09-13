@@ -211,6 +211,7 @@ export interface ScaleEntry {
   severity: string | null;
   level: RiskLevel | null;
   flagged: boolean;
+  recurring_days: number | null;
   requested_at: string;
   completed_at: string | null;
 }

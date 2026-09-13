@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 import httpx
+from sqlalchemy import select
 
 from app.clinical.scales import score_scale
+from app.db.session import AsyncSessionLocal
+from app.models.scale_entry import ScaleEntry
+from app.services.scale_service import scan_due_scales
 
 
 def test_scoring():
@@ -93,6 +99,63 @@ async def test_invalid_answers_rejected(client: httpx.AsyncClient):
     # Faltando respostas (GAD-7 tem 7 itens).
     r = await client.post(f"/api/v1/patient/scales/{req['id']}", headers=ph, json={"answers": [1, 2, 3]})
     assert r.status_code == 422
+
+
+async def _scan() -> dict:
+    async with AsyncSessionLocal() as s:
+        res = await scan_due_scales(s)
+        await s.commit()
+    return res
+
+
+async def test_recurring_scale_recreated_when_due(client: httpx.AsyncClient):
+    headers = await _doctor(client)
+    patient = await _patient(client, headers)
+    ph = {"X-Patient-Token": patient["access_token"]}
+
+    # Solicita GAD-7 recorrente a cada 14 dias.
+    req = await client.post(f"/api/v1/patients/{patient['id']}/scales", headers=headers,
+                            json={"scale_code": "gad7", "recurring_days": 14})
+    assert req.status_code == 201 and req.json()["recurring_days"] == 14
+
+    # Paciente responde.
+    await client.post(f"/api/v1/patient/scales/{req.json()['id']}", headers=ph,
+                      json={"answers": [1, 1, 1, 1, 1, 1, 1]})
+
+    # Ainda não venceu → nada é recriado.
+    assert (await _scan())["scales_created"] == 0
+
+    # Recua a data de conclusão para 15 dias atrás → vence.
+    async with AsyncSessionLocal() as s:
+        entry = await s.scalar(
+            select(ScaleEntry).where(ScaleEntry.patient_id == patient["id"], ScaleEntry.status == "done")
+        )
+        entry.completed_at = datetime.now(timezone.utc) - timedelta(days=15)
+        await s.commit()
+
+    assert (await _scan())["scales_created"] == 1
+    # O paciente agora tem uma nova pendente.
+    pend = (await client.get("/api/v1/patient/scales", headers=ph)).json()
+    assert len(pend) == 1 and pend[0]["scale"]["code"] == "gad7"
+    # Rodar de novo não duplica (já há pendente).
+    assert (await _scan())["scales_created"] == 0
+
+
+async def test_non_recurring_not_recreated(client: httpx.AsyncClient):
+    headers = await _doctor(client)
+    patient = await _patient(client, headers)
+    ph = {"X-Patient-Token": patient["access_token"]}
+    req = (await client.post(f"/api/v1/patients/{patient['id']}/scales", headers=headers,
+                             json={"scale_code": "gad7"})).json()  # sem recorrência
+    await client.post(f"/api/v1/patient/scales/{req['id']}", headers=ph,
+                      json={"answers": [0, 0, 0, 0, 0, 0, 0]})
+    async with AsyncSessionLocal() as s:
+        entry = await s.scalar(
+            select(ScaleEntry).where(ScaleEntry.patient_id == patient["id"], ScaleEntry.status == "done")
+        )
+        entry.completed_at = datetime.now(timezone.utc) - timedelta(days=60)
+        await s.commit()
+    assert (await _scan())["scales_created"] == 0
 
 
 async def test_scales_isolation(client: httpx.AsyncClient):

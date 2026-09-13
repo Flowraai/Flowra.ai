@@ -22,6 +22,7 @@ export function ScalesCard({ patientId }: { patientId: string }) {
   const [list, setList] = useState<ScaleEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
+  const [recur, setRecur] = useState(0); // 0 = uma vez
   const [busy, setBusy] = useState(false);
 
   function load() {
@@ -54,14 +55,15 @@ export function ScalesCard({ patientId }: { patientId: string }) {
         .sort((a, b) => (a.completed_at ?? "").localeCompare(b.completed_at ?? ""));
       const pending = entries.filter((e) => e.status === "pending");
       const name = entries[0].scale_name;
-      return { code, name, done, pending };
+      const recent = [...entries].sort((a, b) => b.requested_at.localeCompare(a.requested_at))[0];
+      return { code, name, done, pending, recurring: recent.recurring_days };
     });
   }, [list]);
 
   async function request(code: string) {
     setBusy(true);
     try {
-      await patients.requestScale(patientId, code);
+      await patients.requestScale(patientId, code, recur || null);
       setPicking(false);
       load();
     } catch (e) {
@@ -93,6 +95,15 @@ export function ScalesCard({ patientId }: { patientId: string }) {
       <div className="bd">
         {picking ? (
           <div className="scale-pick">
+            <label className="scale-recur">
+              Repetir:
+              <select value={recur} onChange={(e) => setRecur(Number(e.target.value))}>
+                <option value={0}>Uma vez</option>
+                <option value={7}>A cada 7 dias</option>
+                <option value={14}>A cada 14 dias</option>
+                <option value={30}>A cada 30 dias</option>
+              </select>
+            </label>
             {catalog.map((s) => (
               <button key={s.code} className="scale-pick-item" disabled={busy} onClick={() => request(s.code)}>
                 <b>{s.name}</b>
@@ -119,6 +130,7 @@ export function ScalesCard({ patientId }: { patientId: string }) {
                 <div className="scale-group" key={g.code}>
                   <div className="scale-top">
                     <b>{g.name}</b>
+                    {g.recurring ? <span className="chip">🔁 a cada {g.recurring}d</span> : null}
                     {last ? (
                       <span className="scale-score" style={{ color: LEVEL_COLOR[last.level ?? "green"] }}>
                         {last.score}/{max} · {last.severity}

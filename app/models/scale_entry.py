@@ -40,5 +40,8 @@ class ScaleEntry(UUIDMixin, TimestampMixin, Base):
     severity: Mapped[str | None] = mapped_column(String(40), nullable=True)
     level: Mapped[str | None] = mapped_column(String(10), nullable=True)  # green|yellow|orange|red
     flagged: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Recorrência: se preenchido, o agendador recria a escala a cada N dias após a
+    # última resposta (measurement-based care no automático). None = aplicação única.
+    recurring_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

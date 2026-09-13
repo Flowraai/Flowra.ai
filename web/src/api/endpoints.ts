@@ -106,8 +106,11 @@ export const patients = {
   createNote: (id: string, input: NoteCreateInput) =>
     api<ClinicalNote>(`/patients/${id}/notes`, { method: "POST", body: input }),
   scales: (id: string) => api<ScaleEntry[]>(`/patients/${id}/scales`),
-  requestScale: (id: string, scaleCode: string) =>
-    api<ScaleEntry>(`/patients/${id}/scales`, { method: "POST", body: { scale_code: scaleCode } }),
+  requestScale: (id: string, scaleCode: string, recurringDays?: number | null) =>
+    api<ScaleEntry>(`/patients/${id}/scales`, {
+      method: "POST",
+      body: { scale_code: scaleCode, recurring_days: recurringDays ?? null },
+    }),
 };
 
 export const scales = {
