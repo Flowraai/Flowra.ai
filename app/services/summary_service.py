@@ -12,11 +12,13 @@ from datetime import datetime, timezone
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.clinical.scales import get_scale
 from app.models.appointment import Appointment
 from app.models.alert import Alert
 from app.models.checkin import CheckIn
 from app.models.enums import AlertStatus, AppointmentStatus, RiskLevel
 from app.models.patient import Patient
+from app.models.scale_entry import ScaleEntry
 from app.protocol import psychiatry as P
 from app.services.inactivity_service import days_since_checkin
 from app.services.llm import chat_complete
@@ -82,6 +84,31 @@ async def _gather(session: AsyncSession, patient: Patient) -> dict:
         .order_by(Appointment.scheduled_at)
         .limit(1)
     )
+    # Última pontuação de cada escala aplicada (measurement-based care).
+    scale_rows = list(
+        (
+            await session.execute(
+                select(ScaleEntry)
+                .where(ScaleEntry.patient_id == patient.id, ScaleEntry.status == "done")
+                .order_by(ScaleEntry.completed_at.desc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    latest_scales: dict[str, ScaleEntry] = {}
+    for e in scale_rows:
+        latest_scales.setdefault(e.scale_code, e)
+    scales = [
+        {
+            "name": (get_scale(code).name.split(" — ")[0] if get_scale(code) else code),
+            "score": e.score,
+            "severity": e.severity,
+            "flagged": e.flagged,
+        }
+        for code, e in latest_scales.items()
+    ]
+
     w = await wearable_service.summary(session, patient, 7)
     wearable = (
         {
@@ -103,6 +130,7 @@ async def _gather(session: AsyncSession, patient: Patient) -> dict:
         "open_alerts": int(open_alerts or 0),
         "next_appointment": next_appt.isoformat() if next_appt else None,
         "wearable": wearable,
+        "scales": scales,
     }
 
 
@@ -136,6 +164,13 @@ def _render_deterministic(patient: Patient, ctx: dict) -> str:
         )
     if ctx["open_alerts"]:
         parts.append(f"{ctx['open_alerts']} alerta(s) em aberto.")
+    scales = ctx.get("scales")
+    if scales:
+        bits = [f"{s['name']} {s['score']} ({s['severity']})" for s in scales if s["score"] is not None]
+        if bits:
+            parts.append("Escalas: " + "; ".join(bits) + ".")
+        if any(s["flagged"] for s in scales):
+            parts.append("⚠️ Sinalizador de risco em escala positivo.")
     w = ctx.get("wearable")
     if w and w.get("avg_sleep_minutes"):
         h, m = divmod(int(w["avg_sleep_minutes"]), 60)

@@ -141,6 +141,23 @@ async def test_recurring_scale_recreated_when_due(client: httpx.AsyncClient):
     assert (await _scan())["scales_created"] == 0
 
 
+async def test_scale_appears_in_doctor_summary(client: httpx.AsyncClient):
+    headers = await _doctor(client)
+    patient = await _patient(client, headers)
+    ph = {"X-Patient-Token": patient["access_token"]}
+    req = (await client.post(f"/api/v1/patients/{patient['id']}/scales", headers=headers,
+                             json={"scale_code": "gad7"})).json()
+    await client.post(f"/api/v1/patient/scales/{req['id']}", headers=ph,
+                      json={"answers": [2, 2, 2, 2, 2, 1, 1]})  # 12 = Moderada
+
+    s = (await client.get(f"/api/v1/patients/{patient['id']}/summary", headers=headers)).json()
+    scales = s["context"]["scales"]
+    assert any(x["name"] == "GAD-7" and x["score"] == 12 for x in scales)
+    # No modo determinístico (sem LLM), o texto cita a escala.
+    if s["generated_by"] == "deterministic":
+        assert "Escalas:" in s["summary"] and "GAD-7 12" in s["summary"]
+
+
 async def test_non_recurring_not_recreated(client: httpx.AsyncClient):
     headers = await _doctor(client)
     patient = await _patient(client, headers)
