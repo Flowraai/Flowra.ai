@@ -10,7 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_doctor, get_current_patient
-from app.clinical.scales import SCALES, Scale, get_scale, score_scale
+from app.clinical.packs import get_pack
+from app.clinical.scales import Scale, get_scale, score_scale
 from app.db.session import get_db
 from app.models.alert import Alert
 from app.models.doctor import Doctor
@@ -82,8 +83,9 @@ async def _owned_patient(session: AsyncSession, doctor: Doctor, patient_id: uuid
 
 # ---- Catálogo (médico) ----
 @router.get("/scales", response_model=list[ScaleDef])
-async def list_scales(_: Doctor = Depends(get_current_doctor)) -> list[ScaleDef]:
-    return [_def(s) for s in SCALES.values()]
+async def list_scales(doctor: Doctor = Depends(get_current_doctor)) -> list[ScaleDef]:
+    # Catálogo da especialidade do médico (default psiquiatria: PHQ-9 + GAD-7).
+    return [_def(s) for s in get_pack(doctor.specialty).scales()]
 
 
 # ---- Aplicações de um paciente (médico) ----

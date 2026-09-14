@@ -18,9 +18,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.alert import Alert
 from app.models.checkin import CheckIn
+from app.clinical.packs import get_pack
+from app.models.doctor import Doctor
 from app.models.enums import AlertUrgency, AuditAction, RiskLevel
 from app.models.patient import Patient
-from app.risk.engine import PsychiatricRiskEngine
 from app.risk.free_text import analyzer_for
 from app.risk.trend import CheckInPoint, assess_trend
 from app.models.attachment import Attachment
@@ -33,9 +34,13 @@ from app.services.transcription import transcribe
 logger = logging.getLogger("flowra_care.checkin")
 
 
-def _build_engine(ai_consent: bool) -> PsychiatricRiskEngine:
+async def _build_engine(session: AsyncSession, patient: Patient):
+    """Motor de risco da especialidade do médico (default: psiquiatria)."""
     # LGPD-4 — só usa o analisador externo (LLM) com o consentimento de IA do paciente.
-    return PsychiatricRiskEngine(free_text_analyzer=analyzer_for(ai_consent))
+    analyzer = analyzer_for(patient.ai_consent)
+    doctor = await session.get(Doctor, patient.doctor_id)
+    pack = get_pack(doctor.specialty if doctor else None)
+    return pack.build_engine(free_text_analyzer=analyzer)
 
 
 async def _transcribe_audio(session: AsyncSession, patient: Patient, audio_url: str | None) -> str | None:
@@ -59,7 +64,7 @@ async def _transcribe_audio(session: AsyncSession, patient: Patient, audio_url: 
 async def process_checkin(
     session: AsyncSession, patient: Patient, payload: CheckInCreate, *, when: datetime | None = None
 ) -> CheckIn:
-    engine = _build_engine(patient.ai_consent)
+    engine = await _build_engine(session, patient)
     # Transcrição do áudio (se habilitada) entra no texto livre analisado pelo risco —
     # de forma conservadora, sem substituir o que o paciente escreveu.
     transcript = await _transcribe_audio(session, patient, payload.audio_url)
