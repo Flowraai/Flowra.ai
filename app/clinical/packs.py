@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 
 from app.clinical.scales import SCALES, Scale
 from app.models.enums import RiskLevel
+from app.protocol import nutrition as N
 from app.protocol import odontology as O
 from app.protocol import psychiatry as P
 from app.protocol.base import QuestionDef
@@ -166,11 +167,45 @@ ODONTOLOGY_PACK = ClinicalPack(
     analyze_free_text=False,  # palavras de crise/CVV não se aplicam à odontologia
 )
 
+# --- Nutrição: acompanhamento alimentar (comorbidade com saúde mental) ---
+def nutrition_rules(_t: RiskThresholds) -> list[Rule]:
+    """Risco nutricional: adesão ao plano, sintomas GI e compulsão. Sem CVV
+    estruturado, mas o texto livre continua sendo analisado (ver pack)."""
+    return [
+        ChoiceRule(N.Q_MEAL_PLAN, {
+            N.NO: (RiskLevel.YELLOW, "não seguiu o plano alimentar"),
+        }),
+        ChoiceRule(N.Q_GI, {
+            N.GI_INTENSE: (RiskLevel.ORANGE, "sintomas gastrointestinais intensos"),
+            N.GI_MODERATE: (RiskLevel.YELLOW, "sintomas gastrointestinais moderados"),
+        }),
+        YesRule(N.Q_BINGE, RiskLevel.ORANGE, "episódio de compulsão alimentar relatado"),
+    ]
+
+
+NUTRITION_PACK = ClinicalPack(
+    key=N.NUTRITION_SPECIALTY,
+    label="Nutrição",
+    specialty=N.NUTRITION_SPECIALTY,
+    protocol_name=N.NUTRITION_PROTOCOL_NAME,
+    protocol_version=N.NUTRITION_PROTOCOL_VERSION,
+    protocol_description="Acompanhamento nutricional entre consultas.",
+    questions=tuple(N.NUTRITION_QUESTIONS),
+    scale_codes=(),
+    rules_factory=nutrition_rules,
+    free_text_category=N.CAT_LIVRE,
+    protected_codes=frozenset({N.Q_MEAL_PLAN, N.Q_GI, N.Q_BINGE}),
+    features={"medicacao": False, "wearables": True},
+    safety_message=_SAFETY_MENTAL_HEALTH,
+    analyze_free_text=True,  # transtorno alimentar tem comorbidade — texto é analisado
+)
+
 # Registry por especialidade. Novas especialidades entram aqui.
 CLINICAL_PACKS: dict[str, ClinicalPack] = {
     PSYCHIATRY_PACK.specialty: PSYCHIATRY_PACK,
     PSYCHOLOGY_PACK.specialty: PSYCHOLOGY_PACK,
     ODONTOLOGY_PACK.specialty: ODONTOLOGY_PACK,
+    NUTRITION_PACK.specialty: NUTRITION_PACK,
 }
 
 DEFAULT_PACK = PSYCHIATRY_PACK
