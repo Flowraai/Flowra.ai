@@ -23,7 +23,7 @@ from app.core.rate_limit import SlidingWindowRateLimiter
 from app.db.base import Base
 from app.db.session import AsyncSessionLocal, engine
 from app.main import app
-from app.scripts.seed_protocol import seed_psychiatry_protocol
+from app.scripts.seed_protocol import seed_all_packs
 
 
 @pytest.fixture(autouse=True)
@@ -74,7 +74,7 @@ async def client() -> httpx.AsyncClient:
         await session.commit()
 
     async with AsyncSessionLocal() as session:
-        await seed_psychiatry_protocol(session)
+        await seed_all_packs(session)
         await session.commit()
 
     transport = httpx.ASGITransport(app=app)

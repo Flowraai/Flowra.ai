@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { AppShell } from "../components/AppShell";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { PrescriptionIntegrationCard } from "../components/PrescriptionIntegrationCard";
@@ -22,6 +22,11 @@ export function Settings() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [specialties, setSpecialties] = useState<{ key: string; label: string }[]>([]);
+
+  useEffect(() => {
+    auth.careSpecialties().then(setSpecialties).catch(() => setSpecialties([]));
+  }, []);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -62,7 +67,19 @@ export function Settings() {
           <div className="set-row">
             <label>
               Especialidade
-              <input value={specialty} onChange={(e) => setSpecialty(e.target.value)} placeholder="Psiquiatria" />
+              {specialties.length > 0 ? (
+                <select value={specialty} onChange={(e) => setSpecialty(e.target.value)}>
+                  {/* mantém o valor atual mesmo se não for um pacote conhecido */}
+                  {!specialties.some((s) => s.key === specialty) && specialty ? (
+                    <option value={specialty}>{specialty}</option>
+                  ) : null}
+                  {specialties.map((s) => (
+                    <option key={s.key} value={s.key}>{s.label}</option>
+                  ))}
+                </select>
+              ) : (
+                <input value={specialty} onChange={(e) => setSpecialty(e.target.value)} placeholder="Psiquiatria" />
+              )}
             </label>
             <label>
               Registro (CRM)

@@ -87,7 +87,7 @@ async def create_patient(
     health_plan = await _validate_health_plan(session, doctor, payload.health_plan_id)
 
     # Usa a pesquisa configurada pelo médico (cria a cópia editável na 1ª vez).
-    protocol = await get_or_create_tenant_protocol(session, doctor.tenant_id)
+    protocol = await get_or_create_tenant_protocol(session, doctor.tenant_id, doctor.specialty)
     token = generate_patient_token()
 
     patient = Patient(

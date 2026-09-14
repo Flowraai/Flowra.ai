@@ -38,11 +38,27 @@ class DoctorRead(BaseModel):
     notification_phone: str | None = None
 
 
+class SpecialtyOption(BaseModel):
+    """Opção de especialidade (pacote clínico) para o seletor do médico."""
+
+    key: str
+    label: str
+
+
+class CareInfo(BaseModel):
+    """Resumo do pacote clínico da especialidade (o front liga/desliga módulos)."""
+
+    specialty: str
+    label: str
+    features: dict[str, bool] = Field(default_factory=dict)
+
+
 class DoctorProfile(DoctorRead):
     email: EmailStr
     tenant_name: str | None = None
     is_admin: bool = False
     message_prefs: MessagePrefs = Field(default_factory=MessagePrefs)
+    care: CareInfo | None = None
 
 
 class DoctorUpdate(BaseModel):

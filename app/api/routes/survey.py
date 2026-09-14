@@ -54,7 +54,7 @@ async def _questions(session: AsyncSession, protocol_id: uuid.UUID) -> list[Prot
 
 
 async def _survey(session: AsyncSession, doctor: Doctor) -> Survey:
-    protocol = await get_or_create_tenant_protocol(session, doctor.tenant_id)
+    protocol = await get_or_create_tenant_protocol(session, doctor.tenant_id, doctor.specialty)
     questions = await _questions(session, protocol.id)
     return Survey(id=protocol.id, name=protocol.name, questions=[_q_out(q) for q in questions])
 
@@ -62,7 +62,7 @@ async def _survey(session: AsyncSession, doctor: Doctor) -> Survey:
 async def _owned_question(
     session: AsyncSession, doctor: Doctor, question_id: uuid.UUID
 ) -> ProtocolQuestion:
-    protocol = await get_or_create_tenant_protocol(session, doctor.tenant_id)
+    protocol = await get_or_create_tenant_protocol(session, doctor.tenant_id, doctor.specialty)
     q = await session.get(ProtocolQuestion, question_id)
     if q is None or q.protocol_id != protocol.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pergunta não encontrada.")
@@ -82,7 +82,7 @@ async def add_question(
     doctor: Doctor = Depends(get_current_doctor),
     session: AsyncSession = Depends(get_db),
 ) -> Survey:
-    protocol = await get_or_create_tenant_protocol(session, doctor.tenant_id)
+    protocol = await get_or_create_tenant_protocol(session, doctor.tenant_id, doctor.specialty)
     options = dict(payload.options or {})
     if payload.type is QuestionType.SCALE:
         options.setdefault("min", 0)
@@ -163,7 +163,7 @@ async def reorder(
     doctor: Doctor = Depends(get_current_doctor),
     session: AsyncSession = Depends(get_db),
 ) -> Survey:
-    protocol = await get_or_create_tenant_protocol(session, doctor.tenant_id)
+    protocol = await get_or_create_tenant_protocol(session, doctor.tenant_id, doctor.specialty)
     by_id = {q.id: q for q in await _questions(session, protocol.id)}
     pos = 1
     for qid in payload.order:

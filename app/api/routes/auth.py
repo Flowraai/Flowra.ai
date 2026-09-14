@@ -26,7 +26,14 @@ from app.schemas.auth import (
     ResetPasswordRequest,
     TokenPair,
 )
-from app.schemas.doctor import DoctorProfile, DoctorUpdate, MessagePrefs
+from app.clinical.packs import CLINICAL_PACKS, get_pack
+from app.schemas.doctor import (
+    CareInfo,
+    DoctorProfile,
+    DoctorUpdate,
+    MessagePrefs,
+    SpecialtyOption,
+)
 from app.services import auth_service
 from app.services.notifications import send_plain
 
@@ -209,6 +216,7 @@ async def update_me(
 async def _profile_response(session: AsyncSession, doctor: Doctor) -> DoctorProfile:
     user = await session.get(User, doctor.user_id)
     tenant = await session.get(Tenant, doctor.tenant_id)
+    pack = get_pack(doctor.specialty)
     return DoctorProfile(
         id=doctor.id,
         tenant_id=doctor.tenant_id,
@@ -222,4 +230,11 @@ async def _profile_response(session: AsyncSession, doctor: Doctor) -> DoctorProf
         message_prefs=MessagePrefs(**(doctor.message_prefs or {})),
         email=user.email if user else "",
         is_admin=settings.is_admin_email(user.email) if user else False,
+        care=CareInfo(specialty=pack.specialty, label=pack.label, features=dict(pack.features)),
     )
+
+
+@router.get("/care/specialties", response_model=list[SpecialtyOption])
+async def care_specialties(_: Doctor = Depends(get_current_doctor)) -> list[SpecialtyOption]:
+    """Especialidades disponíveis (pacotes clínicos) para o médico escolher."""
+    return [SpecialtyOption(key=p.specialty, label=p.label) for p in CLINICAL_PACKS.values()]

@@ -32,6 +32,18 @@ export interface DoctorProfile {
   tenant_name: string | null;
   is_admin: boolean;
   message_prefs: MessagePrefs;
+  care?: CareInfo | null;
+}
+
+export interface CareInfo {
+  specialty: string;
+  label: string;
+  features: Record<string, boolean>;
+}
+
+export interface SpecialtyOption {
+  key: string;
+  label: string;
 }
 
 export interface DoctorUpdateInput {

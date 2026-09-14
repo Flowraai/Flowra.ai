@@ -26,7 +26,10 @@ from app.risk.rules import (
     YesRule,
 )
 
-__all__ = ["RiskThresholds", "RiskAssessment", "PsychiatricRiskEngine", "psychiatry_rules"]
+__all__ = [
+    "RiskThresholds", "RiskAssessment", "PsychiatricRiskEngine",
+    "psychiatry_rules", "psychology_rules",
+]
 
 # Mapa código -> categoria (para reportar risco por categoria no check-in).
 _CODE_CATEGORY = {q.code: q.category for q in P.PSYCHIATRY_QUESTIONS}
@@ -75,6 +78,14 @@ def psychiatry_rules(t: RiskThresholds) -> list[Rule]:
         YesRule(P.Q_CRISIS, RiskLevel.RED, "episódio de crise relatado"),
         YesRule(P.Q_SIDE_EFFECTS, RiskLevel.YELLOW, "efeito colateral relatado"),
     ]
+
+
+def psychology_rules(t: RiskThresholds) -> list[Rule]:
+    """Regras de psicologia: iguais às de psiquiatria, sem medicação/efeitos
+    colaterais (o psicólogo não prescreve). Humor, ansiedade, sono, crise e
+    autoagressão continuam valendo."""
+    drop = {P.Q_MEDICATION, P.Q_SIDE_EFFECTS}
+    return [r for r in psychiatry_rules(t) if getattr(r, "code", None) not in drop]
 
 
 class PsychiatricRiskEngine(RuleRiskEngine):

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
 import { AppShell } from "../components/AppShell";
 import { RiskBadge } from "../components/RiskBadge";
 import { ThemeToggle } from "../components/ThemeToggle";
@@ -44,6 +45,9 @@ function sleepLabel(ci: CheckIn): string {
 export function PatientDetail() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
+  const { doctor } = useAuth();
+  // Especialidade sem medicação (ex.: psicologia) esconde os cartões de medicação.
+  const medOn = doctor?.care?.features?.medicacao !== false;
   const [reloadKey, setReloadKey] = useState(0);
   const [medReloadKey, setMedReloadKey] = useState(0);
   const [notesReloadKey, setNotesReloadKey] = useState(0);
@@ -226,17 +230,19 @@ export function PatientDetail() {
 
             <div className="col">
               <ChatPanel patientId={id} />
-              <MedicationCard key={medReloadKey} patientId={id} />
+              {medOn ? <MedicationCard key={medReloadKey} patientId={id} /> : null}
               <WearableCard patientId={id} />
               <AppointmentsCard
                 patientId={id}
                 onNoteAdded={() => setNotesReloadKey((k) => k + 1)}
               />
               <FinanceCard patientId={id} />
-              <PrescriptionsCard
-                patientId={id}
-                onMedicationAdded={() => setMedReloadKey((k) => k + 1)}
-              />
+              {medOn ? (
+                <PrescriptionsCard
+                  patientId={id}
+                  onMedicationAdded={() => setMedReloadKey((k) => k + 1)}
+                />
+              ) : null}
             </div>
           </div>
         </>

@@ -46,18 +46,27 @@ def new_custom_code() -> str:
     return f"custom_{uuid.uuid4().hex[:8]}"
 
 
-async def _global_default(session: AsyncSession) -> Protocol | None:
+async def _global_default(session: AsyncSession, specialty: str | None = None) -> Protocol | None:
+    from app.clinical.packs import get_pack  # local: evita ciclo de import
+
+    pack = get_pack(specialty)
     result = await session.execute(
         select(Protocol)
         .where(
             Protocol.tenant_id.is_(None),
-            Protocol.specialty == P.PSYCHIATRY_SPECIALTY,
+            Protocol.specialty == pack.specialty,
             Protocol.is_active.is_(True),
         )
         .order_by(Protocol.created_at.desc())
         .options(selectinload(Protocol.questions))
     )
-    return result.scalars().first()
+    found = result.scalars().first()
+    if found is not None:
+        return found
+    # Fallback: se o template da especialidade não foi semeado, cai no de psiquiatria.
+    if pack.specialty != P.PSYCHIATRY_SPECIALTY:
+        return await _global_default(session, P.PSYCHIATRY_SPECIALTY)
+    return None
 
 
 async def get_tenant_protocol(session: AsyncSession, tenant_id: uuid.UUID) -> Protocol | None:
@@ -71,15 +80,15 @@ async def get_tenant_protocol(session: AsyncSession, tenant_id: uuid.UUID) -> Pr
 
 
 async def get_or_create_tenant_protocol(
-    session: AsyncSession, tenant_id: uuid.UUID
+    session: AsyncSession, tenant_id: uuid.UUID, specialty: str | None = None
 ) -> Protocol:
-    """Protocolo do tenant; cria (clonando o template) na primeira vez e
-    repontua os pacientes daquele tenant para a cópia."""
+    """Protocolo do tenant; cria (clonando o template da especialidade) na primeira
+    vez e repontua os pacientes daquele tenant para a cópia."""
     existing = await get_tenant_protocol(session, tenant_id)
     if existing is not None:
         return existing
 
-    template = await _global_default(session)
+    template = await _global_default(session, specialty)
     if template is None:
         raise RuntimeError("Template de protocolo global não encontrado (rode o seed).")
 

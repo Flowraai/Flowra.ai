@@ -26,6 +26,7 @@ import type {
   ScaleTarget,
   DoctorProfile,
   DoctorUpdateInput,
+  SpecialtyOption,
   Exam,
   ExamInput,
   ExamStatus,
@@ -76,6 +77,7 @@ export const auth = {
   me: () => api<DoctorProfile>("/auth/me"),
   updateMe: (patch: DoctorUpdateInput) =>
     api<DoctorProfile>("/auth/me", { method: "PATCH", body: patch }),
+  careSpecialties: () => api<SpecialtyOption[]>("/auth/care/specialties"),
 };
 
 export const patients = {
