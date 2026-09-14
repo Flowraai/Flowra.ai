@@ -2,11 +2,13 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
 import { AttentionPanel } from "../components/AttentionPanel";
+import { OnboardingCard } from "../components/OnboardingCard";
 import { RiskBadge } from "../components/RiskBadge";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { NewPatientModal } from "../components/NewPatientModal";
 import { IconPlus, IconSearch } from "../components/icons";
 import { useAsync } from "../lib/useAsync";
+import { useAuth } from "../auth/AuthContext";
 import { patients } from "../api/endpoints";
 import { avatarGradient, initials, relativeDate, RISK_ORDER } from "../lib/format";
 import type { PatientPanelItem, RiskLevel } from "../api/types";
@@ -35,6 +37,23 @@ export function Dashboard() {
     }
   });
   const [showNew, setShowNew] = useState(false);
+  const { doctor } = useAuth();
+  const onbKey = doctor ? `flowra-onboarding-done-${doctor.id}` : "flowra-onboarding-done";
+  const [onbDismissed, setOnbDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(onbKey) === "1";
+    } catch {
+      return false;
+    }
+  });
+  function dismissOnboarding() {
+    setOnbDismissed(true);
+    try {
+      localStorage.setItem(onbKey, "1");
+    } catch {
+      /* ignore */
+    }
+  }
 
   function chooseView(v: "table" | "cards") {
     setView(v);
@@ -91,6 +110,15 @@ export function Dashboard() {
         </>
       }
     >
+      {doctor && !onbDismissed && !loading && list.length === 0 ? (
+        <OnboardingCard
+          doctor={doctor}
+          patientCount={list.length}
+          onAddPatient={() => setShowNew(true)}
+          onDismiss={dismissOnboarding}
+        />
+      ) : null}
+
       <AttentionPanel reloadKey={reloadKey} />
 
       <div className="kpis">
