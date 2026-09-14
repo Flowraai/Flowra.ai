@@ -17,11 +17,13 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from app.clinical.scales import SCALES, Scale
+from app.models.enums import RiskLevel
+from app.protocol import odontology as O
 from app.protocol import psychiatry as P
-from app.protocol.psychiatry import QuestionDef
+from app.protocol.base import QuestionDef
 from app.risk.engine import RiskThresholds, psychiatry_rules, psychology_rules
-from app.risk.free_text import FreeTextAnalyzer
-from app.risk.rules import Rule, RuleRiskEngine
+from app.risk.free_text import FreeTextAnalyzer, NullFreeTextAnalyzer
+from app.risk.rules import ChoiceRule, NumericRule, Rule, RuleRiskEngine, YesRule
 
 
 @dataclass(frozen=True)
@@ -41,15 +43,21 @@ class ClinicalPack:
     # Flags de produto que ligam/desligam módulos por especialidade.
     features: dict = field(default_factory=dict)
     safety_message: str | None = None
+    # Se True, o texto/áudio livre passa pelo analisador de risco de saúde mental
+    # (palavras de crise/CVV). Fora de saúde mental, desligar evita falso positivo.
+    analyze_free_text: bool = True
 
     def category_map(self) -> dict[str, str]:
         return {q.code: q.category for q in self.questions}
 
     def build_engine(self, free_text_analyzer: FreeTextAnalyzer | None = None) -> RuleRiskEngine:
+        analyzer = free_text_analyzer
+        if not self.analyze_free_text:
+            analyzer = NullFreeTextAnalyzer()  # ignora o analisador de saúde mental
         return RuleRiskEngine(
             rules=self.rules_factory(self.thresholds),
             category_map=self.category_map(),
-            free_text_analyzer=free_text_analyzer,
+            free_text_analyzer=analyzer,
             free_text_category=self.free_text_category,
         )
 
@@ -113,10 +121,56 @@ PSYCHOLOGY_PACK = ClinicalPack(
     safety_message=_SAFETY_MENTAL_HEALTH,
 )
 
+# --- Odontologia: vertical fora de saúde mental (pós-procedimento) ---
+_SAFETY_DENTAL = (
+    "Em caso de sangramento intenso que não para, febre alta ou dor que piora, "
+    "entre em contato com seu dentista ou procure um pronto-atendimento."
+)
+
+
+def odontology_rules(_t: RiskThresholds) -> list[Rule]:
+    """Regras de risco odontológico (dor EVA, sangramento, febre, inchaço,
+    adesão). Sem itens de saúde mental."""
+    return [
+        NumericRule(O.Q_PAIN, [
+            (">=", 8, RiskLevel.RED, "dor intensa ({v:g}/10)"),
+            (">=", 5, RiskLevel.ORANGE, "dor moderada ({v:g}/10)"),
+            (">=", 3, RiskLevel.YELLOW, "dor leve ({v:g}/10)"),
+        ]),
+        YesRule(O.Q_BLEEDING, RiskLevel.RED, "sangramento relatado"),
+        YesRule(O.Q_FEVER, RiskLevel.ORANGE, "febre relatada (possível infecção)"),
+        ChoiceRule(O.Q_SWELLING, {
+            O.SW_INTENSE: (RiskLevel.ORANGE, "inchaço intenso"),
+            O.SW_MODERATE: (RiskLevel.YELLOW, "inchaço moderado"),
+        }),
+        ChoiceRule(O.Q_MEDICATION, {
+            O.NO: (RiskLevel.YELLOW, "não tomou a medicação prescrita"),
+        }),
+    ]
+
+
+ODONTOLOGY_PACK = ClinicalPack(
+    key=O.ODONTOLOGY_SPECIALTY,
+    label="Odontologia",
+    specialty=O.ODONTOLOGY_SPECIALTY,
+    protocol_name=O.ODONTOLOGY_PROTOCOL_NAME,
+    protocol_version=O.ODONTOLOGY_PROTOCOL_VERSION,
+    protocol_description="Acompanhamento odontológico pós-procedimento.",
+    questions=tuple(O.ODONTOLOGY_QUESTIONS),
+    scale_codes=(),  # sem escalas de saúde mental; a dor já é item do check-in
+    rules_factory=odontology_rules,
+    free_text_category=O.CAT_LIVRE,
+    protected_codes=frozenset({O.Q_PAIN, O.Q_BLEEDING, O.Q_FEVER}),
+    features={"medicacao": True, "wearables": False},
+    safety_message=_SAFETY_DENTAL,
+    analyze_free_text=False,  # palavras de crise/CVV não se aplicam à odontologia
+)
+
 # Registry por especialidade. Novas especialidades entram aqui.
 CLINICAL_PACKS: dict[str, ClinicalPack] = {
     PSYCHIATRY_PACK.specialty: PSYCHIATRY_PACK,
     PSYCHOLOGY_PACK.specialty: PSYCHOLOGY_PACK,
+    ODONTOLOGY_PACK.specialty: ODONTOLOGY_PACK,
 }
 
 DEFAULT_PACK = PSYCHIATRY_PACK

@@ -9,9 +9,10 @@ partida e DEVEM ser revisados com um médico consultor antes do piloto.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from app.models.enums import QuestionType
+from app.protocol.base import QuestionDef
+
+__all__ = ["QuestionDef"]  # re-export para compat (app.protocol.psychiatry.QuestionDef)
 
 # --- Categorias (seção 5) ---
 CAT_HUMOR = "Humor"
@@ -39,17 +40,6 @@ YES = "sim"
 NO = "nao"
 PARTIAL = "parcialmente"
 SOSO = "mais_ou_menos"
-
-
-@dataclass(frozen=True)
-class QuestionDef:
-    code: str
-    category: str
-    text: str
-    type: QuestionType
-    position: int
-    required: bool = True
-    options: dict | None = None
 
 
 PSYCHIATRY_PROTOCOL_NAME = "Protocolo Psiquiátrico — Acompanhamento diário"

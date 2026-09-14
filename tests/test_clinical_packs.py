@@ -18,7 +18,7 @@ def test_resolution_and_fallback():
     assert get_pack("psiquiatria") is CLINICAL_PACKS["psiquiatria"]
     assert get_pack("PSIQUIATRIA").key == "psiquiatria"  # case-insensitive
     assert get_pack(None) is DEFAULT_PACK               # sem especialidade → default
-    assert get_pack("odontologia") is DEFAULT_PACK       # desconhecida → default (psiquiatria)
+    assert get_pack("nutricao") is DEFAULT_PACK          # desconhecida → default (psiquiatria)
 
 
 def test_psychiatry_pack_scales_and_features():

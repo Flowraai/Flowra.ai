@@ -29,6 +29,14 @@ class FreeTextAnalyzer(Protocol):
     def analyze(self, text: str | None) -> FreeTextResult: ...
 
 
+class NullFreeTextAnalyzer:
+    """Não analisa o texto livre (para especialidades fora de saúde mental, onde
+    as palavras-chave de crise não se aplicam). Sempre retorna verde."""
+
+    def analyze(self, text: str | None) -> FreeTextResult:  # noqa: ARG002
+        return FreeTextResult()
+
+
 def _normalize(text: str) -> str:
     """Minúsculas e sem acentos, para casar palavras-chave de forma robusta."""
     text = text.lower()

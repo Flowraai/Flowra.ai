@@ -25,8 +25,8 @@ from app.schemas.survey import (
     SurveyQuestionUpdate,
     SurveyReorder,
 )
+from app.clinical.packs import get_pack
 from app.services.tenant_protocol import (
-    PROTECTED_CODES,
     default_scale_emojis,
     get_or_create_tenant_protocol,
     new_custom_code,
@@ -35,11 +35,11 @@ from app.services.tenant_protocol import (
 router = APIRouter(prefix="/survey", tags=["survey"])
 
 
-def _q_out(q: ProtocolQuestion) -> SurveyQuestion:
+def _q_out(q: ProtocolQuestion, protected: frozenset[str]) -> SurveyQuestion:
     return SurveyQuestion(
         id=q.id, code=q.code, category=q.category, text=q.text, type=q.type,
         position=q.position, required=q.required, options=q.options,
-        protected=q.code in PROTECTED_CODES,
+        protected=q.code in protected,
     )
 
 
@@ -56,7 +56,8 @@ async def _questions(session: AsyncSession, protocol_id: uuid.UUID) -> list[Prot
 async def _survey(session: AsyncSession, doctor: Doctor) -> Survey:
     protocol = await get_or_create_tenant_protocol(session, doctor.tenant_id, doctor.specialty)
     questions = await _questions(session, protocol.id)
-    return Survey(id=protocol.id, name=protocol.name, questions=[_q_out(q) for q in questions])
+    protected = get_pack(doctor.specialty).protected_codes
+    return Survey(id=protocol.id, name=protocol.name, questions=[_q_out(q, protected) for q in questions])
 
 
 async def _owned_question(
@@ -147,7 +148,7 @@ async def delete_question(
     session: AsyncSession = Depends(get_db),
 ) -> Survey:
     q = await _owned_question(session, doctor, question_id)
-    if q.code in PROTECTED_CODES:
+    if q.code in get_pack(doctor.specialty).protected_codes:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Pergunta de segurança — pode ser editada, mas não removida.",
