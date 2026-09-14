@@ -1,20 +1,32 @@
 """Motor de risco psiquiátrico (índice 🟢🟡🟠🔴).
 
-Regras determinísticas por categoria + análise do texto livre, combinadas de
-forma CONSERVADORA: o risco final é sempre o MAIOR entre todas as contribuições
+Conjunto de regras da especialidade PSIQUIATRIA, montado sobre o `RuleRiskEngine`
+genérico (`app/risk/rules.py`). As regras são declarativas e combinadas de forma
+CONSERVADORA: o risco final é sempre o MAIOR entre as contribuições
 (seção 6: preferir falso positivo a falso negativo).
 
-Os limiares ficam em `RiskThresholds` para serem ajustados junto a um médico
-consultor sem tocar na lógica. A função é pura (sem I/O), portanto testável.
+Os limiares ficam em `RiskThresholds` para ajuste junto a um médico consultor sem
+tocar na lógica. `PsychiatricRiskEngine` preserva a assinatura anterior; a lógica
+agora vive nas regras — o que abre caminho para pacotes por especialidade.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from app.models.enums import RiskLevel
 from app.protocol import psychiatry as P
-from app.risk.free_text import FreeTextAnalyzer, KeywordFreeTextAnalyzer
+from app.risk.free_text import FreeTextAnalyzer
+from app.risk.rules import (
+    ChoiceRule,
+    NumericRule,
+    RiskAssessment,
+    Rule,
+    RuleRiskEngine,
+    YesRule,
+)
+
+__all__ = ["RiskThresholds", "RiskAssessment", "PsychiatricRiskEngine", "psychiatry_rules"]
 
 # Mapa código -> categoria (para reportar risco por categoria no check-in).
 _CODE_CATEGORY = {q.code: q.category for q in P.PSYCHIATRY_QUESTIONS}
@@ -35,155 +47,47 @@ class RiskThresholds:
     sleep_hours_yellow_below: int = 5
 
 
-@dataclass
-class RiskAssessment:
-    level: RiskLevel = RiskLevel.GREEN
-    reasons: list[str] = field(default_factory=list)
-    category_risks: dict[str, str] = field(default_factory=dict)
-    free_text_signals: list[str] = field(default_factory=list)
+def psychiatry_rules(t: RiskThresholds) -> list[Rule]:
+    """Regras de risco de psiquiatria (mesma ordem e limiares de antes)."""
+    return [
+        # Ideação/autoagressão (CL-1): item obrigatório — "sim" força VERMELHO.
+        YesRule(P.Q_SELF_HARM, RiskLevel.RED,
+                "pensamentos de autoagressão/ideação suicida relatados"),
+        NumericRule(P.Q_MOOD, [
+            ("<=", t.mood_red_at_or_below, RiskLevel.RED, "humor muito baixo ({v:g}/10)"),
+            ("<=", t.mood_orange_at_or_below, RiskLevel.ORANGE, "humor baixo ({v:g}/10)"),
+            ("<=", t.mood_yellow_at_or_below, RiskLevel.YELLOW, "humor rebaixado ({v:g}/10)"),
+        ]),
+        NumericRule(P.Q_ANXIETY, [
+            (">=", t.anxiety_red_at_or_above, RiskLevel.RED, "ansiedade máxima ({v:g}/10)"),
+            (">=", t.anxiety_orange_at_or_above, RiskLevel.ORANGE, "ansiedade muito alta ({v:g}/10)"),
+            (">=", t.anxiety_yellow_at_or_above, RiskLevel.YELLOW, "ansiedade elevada ({v:g}/10)"),
+        ]),
+        ChoiceRule(P.Q_SLEPT_WELL, {P.NO: (RiskLevel.YELLOW, "relato de sono ruim")}),
+        NumericRule(P.Q_SLEEP_HOURS, [
+            ("<", t.sleep_hours_orange_below, RiskLevel.ORANGE, "sono muito reduzido ({v:g}h)"),
+            ("<", t.sleep_hours_yellow_below, RiskLevel.YELLOW, "poucas horas de sono ({v:g}h)"),
+        ]),
+        ChoiceRule(P.Q_MEDICATION, {
+            P.NO: (RiskLevel.ORANGE, "não tomou a medicação prescrita"),
+            P.PARTIAL: (RiskLevel.YELLOW, "tomou a medicação parcialmente"),
+        }),
+        YesRule(P.Q_CRISIS, RiskLevel.RED, "episódio de crise relatado"),
+        YesRule(P.Q_SIDE_EFFECTS, RiskLevel.YELLOW, "efeito colateral relatado"),
+    ]
 
 
-def _is_yes(value: object) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, (int, float)):
-        return value == 1
-    if isinstance(value, str):
-        return value.strip().lower() in {P.YES, "yes", "true", "1"}
-    return False
-
-
-def _as_number(value: object) -> float | None:
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, str):
-        try:
-            return float(value.strip().replace(",", "."))
-        except ValueError:
-            return None
-    return None
-
-
-def _as_choice(value: object) -> str | None:
-    if isinstance(value, str):
-        return value.strip().lower()
-    if isinstance(value, bool):
-        return P.YES if value else P.NO
-    return None
-
-
-class PsychiatricRiskEngine:
-    """Avalia o risco de um check-in psiquiátrico."""
+class PsychiatricRiskEngine(RuleRiskEngine):
+    """Avalia o risco de um check-in psiquiátrico (mesma API de antes)."""
 
     def __init__(
         self,
         thresholds: RiskThresholds | None = None,
         free_text_analyzer: FreeTextAnalyzer | None = None,
     ) -> None:
-        self.t = thresholds or RiskThresholds()
-        self.analyzer = free_text_analyzer or KeywordFreeTextAnalyzer()
-
-    def assess(
-        self,
-        structured_responses: dict,
-        free_text: str | None = None,
-        *,
-        audio_unanalyzed: bool = False,
-    ) -> RiskAssessment:
-        assessment = RiskAssessment()
-        r = structured_responses or {}
-
-        def contribute(code: str, level: RiskLevel, reason: str) -> None:
-            if level is RiskLevel.GREEN:
-                return
-            category = _CODE_CATEGORY.get(code, code)
-            assessment.level = assessment.level.escalate(level)
-            assessment.reasons.append(reason)
-            current = assessment.category_risks.get(category)
-            if current is None or RiskLevel(current).order < level.order:
-                assessment.category_risks[category] = level.value
-
-        # --- Ideação/autoagressão (CL-1) — sinal crítico: VERMELHO imediato ---
-        # Item estruturado e OBRIGATÓRIO no protocolo. NÃO depende do texto livre
-        # (que é opcional): um "sim" aqui sempre eleva o risco ao máximo, mesmo que
-        # todo o resto do check-in esteja neutro e o texto livre venha vazio.
-        if _is_yes(r.get(P.Q_SELF_HARM)):
-            contribute(
-                P.Q_SELF_HARM, RiskLevel.RED,
-                "pensamentos de autoagressão/ideação suicida relatados",
-            )
-
-        # --- Humor ---
-        mood = _as_number(r.get(P.Q_MOOD))
-        if mood is not None:
-            if mood <= self.t.mood_red_at_or_below:
-                contribute(P.Q_MOOD, RiskLevel.RED, f"humor muito baixo ({mood:g}/10)")
-            elif mood <= self.t.mood_orange_at_or_below:
-                contribute(P.Q_MOOD, RiskLevel.ORANGE, f"humor baixo ({mood:g}/10)")
-            elif mood <= self.t.mood_yellow_at_or_below:
-                contribute(P.Q_MOOD, RiskLevel.YELLOW, f"humor rebaixado ({mood:g}/10)")
-
-        # --- Ansiedade ---
-        anxiety = _as_number(r.get(P.Q_ANXIETY))
-        if anxiety is not None:
-            if anxiety >= self.t.anxiety_red_at_or_above:
-                contribute(P.Q_ANXIETY, RiskLevel.RED, f"ansiedade máxima ({anxiety:g}/10)")
-            elif anxiety >= self.t.anxiety_orange_at_or_above:
-                contribute(P.Q_ANXIETY, RiskLevel.ORANGE, f"ansiedade muito alta ({anxiety:g}/10)")
-            elif anxiety >= self.t.anxiety_yellow_at_or_above:
-                contribute(P.Q_ANXIETY, RiskLevel.YELLOW, f"ansiedade elevada ({anxiety:g}/10)")
-
-        # --- Sono ---
-        slept_well = _as_choice(r.get(P.Q_SLEPT_WELL))
-        if slept_well == P.NO:
-            contribute(P.Q_SLEPT_WELL, RiskLevel.YELLOW, "relato de sono ruim")
-        hours = _as_number(r.get(P.Q_SLEEP_HOURS))
-        if hours is not None:
-            if hours < self.t.sleep_hours_orange_below:
-                contribute(P.Q_SLEEP_HOURS, RiskLevel.ORANGE, f"sono muito reduzido ({hours:g}h)")
-            elif hours < self.t.sleep_hours_yellow_below:
-                contribute(P.Q_SLEEP_HOURS, RiskLevel.YELLOW, f"poucas horas de sono ({hours:g}h)")
-
-        # --- Medicação (adesão) ---
-        medication = _as_choice(r.get(P.Q_MEDICATION))
-        if medication == P.NO:
-            contribute(P.Q_MEDICATION, RiskLevel.ORANGE, "não tomou a medicação prescrita")
-        elif medication == P.PARTIAL:
-            contribute(P.Q_MEDICATION, RiskLevel.YELLOW, "tomou a medicação parcialmente")
-
-        # --- Crises ---
-        if _is_yes(r.get(P.Q_CRISIS)):
-            contribute(P.Q_CRISIS, RiskLevel.RED, "episódio de crise relatado")
-
-        # --- Efeitos colaterais ---
-        if _is_yes(r.get(P.Q_SIDE_EFFECTS)):
-            contribute(P.Q_SIDE_EFFECTS, RiskLevel.YELLOW, "efeito colateral relatado")
-
-        # --- Texto/áudio livre (Módulo de IA) ---
-        free_result = self.analyzer.analyze(free_text)
-        if free_result.level is not RiskLevel.GREEN:
-            assessment.level = assessment.level.escalate(free_result.level)
-            assessment.reasons.extend(free_result.signals)
-            assessment.free_text_signals = free_result.signals
-            category = P.CAT_LIVRE
-            current = assessment.category_risks.get(category)
-            if current is None or RiskLevel(current).order < free_result.level.order:
-                assessment.category_risks[category] = free_result.level.value
-
-        # --- Áudio não analisado (CL-2) ---
-        # Se o check-in traz áudio mas ele NÃO foi transcrito/analisado (transcrição
-        # desligada por padrão, ou falha), não podemos concluir "verde": um áudio
-        # pode conter justamente o sinal de risco. Escalamos para no mínimo AMARELO
-        # e sinalizamos revisão manual (conservador: melhor falso positivo).
-        if audio_unanalyzed:
-            reason = "áudio não analisado — revisar manualmente"
-            assessment.level = assessment.level.escalate(RiskLevel.YELLOW)
-            assessment.reasons.append(reason)
-            category = P.CAT_LIVRE
-            current = assessment.category_risks.get(category)
-            if current is None or RiskLevel(current).order < RiskLevel.YELLOW.order:
-                assessment.category_risks[category] = RiskLevel.YELLOW.value
-
-        return assessment
+        super().__init__(
+            rules=psychiatry_rules(thresholds or RiskThresholds()),
+            category_map=_CODE_CATEGORY,
+            free_text_analyzer=free_text_analyzer,
+            free_text_category=P.CAT_LIVRE,
+        )
