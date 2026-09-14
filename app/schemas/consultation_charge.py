@@ -74,6 +74,15 @@ class ChargeSummary(BaseModel):
     monthly: list[ChargeMonth]
 
 
+class PixCode(BaseModel):
+    """Payload PIX "copia e cola" (BR Code) de uma cobrança particular."""
+
+    payload: str
+    amount_cents: int
+    receiver: str
+    city: str
+
+
 class BatchCreate(BaseModel):
     health_plan_id: uuid.UUID
     reference: str | None = Field(default=None, max_length=40)

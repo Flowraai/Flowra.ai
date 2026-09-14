@@ -227,6 +227,8 @@ async def _profile_response(session: AsyncSession, doctor: Doctor) -> DoctorProf
         council_id=doctor.council_id,
         notification_email=doctor.notification_email,
         notification_phone=doctor.notification_phone,
+        pix_key=doctor.pix_key,
+        pix_city=doctor.pix_city,
         message_prefs=MessagePrefs(**(doctor.message_prefs or {})),
         email=user.email if user else "",
         is_admin=settings.is_admin_email(user.email) if user else False,

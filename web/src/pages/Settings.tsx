@@ -19,6 +19,8 @@ export function Settings() {
   const [councilId, setCouncilId] = useState(doctor?.council_id ?? "");
   const [notifEmail, setNotifEmail] = useState(doctor?.notification_email ?? "");
   const [notifPhone, setNotifPhone] = useState(doctor?.notification_phone ?? "");
+  const [pixKey, setPixKey] = useState(doctor?.pix_key ?? "");
+  const [pixCity, setPixCity] = useState(doctor?.pix_city ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -41,6 +43,8 @@ export function Settings() {
         council_id: councilId.trim() || null,
         notification_email: notifEmail.trim() || null,
         notification_phone: notifPhone.trim() || null,
+        pix_key: pixKey.trim() || null,
+        pix_city: pixCity.trim() || null,
       });
       await refresh();
       setSaved(true);
@@ -108,6 +112,26 @@ export function Settings() {
             <label>
               Telefone (WhatsApp)
               <input value={notifPhone} onChange={(e) => setNotifPhone(e.target.value)} placeholder="+55…" />
+            </label>
+          </div>
+
+          <div className="set-section">Cobrança PIX</div>
+          <p className="muted set-hint">
+            Usados para gerar o PIX copia-e-cola das cobranças particulares. A chave fica
+            cifrada. A cidade é exigida pelo padrão do BR Code.
+          </p>
+          <div className="set-row">
+            <label>
+              Chave PIX
+              <input
+                value={pixKey}
+                onChange={(e) => setPixKey(e.target.value)}
+                placeholder="CPF, telefone, e-mail ou chave aleatória"
+              />
+            </label>
+            <label>
+              Cidade
+              <input value={pixCity} onChange={(e) => setPixCity(e.target.value)} placeholder="São Paulo" />
             </label>
           </div>
 

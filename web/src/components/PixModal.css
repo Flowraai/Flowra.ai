@@ -1,0 +1,16 @@
+.pix-card { max-width: 460px; }
+.pix-sub { font-size: 13px; font-weight: 600; margin: 2px 0 12px; }
+.pix-code {
+  width: 100%; box-sizing: border-box; resize: none;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px; line-height: 1.5; letter-spacing: 0.01em;
+  color: var(--ink); background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+  word-break: break-all;
+}
+.pix-code:focus { outline: none; border-color: var(--accent); }
+.pix-hint { font-size: 12px; margin: 10px 0 4px; }
+
+/* Botão "Cobrar PIX" na lista do financeiro. */
+.mini.pix { background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+.mini.pix:hover { background: var(--accent); color: #fff; }

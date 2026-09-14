@@ -192,6 +192,68 @@ async def test_csv_export(client: httpx.AsyncClient):
     assert "Ana Lima" not in empty.text
 
 
+async def _set_pix(client, headers, key="ana@pix.com", city="São Paulo"):
+    return await client.patch("/api/v1/auth/me", headers=headers,
+                              json={"pix_key": key, "pix_city": city})
+
+
+async def _particular_charge(client, headers, gross=15000) -> dict:
+    p = await _patient(client, headers)
+    a = await _appointment(client, headers, p["id"])
+    await _complete(client, headers, a["id"])
+    ch = (await client.get(f"/api/v1/patients/{p['id']}/charges", headers=headers)).json()[0]
+    await client.patch(f"/api/v1/charges/{ch['id']}", headers=headers, json={"gross_cents": gross})
+    return ch
+
+
+async def test_pix_copia_e_cola(client: httpx.AsyncClient):
+    headers = await _doctor(client)
+    await _set_pix(client, headers)
+    ch = await _particular_charge(client, headers, gross=15000)
+
+    r = await client.get(f"/api/v1/charges/{ch['id']}/pix", headers=headers)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["amount_cents"] == 15000
+    assert body["city"] == "São Paulo"
+    payload = body["payload"]
+    assert payload.startswith("000201")          # Payload Format Indicator
+    assert "br.gov.bcb.pix" in payload
+    assert "ana@pix.com" in payload
+    assert "5406150.00" in payload                # valor R$ 150,00
+    # CRC16 (CCITT-FALSE) fecha o payload: os 4 hex finais conferem.
+    from app.services.pix import crc16
+    assert crc16(payload[:-4]) == payload[-4:]
+
+
+async def test_pix_requires_config(client: httpx.AsyncClient):
+    headers = await _doctor(client)
+    ch = await _particular_charge(client, headers)  # sem PIX configurado
+    r = await client.get(f"/api/v1/charges/{ch['id']}/pix", headers=headers)
+    assert r.status_code == 400
+
+
+async def test_pix_rejects_convenio(client: httpx.AsyncClient):
+    headers = await _doctor(client)
+    await _set_pix(client, headers)
+    plan = await _plan(client, headers, default_consultation_cents=15000)
+    p = await _patient(client, headers, health_plan_id=plan["id"])
+    a = await _appointment(client, headers, p["id"])
+    await _complete(client, headers, a["id"])
+    ch = (await client.get(f"/api/v1/patients/{p['id']}/charges", headers=headers)).json()[0]
+    r = await client.get(f"/api/v1/charges/{ch['id']}/pix", headers=headers)
+    assert r.status_code == 400  # convênio é pago pelo plano, não pelo paciente
+
+
+async def test_pix_isolation(client: httpx.AsyncClient):
+    headers = await _doctor(client)
+    await _set_pix(client, headers)
+    ch = await _particular_charge(client, headers)
+    headers_b = await _doctor(client, email="dr.b@x.com")
+    r = await client.get(f"/api/v1/charges/{ch['id']}/pix", headers=headers_b)
+    assert r.status_code == 404
+
+
 async def test_manual_generate_and_isolation(client: httpx.AsyncClient):
     headers = await _doctor(client)
     patient = await _patient(client, headers)

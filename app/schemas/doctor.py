@@ -36,6 +36,8 @@ class DoctorRead(BaseModel):
     council_id: str | None = None
     notification_email: str | None = None
     notification_phone: str | None = None
+    pix_key: str | None = None
+    pix_city: str | None = None
 
 
 class SpecialtyOption(BaseModel):
@@ -68,4 +70,6 @@ class DoctorUpdate(BaseModel):
     council_id: str | None = Field(default=None, max_length=60)
     notification_email: EmailStr | None = None
     notification_phone: str | None = Field(default=None, max_length=30)
+    pix_key: str | None = Field(default=None, max_length=140)
+    pix_city: str | None = Field(default=None, max_length=60)
     message_prefs: MessagePrefs | None = None

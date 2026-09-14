@@ -28,6 +28,8 @@ export interface DoctorProfile {
   council_id: string | null;
   notification_email: string | null;
   notification_phone: string | null;
+  pix_key: string | null;
+  pix_city: string | null;
   email: string;
   tenant_name: string | null;
   is_admin: boolean;
@@ -53,6 +55,8 @@ export interface DoctorUpdateInput {
   council_id?: string | null;
   notification_email?: string | null;
   notification_phone?: string | null;
+  pix_key?: string | null;
+  pix_city?: string | null;
   message_prefs?: MessagePrefs;
 }
 
@@ -128,6 +132,13 @@ export interface ConsultationCharge {
   created_at: string;
   patient_name: string | null;
   health_plan_name: string | null;
+}
+
+export interface PixCode {
+  payload: string;
+  amount_cents: number;
+  receiver: string;
+  city: string;
 }
 
 export interface ChargeUpdateInput {

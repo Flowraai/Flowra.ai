@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { patients, charges as chargesApi } from "../api/endpoints";
 import { ApiError } from "../api/client";
-import type { ConsultationCharge, PaymentMethod } from "../api/types";
+import type { ConsultationCharge, PaymentMethod, PixCode } from "../api/types";
+import { PixModal } from "./PixModal";
 import "./ClinicalCard.css";
 import "./FinanceCard.css";
 
@@ -34,6 +35,8 @@ export function FinanceCard({ patientId }: { patientId: string }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [valueInput, setValueInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pix, setPix] = useState<PixCode | null>(null);
+  const [pixBusy, setPixBusy] = useState<string | null>(null);
 
   function load() {
     setError(null);
@@ -62,6 +65,18 @@ export function FinanceCard({ patientId }: { patientId: string }) {
     const cents = toCents(valueInput);
     if (cents == null) return;
     await patch(id, { gross_cents: cents });
+  }
+
+  async function openPix(id: string) {
+    setPixBusy(id);
+    setError(null);
+    try {
+      setPix(await chargesApi.pix(id));
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Não foi possível gerar o PIX.");
+    } finally {
+      setPixBusy(null);
+    }
   }
 
   const pending = (list ?? []).filter((c) => c.status === "pending");
@@ -141,6 +156,15 @@ export function FinanceCard({ patientId }: { patientId: string }) {
                       </button>
                       {c.status === "pending" ? (
                         <>
+                          {c.kind === "particular" ? (
+                            <button
+                              className="mini pix"
+                              disabled={pixBusy === c.id}
+                              onClick={() => openPix(c.id)}
+                            >
+                              {pixBusy === c.id ? "Gerando…" : "Cobrar PIX"}
+                            </button>
+                          ) : null}
                           {METHODS.map((m) => (
                             <button
                               key={m.v}
@@ -174,6 +198,7 @@ export function FinanceCard({ patientId }: { patientId: string }) {
           </>
         )}
       </div>
+      {pix ? <PixModal pix={pix} onClose={() => setPix(null)} /> : null}
     </div>
   );
 }

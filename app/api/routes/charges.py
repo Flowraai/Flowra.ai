@@ -28,8 +28,10 @@ from app.schemas.consultation_charge import (
     ChargeRead,
     ChargeSummary,
     ChargeUpdate,
+    PixCode,
 )
 from app.services.consultation_charge_service import compute_doctor_cents, generate_for_appointment
+from app.services.pix import build_pix_payload
 
 router = APIRouter(tags=["charges"])
 
@@ -300,6 +302,50 @@ async def update_charge(
         plan = await session.get(HealthPlan, charge.health_plan_id)
         plan_name = plan.name if plan else None
     return _read(charge, plan_name)
+
+
+@router.get("/charges/{charge_id}/pix", response_model=PixCode)
+async def charge_pix(
+    charge_id: uuid.UUID,
+    doctor: Doctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db),
+) -> PixCode:
+    """Gera o PIX copia-e-cola de uma cobrança particular.
+
+    Só faz sentido para cobrança do próprio paciente (particular): convênio é
+    pago pelo plano, não pelo paciente. Exige a chave PIX e a cidade do médico
+    configuradas em Ajustes.
+    """
+    charge = await _owned_charge(session, doctor, charge_id)
+    if charge.kind != "particular":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="PIX é só para cobrança particular (convênio é pago pelo plano).",
+        )
+    if charge.status == "cancelled":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Lançamento cancelado."
+        )
+    if not doctor.pix_key or not doctor.pix_city:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Configure sua chave PIX e cidade em Ajustes para gerar a cobrança.",
+        )
+    # txid a partir do id da cobrança (rastreável na conciliação manual).
+    txid = charge.id.hex[:25]
+    payload = build_pix_payload(
+        key=doctor.pix_key,
+        receiver_name=doctor.name,
+        city=doctor.pix_city,
+        amount_cents=charge.gross_cents,
+        txid=txid,
+    )
+    return PixCode(
+        payload=payload,
+        amount_cents=charge.gross_cents,
+        receiver=doctor.name,
+        city=doctor.pix_city,
+    )
 
 
 async def _plan_names(

@@ -48,6 +48,10 @@ class Doctor(UUIDMixin, TimestampMixin, Base):
     # WhatsApp por médico (Evolution API): nome da instância pareada com o número
     # dele. As mensagens aos pacientes dele saem desse número. None = não conectado.
     whatsapp_instance: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # PIX para cobrança particular (copia e cola estático). A chave é cifrada em
+    # repouso (pode ser CPF/telefone). A cidade é exigida pelo BR Code.
+    pix_key: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)
+    pix_city: Mapped[str | None] = mapped_column(String(60), nullable=True)
     # Preferências das mensagens automáticas ao paciente: o que é enviado (convite,
     # lembrete de medicação, lembrete de consulta) e a assinatura opcional. JSON de
     # configuração (não é dado clínico). None = padrões (tudo ligado, sem assinatura).

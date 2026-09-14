@@ -18,6 +18,7 @@ import type {
   ChargeSummary,
   ChargeUpdateInput,
   ConsultationCharge,
+  PixCode,
   ClinicalNote,
   NoteCreateInput,
   NoteUpdateInput,
@@ -167,6 +168,7 @@ export const charges = {
     api<ChargeSummary>(`/charges/summary${chargeQuery(p)}`),
   update: (id: string, patch: ChargeUpdateInput) =>
     api<ConsultationCharge>(`/charges/${id}`, { method: "PATCH", body: patch }),
+  pix: (id: string) => api<PixCode>(`/charges/${id}/pix`),
 };
 
 export const billingBatches = {
