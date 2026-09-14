@@ -38,6 +38,14 @@ async def test_patient_protocol_has_no_medication_question(client: httpx.AsyncCl
     assert "mood" in codes and "self_harm" in codes  # o núcleo de saúde mental fica
 
 
+async def test_today_exposes_features_for_app(client: httpx.AsyncClient):
+    headers = await _psychologist(client)
+    ph = await _new_patient(client, headers, "+5543988580828")
+    today = (await client.get("/api/v1/patient/today", headers=ph)).json()
+    # O app usa isto para esconder a aba Remédios em psicologia.
+    assert today["features"]["medicacao"] is False
+
+
 async def test_scales_catalog_available(client: httpx.AsyncClient):
     headers = await _psychologist(client)
     cat = (await client.get("/api/v1/scales", headers=headers)).json()

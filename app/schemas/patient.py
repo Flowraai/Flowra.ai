@@ -52,6 +52,8 @@ class PatientToday(BaseModel):
     patient_name: str
     checked_in_today: bool
     last_checkin_at: datetime | None = None
+    # Módulos ligados para a especialidade do médico (ex.: medicação off em psicologia).
+    features: dict[str, bool] = Field(default_factory=dict)
 
 
 class PatientRead(BaseModel):

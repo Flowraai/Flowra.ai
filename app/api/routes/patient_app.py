@@ -14,8 +14,10 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import get_current_patient
 from app.core.config import settings
 from app.db.session import get_db
+from app.clinical.packs import get_pack
 from app.models.appointment import Appointment
 from app.models.checkin import CheckIn
+from app.models.doctor import Doctor
 from app.models.enums import (
     AppointmentStatus,
     DeviceOwnerType,
@@ -93,10 +95,13 @@ async def today(
             )
         )
     )
+    doctor = await session.get(Doctor, patient.doctor_id)
+    pack = get_pack(doctor.specialty if doctor else None)
     return PatientToday(
         patient_name=patient.name,
         checked_in_today=bool(checked_in),
         last_checkin_at=patient.last_checkin_at,
+        features=dict(pack.features),
     )
 
 

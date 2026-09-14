@@ -8,6 +8,7 @@ export interface PatientToday {
   patient_name: string;
   checked_in_today: boolean;
   last_checkin_at: string | null;
+  features?: Record<string, boolean>;
 }
 
 export interface PatientAccount {

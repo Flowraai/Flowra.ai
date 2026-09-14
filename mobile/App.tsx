@@ -4,6 +4,7 @@ import * as Linking from "expo-linking";
 import { loadToken, saveToken, clearToken } from "./src/storage";
 import { registerForPush } from "./src/push";
 import { tokenFromUrl } from "./src/linking";
+import { patientApi } from "./src/api/endpoints";
 import { useTheme } from "./src/theme";
 import { Loading } from "./src/components/ui";
 import { AccessScreen } from "./src/screens/AccessScreen";
@@ -93,6 +94,17 @@ function Main({ onLogout }: { onLogout: () => void }) {
   const [showCheckin, setShowCheckin] = useState(false);
   const [nonce, setNonce] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
+  // Especialidade sem medicação (ex.: psicologia) esconde a aba Remédios.
+  const [medOn, setMedOn] = useState(true);
+
+  useEffect(() => {
+    patientApi
+      .today()
+      .then((t) => setMedOn(t.features?.medicacao !== false))
+      .catch(() => {});
+  }, []);
+
+  const tabs = medOn ? TABS : TABS.filter((t) => t.key !== "medicacao");
 
   useEffect(() => {
     if (!toast) return;
@@ -159,7 +171,7 @@ function Main({ onLogout }: { onLogout: () => void }) {
           paddingBottom: 6,
         }}
       >
-        {TABS.map((tb) => {
+        {tabs.map((tb) => {
           const on = tab === tb.key;
           return (
             <Pressable
