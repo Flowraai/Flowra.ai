@@ -7,7 +7,7 @@ interface AuthState {
   doctor: DoctorProfile | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  register: (email: string, password: string, name: string, specialty?: string) => Promise<void>;
   refresh: () => Promise<void>;
   logout: () => void;
 }
@@ -49,8 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(pair.access_token);
         setDoctor(await auth.me());
       },
-      async register(email, password, name) {
-        const pair = await auth.register(email, password, name);
+      async register(email, password, name, specialty) {
+        const pair = await auth.register(email, password, name, specialty);
         setToken(pair.access_token);
         setDoctor(await auth.me());
       },

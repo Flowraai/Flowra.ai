@@ -64,8 +64,12 @@ import type {
 export const auth = {
   login: (email: string, password: string) =>
     api<TokenPair>("/auth/login", { method: "POST", auth: false, body: { email, password } }),
-  register: (email: string, password: string, name: string) =>
-    api<TokenPair>("/auth/register", { method: "POST", auth: false, body: { email, password, name } }),
+  register: (email: string, password: string, name: string, specialty?: string) =>
+    api<TokenPair>("/auth/register", {
+      method: "POST",
+      auth: false,
+      body: { email, password, name, ...(specialty ? { specialty } : {}) },
+    }),
   forgotPassword: (email: string) =>
     api<{ message: string }>("/auth/forgot-password", { method: "POST", auth: false, body: { email } }),
   resetPassword: (token: string, newPassword: string) =>
@@ -77,7 +81,7 @@ export const auth = {
   me: () => api<DoctorProfile>("/auth/me"),
   updateMe: (patch: DoctorUpdateInput) =>
     api<DoctorProfile>("/auth/me", { method: "PATCH", body: patch }),
-  careSpecialties: () => api<SpecialtyOption[]>("/auth/care/specialties"),
+  careSpecialties: () => api<SpecialtyOption[]>("/auth/care/specialties", { auth: false }),
 };
 
 export const patients = {

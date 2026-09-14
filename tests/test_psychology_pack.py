@@ -14,6 +14,25 @@ async def _psychologist(client: httpx.AsyncClient, email: str = "psi@clinica.com
     return headers
 
 
+async def test_register_with_specialty(client: httpx.AsyncClient):
+    # Especialidade escolhida já no cadastro (sem precisar editar depois).
+    r = await client.post("/api/v1/auth/register", json={
+        "email": "novo.psi@x.com", "password": "senhaforte123", "name": "Psi",
+        "specialty": "psicologia"})
+    assert r.status_code in (200, 201)
+    headers = {"Authorization": f"Bearer {r.json()['access_token']}"}
+    me = (await client.get("/api/v1/auth/me", headers=headers)).json()
+    assert me["care"]["specialty"] == "psicologia" and me["care"]["features"]["medicacao"] is False
+
+
+async def test_specialties_endpoint_is_public(client: httpx.AsyncClient):
+    # O formulário de cadastro precisa da lista ANTES do login (sem token).
+    r = await client.get("/api/v1/auth/care/specialties")
+    assert r.status_code == 200
+    keys = {o["key"] for o in r.json()}
+    assert {"psiquiatria", "psicologia", "odontologia"} <= keys
+
+
 async def test_care_info_and_specialties(client: httpx.AsyncClient):
     headers = await _psychologist(client)
     me = (await client.get("/api/v1/auth/me", headers=headers)).json()

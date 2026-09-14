@@ -1,8 +1,9 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { ApiError } from "../api/client";
 import { auth } from "../api/endpoints";
+import type { SpecialtyOption } from "../api/types";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { IconFlower } from "../components/icons";
 import "./Login.css";
@@ -16,9 +17,15 @@ export function Login() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [specialty, setSpecialty] = useState("psiquiatria");
+  const [specialties, setSpecialties] = useState<SpecialtyOption[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    auth.careSpecialties().then(setSpecialties).catch(() => setSpecialties([]));
+  }, []);
 
   function switchMode(m: Mode) {
     setMode(m);
@@ -36,7 +43,7 @@ export function Login() {
         await login(email, password);
         navigate("/", { replace: true });
       } else if (mode === "register") {
-        await register(email, password, name);
+        await register(email, password, name, specialty);
         navigate("/", { replace: true });
       } else {
         await auth.forgotPassword(email);
@@ -84,10 +91,22 @@ export function Login() {
         </p>
 
         {mode === "register" ? (
-          <label>
-            Nome
-            <input value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" />
-          </label>
+          <>
+            <label>
+              Nome
+              <input value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" />
+            </label>
+            {specialties.length > 0 ? (
+              <label>
+                Especialidade
+                <select value={specialty} onChange={(e) => setSpecialty(e.target.value)}>
+                  {specialties.map((s) => (
+                    <option key={s.key} value={s.key}>{s.label}</option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+          </>
         ) : null}
 
         <label>

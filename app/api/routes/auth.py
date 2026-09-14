@@ -235,6 +235,7 @@ async def _profile_response(session: AsyncSession, doctor: Doctor) -> DoctorProf
 
 
 @router.get("/care/specialties", response_model=list[SpecialtyOption])
-async def care_specialties(_: Doctor = Depends(get_current_doctor)) -> list[SpecialtyOption]:
-    """Especialidades disponíveis (pacotes clínicos) para o médico escolher."""
+async def care_specialties() -> list[SpecialtyOption]:
+    """Especialidades disponíveis (pacotes clínicos). Público: o formulário de
+    cadastro usa antes do login."""
     return [SpecialtyOption(key=p.specialty, label=p.label) for p in CLINICAL_PACKS.values()]
