@@ -5,10 +5,12 @@ Camada de controle gerencial (a receber / recebido). Sem cobrança online no MVP
 
 from __future__ import annotations
 
+import csv
+import io
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -169,6 +171,68 @@ async def charges_summary(
         convenio=convenio,
         by_plan=sorted(by_plan.values(), key=lambda b: b.received_cents + b.to_receive_cents, reverse=True),
         monthly=[months[k] for k in sorted(months)],
+    )
+
+
+_STATUS_LABEL = {
+    "pending": "A receber", "billed": "Faturado", "received": "Recebido",
+    "denied": "Glosado", "cancelled": "Cancelado",
+}
+
+
+def _brl(cents: int) -> str:
+    return f"{cents / 100:.2f}".replace(".", ",")
+
+
+@router.get("/charges/export.csv")
+async def export_charges_csv(
+    start: datetime | None = None,
+    end: datetime | None = None,
+    status_filter: str | None = Query(default=None, alias="status"),
+    doctor: Doctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db),
+) -> Response:
+    """Exporta o movimento financeiro em CSV (para o contador). Recorte por
+    período e status, como no painel. Separador ';' e decimais com vírgula
+    (padrão do Excel em pt-BR)."""
+    stmt = select(ConsultationCharge).where(ConsultationCharge.doctor_id == doctor.id)
+    if status_filter:
+        stmt = stmt.where(ConsultationCharge.status == status_filter)
+    if start is not None:
+        stmt = stmt.where(ConsultationCharge.created_at >= start)
+    if end is not None:
+        stmt = stmt.where(ConsultationCharge.created_at <= end)
+    stmt = stmt.order_by(ConsultationCharge.created_at)
+    rows = list((await session.execute(stmt)).scalars().all())
+    plan_names = await _plan_names(session, rows)
+    pt_names = await _patient_names(session, rows)
+
+    buf = io.StringIO()
+    w = csv.writer(buf, delimiter=";")
+    w.writerow([
+        "Data", "Paciente", "Tipo", "Convênio", "Valor bruto (R$)",
+        "Repasse (R$)", "Situação", "Forma", "Recebido em", "Observações",
+    ])
+    for c in rows:
+        w.writerow([
+            c.created_at.strftime("%d/%m/%Y"),
+            pt_names.get(c.patient_id, ""),
+            "Convênio" if c.kind == "convenio" else "Particular",
+            plan_names.get(c.health_plan_id, "") if c.health_plan_id else "",
+            _brl(c.gross_cents),
+            _brl(c.doctor_cents),
+            _STATUS_LABEL.get(c.status, c.status),
+            c.payment_method or "",
+            c.received_at.strftime("%d/%m/%Y") if c.received_at else "",
+            c.notes or "",
+        ])
+    # BOM para o Excel reconhecer o UTF-8 (acentos).
+    data = "﻿" + buf.getvalue()
+    filename = f"financeiro-flowra-{datetime.now(timezone.utc):%Y%m%d}.csv"
+    return Response(
+        content=data,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

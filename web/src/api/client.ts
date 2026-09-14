@@ -75,6 +75,27 @@ export async function api<T>(path: string, opts: Options = {}): Promise<T> {
   return (await res.json()) as T;
 }
 
+/** Baixa um arquivo autenticado (ex.: CSV) e dispara o download no navegador. */
+export async function downloadFile(path: string, fallbackName: string): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`${API}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new ApiError(res.status, "Falha ao gerar o arquivo.");
+  const blob = await res.blob();
+  const cd = res.headers.get("content-disposition") ?? "";
+  const match = cd.match(/filename="?([^"]+)"?/);
+  const name = match ? match[1] : fallbackName;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 /** Baixa um anexo autenticado e devolve um object URL (o <img>/<audio> não
  * consegue enviar o header Authorization sozinho). Lembre de revogar depois. */
 export async function attachmentObjectUrl(id: string): Promise<string> {

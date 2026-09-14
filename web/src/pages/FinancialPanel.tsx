@@ -6,6 +6,7 @@ import { FinanceChart } from "../components/FinanceChart";
 import { BatchesCard } from "../components/BatchesCard";
 import { useAsync } from "../lib/useAsync";
 import { charges as chargesApi } from "../api/endpoints";
+import { downloadFile } from "../api/client";
 import type { ChargeStatus, ConsultationCharge, PaymentMethod } from "../api/types";
 import "./FinancialPanel.css";
 
@@ -67,14 +68,28 @@ export function FinancialPanel() {
     await mark(id, { status: "denied", notes: reason.trim() || null });
   }
 
+  function exportCsv() {
+    const q = new URLSearchParams();
+    if (range.start) q.set("start", range.start);
+    if (range.end) q.set("end", range.end);
+    if (statusFilter) q.set("status", statusFilter);
+    const qs = q.toString();
+    downloadFile(`/charges/export.csv${qs ? `?${qs}` : ""}`, "financeiro-flowra.csv").catch(() => {});
+  }
+
   return (
     <AppShell title="Financeiro" subtitle="A receber, recebido e faturamento por período" actions={<ThemeToggle />}>
-      <div className="fp-periods">
-        {(["30d", "mes", "3m", "tudo"] as Period[]).map((p) => (
-          <button key={p} className={period === p ? "on" : ""} onClick={() => setPeriod(p)}>
-            {p === "30d" ? "30 dias" : p === "mes" ? "Este mês" : p === "3m" ? "3 meses" : "Tudo"}
-          </button>
-        ))}
+      <div className="fp-tools">
+        <div className="fp-periods">
+          {(["30d", "mes", "3m", "tudo"] as Period[]).map((p) => (
+            <button key={p} className={period === p ? "on" : ""} onClick={() => setPeriod(p)}>
+              {p === "30d" ? "30 dias" : p === "mes" ? "Este mês" : p === "3m" ? "3 meses" : "Tudo"}
+            </button>
+          ))}
+        </div>
+        <button className="fp-export" onClick={exportCsv} title="Baixar o movimento em CSV para o contador">
+          ⬇ Exportar CSV
+        </button>
       </div>
 
       {summary.loading ? (

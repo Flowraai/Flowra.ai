@@ -168,6 +168,30 @@ async def test_summary_excludes_cancelled(client: httpx.AsyncClient):
     assert s["received_cents"] == 0 and s["to_receive_cents"] == 0 and s["cancelled_count"] == 1
 
 
+async def test_csv_export(client: httpx.AsyncClient):
+    headers = await _doctor(client)
+    p = await _patient(client, headers, name="Ana Lima")
+    a = await _appointment(client, headers, p["id"])
+    await _complete(client, headers, a["id"])
+    ch = (await client.get(f"/api/v1/patients/{p['id']}/charges", headers=headers)).json()[0]
+    await client.patch(f"/api/v1/charges/{ch['id']}", headers=headers, json={"gross_cents": 20000})
+    await client.patch(f"/api/v1/charges/{ch['id']}", headers=headers,
+                       json={"status": "received", "payment_method": "pix"})
+
+    r = await client.get("/api/v1/charges/export.csv", headers=headers)
+    assert r.status_code == 200
+    assert "text/csv" in r.headers["content-type"]
+    assert "attachment" in r.headers.get("content-disposition", "")
+    body = r.text
+    assert "Paciente" in body and "Repasse (R$)" in body  # cabeçalho
+    assert "Ana Lima" in body and "200,00" in body        # linha com decimais pt-BR
+    assert ";" in body                                    # separador do Excel pt-BR
+
+    # Filtro por status: 'pending' não traz a cobrança já recebida.
+    empty = await client.get("/api/v1/charges/export.csv?status=pending", headers=headers)
+    assert "Ana Lima" not in empty.text
+
+
 async def test_manual_generate_and_isolation(client: httpx.AsyncClient):
     headers = await _doctor(client)
     patient = await _patient(client, headers)

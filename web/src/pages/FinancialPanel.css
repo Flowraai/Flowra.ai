@@ -1,4 +1,11 @@
-.fp-periods { display: flex; gap: 2px; margin-bottom: 16px; }
+.fp-tools { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.fp-export {
+  margin-left: auto; border: 1px solid var(--line); background: var(--surface);
+  color: var(--accent-ink); font: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; padding: 7px 14px; border-radius: 9px;
+}
+.fp-export:hover { border-color: var(--accent); background: var(--accent-soft); }
+.fp-periods { display: flex; gap: 2px; }
 .fp-periods button {
   border: 1px solid var(--line); background: var(--surface); color: var(--muted);
   font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; padding: 7px 14px;
