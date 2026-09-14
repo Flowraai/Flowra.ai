@@ -172,7 +172,64 @@ PSS10 = Scale(
     reverse_items=(3, 4, 6, 7),
 )
 
-SCALES: dict[str, Scale] = {s.code: s for s in (PHQ9, GAD7, WHO5, PSS10)}
+# --- Nutrição: SCOFF (rastreio de transtorno alimentar) ---
+SCOFF = Scale(
+    code="scoff",
+    name="SCOFF — Rastreio de transtorno alimentar",
+    description="Cinco perguntas de rastreio (≥ 2 respostas 'sim' sugerem avaliação).",
+    period="Pensando nos últimos meses…",
+    items=(
+        "Você se provoca vômito por se sentir desconfortavelmente cheio(a)?",
+        "Você se preocupa por ter perdido o controle sobre o quanto come?",
+        "Você perdeu mais de 6 kg em um período de 3 meses?",
+        "Você acredita estar gordo(a) mesmo quando os outros dizem que está magro(a)?",
+        "Você diria que a comida domina sua vida?",
+    ),
+    options=("Não", "Sim"),
+    bands=(
+        Band(0, 1, "Baixo risco", "green"),
+        Band(2, 3, "Rastreio positivo", "orange"),
+        Band(4, 5, "Rastreio muito positivo", "red"),
+    ),
+    flag_item=None,
+    flag_note=None,
+)
+
+# --- Odontologia: OHIP-14 (impacto da saúde bucal na qualidade de vida) ---
+_OHIP_OPTS = ("Nunca", "Quase nunca", "Às vezes", "Frequentemente", "Sempre")
+
+OHIP14 = Scale(
+    code="ohip14",
+    name="OHIP-14 — Impacto da saúde bucal",
+    description="Impacto dos problemas bucais na qualidade de vida (últimos meses).",
+    period="Nos últimos meses, por causa de problemas com dentes, boca ou próteses…",
+    items=(
+        "Você teve dificuldade para pronunciar alguma palavra?",
+        "Você sentiu que o paladar piorou?",
+        "Você sentiu dor na boca ou nos dentes?",
+        "Você se sentiu incomodado(a) ao comer algum alimento?",
+        "Você se sentiu envergonhado(a)?",
+        "Você ficou tenso(a)?",
+        "Sua alimentação ficou prejudicada?",
+        "Você teve que interromper refeições?",
+        "Você teve dificuldade para relaxar?",
+        "Você se sentiu um pouco constrangido(a)?",
+        "Você ficou irritado(a) com outras pessoas?",
+        "Você teve dificuldade em realizar suas atividades diárias?",
+        "Você sentiu que a vida em geral ficou pior?",
+        "Você ficou totalmente incapaz de realizar suas atividades?",
+    ),
+    options=_OHIP_OPTS,
+    bands=(
+        Band(0, 14, "Baixo impacto", "green"),
+        Band(15, 28, "Impacto moderado", "orange"),
+        Band(29, 56, "Impacto alto", "red"),
+    ),
+    flag_item=None,
+    flag_note=None,
+)
+
+SCALES: dict[str, Scale] = {s.code: s for s in (PHQ9, GAD7, WHO5, PSS10, SCOFF, OHIP14)}
 
 
 def get_scale(code: str) -> Scale | None:

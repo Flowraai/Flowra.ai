@@ -38,9 +38,10 @@ async def test_protocol_is_dental_not_mental_health(client: httpx.AsyncClient):
     assert "mood" not in codes and "self_harm" not in codes
 
 
-async def test_no_scales_catalog(client: httpx.AsyncClient):
+async def test_dental_scale_catalog(client: httpx.AsyncClient):
     headers = await _dentist(client)
-    assert (await client.get("/api/v1/scales", headers=headers)).json() == []
+    cat = (await client.get("/api/v1/scales", headers=headers)).json()
+    assert {s["code"] for s in cat} == {"ohip14"}  # impacto da saúde bucal, não PHQ-9/GAD-7
 
 
 async def test_high_pain_triggers_immediate_alert(client: httpx.AsyncClient):

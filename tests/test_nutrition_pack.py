@@ -36,6 +36,22 @@ async def test_protocol_is_nutritional(client: httpx.AsyncClient):
     assert "mood" not in codes and "self_harm" not in codes
 
 
+async def test_scoff_catalog_and_scoring(client: httpx.AsyncClient):
+    headers = await _nutritionist(client)
+    cat = (await client.get("/api/v1/scales", headers=headers)).json()
+    assert {s["code"] for s in cat} == {"scoff"}
+
+    patient = (await client.post("/api/v1/patients", headers=headers, json={
+        "name": "P", "contact": "+5543988580843", "consent_given": True})).json()
+    ph = {"X-Patient-Token": patient["access_token"]}
+    req = (await client.post(f"/api/v1/patients/{patient['id']}/scales", headers=headers,
+                             json={"scale_code": "scoff"})).json()
+    await client.post(f"/api/v1/patient/scales/{req['id']}", headers=ph,
+                      json={"answers": [1, 1, 1, 0, 0]})  # 3 "sim"
+    done = (await client.get(f"/api/v1/patients/{patient['id']}/scales", headers=headers)).json()
+    assert done[0]["score"] == 3 and done[0]["severity"] == "Rastreio positivo"
+
+
 async def test_binge_and_offplan_generate_signal(client: httpx.AsyncClient):
     headers = await _nutritionist(client)
     ph = await _patient(client, headers, "+5543988580841")
