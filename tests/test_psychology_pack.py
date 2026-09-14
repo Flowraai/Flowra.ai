@@ -46,10 +46,35 @@ async def test_today_exposes_features_for_app(client: httpx.AsyncClient):
     assert today["features"]["medicacao"] is False
 
 
-async def test_scales_catalog_available(client: httpx.AsyncClient):
+async def test_scales_catalog_includes_psychology_scales(client: httpx.AsyncClient):
     headers = await _psychologist(client)
     cat = (await client.get("/api/v1/scales", headers=headers)).json()
+    assert {s["code"] for s in cat} == {"phq9", "gad7", "pss10", "who5"}
+    who5 = next(s for s in cat if s["code"] == "who5")
+    assert who5["higher_is_worse"] is False  # bem-estar: maior = melhor
+
+
+async def test_psychiatry_catalog_unchanged(client: httpx.AsyncClient):
+    # Psiquiatria (default) segue só com PHQ-9/GAD-7 — pss10/who5 são do pacote psi.
+    r = await client.post("/api/v1/auth/register", json={
+        "email": "dr.psiq@x.com", "password": "senhaforte123", "name": "Dr"})
+    headers = {"Authorization": f"Bearer {r.json()['access_token']}"}
+    cat = (await client.get("/api/v1/scales", headers=headers)).json()
     assert {s["code"] for s in cat} == {"phq9", "gad7"}
+
+
+async def test_apply_pss10_end_to_end(client: httpx.AsyncClient):
+    headers = await _psychologist(client)
+    patient = (await client.post("/api/v1/patients", headers=headers, json={
+        "name": "Cliente", "contact": "+5543988580829", "consent_given": True})).json()
+    ph = {"X-Patient-Token": patient["access_token"]}
+    req = (await client.post(f"/api/v1/patients/{patient['id']}/scales", headers=headers,
+                             json={"scale_code": "pss10"})).json()
+    res = await client.post(f"/api/v1/patient/scales/{req['id']}", headers=ph,
+                            json={"answers": [4] * 10})
+    assert res.status_code == 200
+    done = (await client.get(f"/api/v1/patients/{patient['id']}/scales", headers=headers)).json()
+    assert done[0]["score"] == 24 and done[0]["severity"] == "Moderado"
 
 
 _STABLE = {"mood": 8, "anxiety": 2, "slept_well": "sim", "sleep_hours": 8,

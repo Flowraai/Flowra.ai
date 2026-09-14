@@ -6,12 +6,14 @@ import { IconChart } from "./icons";
 import "./EvolutionCard.css";
 
 // Cor por escala (validadas p/ daltonismo: violeta × âmbar, ΔE ~28).
+// Cores por escala (painel próprio, com legenda própria — validadas p/ daltonismo).
 const SCALE_COLOR: Record<string, string> = {
-  phq9: "var(--chart-anx)",
-  gad7: "var(--fin-pending)",
+  phq9: "var(--chart-anx)",     // violeta
+  gad7: "var(--fin-pending)",   // âmbar
+  pss10: "var(--chart-humor)",  // teal
 };
 const SCALE_FALLBACK = ["var(--chart-sleep)", "var(--risk-red)"];
-const SCALE_MAX_FALLBACK: Record<string, number> = { phq9: 27, gad7: 21 };
+const SCALE_MAX_FALLBACK: Record<string, number> = { phq9: 27, gad7: 21, pss10: 40, who5: 25 };
 
 type Pt = { t: number; v: number };
 type Series = { key: string; label: string; color: string; pts: Pt[] };
@@ -194,11 +196,14 @@ export function EvolutionCard({ patientId }: { patientId: string }) {
     const xDomain: [number, number] = [since, Date.now()];
 
     // Escalas normalizadas a % do máximo (eixo comum; maior = mais sintomas).
-    const maxOf = (code: string) =>
-      catalog.find((s) => s.code === code)?.max_score ?? SCALE_MAX_FALLBACK[code] ?? 27;
+    // Só escalas de "carga" (maior = pior): uma de bem-estar como WHO-5 tem
+    // direção oposta e contradiria o eixo — ela fica no card de escalas.
+    const defOf = (code: string) => catalog.find((s) => s.code === code);
+    const maxOf = (code: string) => defOf(code)?.max_score ?? SCALE_MAX_FALLBACK[code] ?? 27;
     const byCode = new Map<string, { name: string; pts: Pt[] }>();
     for (const e of scaleEntries) {
       if (e.status !== "done" || e.score == null || !e.completed_at) continue;
+      if (defOf(e.scale_code)?.higher_is_worse === false) continue;  // pula bem-estar
       const t = new Date(e.completed_at).getTime();
       if (t < since) continue;
       const g = byCode.get(e.scale_code) ?? { name: e.scale_name.split(" — ")[0], pts: [] };
@@ -247,9 +252,6 @@ export function EvolutionCard({ patientId }: { patientId: string }) {
               <div className="evo-legend">
                 <span><i style={{ background: cHumor }} /> Humor</span>
                 <span><i style={{ background: cAnx }} /> Ansiedade</span>
-                {model.scaleSeries.map((s) => (
-                  <span key={s.key}><i style={{ background: s.color }} /> {s.label}</span>
-                ))}
               </div>
               <button className="mini" onClick={() => setAsTable((v) => !v)}>
                 {asTable ? "Ver gráfico" : "Ver tabela"}
@@ -290,6 +292,11 @@ export function EvolutionCard({ patientId }: { patientId: string }) {
                   <>
                     <div className="evo-title">
                       Escalas <span className="muted">(% do máximo — maior = mais sintomas)</span>
+                    </div>
+                    <div className="evo-legend">
+                      {model.scaleSeries.map((s) => (
+                        <span key={s.key}><i style={{ background: s.color }} /> {s.label}</span>
+                      ))}
                     </div>
                     <LineChart
                       series={model.scaleSeries}

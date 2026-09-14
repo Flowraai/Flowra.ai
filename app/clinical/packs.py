@@ -103,7 +103,8 @@ PSYCHOLOGY_PACK = ClinicalPack(
     protocol_version="1.0",
     protocol_description="Protocolo diário de acompanhamento psicológico.",
     questions=_PSY_QUESTIONS,
-    scale_codes=("phq9", "gad7"),
+    # Além de PHQ-9/GAD-7, o psicólogo tem estresse (PSS-10) e bem-estar (WHO-5).
+    scale_codes=("phq9", "gad7", "pss10", "who5"),
     rules_factory=psychology_rules,
     thresholds=RiskThresholds(),
     free_text_category=P.CAT_LIVRE,

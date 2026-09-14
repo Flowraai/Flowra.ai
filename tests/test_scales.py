@@ -22,6 +22,22 @@ def test_scoring():
     assert score_scale("gad7", [2, 2, 2, 2, 2, 1, 1]) == (12, "Moderada", "orange", False)
 
 
+def test_who5_higher_is_better():
+    # WHO-5: bem-estar máximo (tudo 5) = 25, "Bom" (verde); mínimo = 0 (vermelho).
+    assert score_scale("who5", [5] * 5) == (25, "Bom", "green", False)
+    assert score_scale("who5", [0] * 5) == (0, "Muito baixo", "red", False)
+
+
+def test_pss10_reverse_items():
+    from app.clinical.scales import get_scale
+    assert get_scale("pss10").reverse_items == (3, 4, 6, 7)
+    # Tudo "muito frequentemente" (4): os 6 itens negativos somam 24; os 4 reversos
+    # (4,5,7,8) viram 0 → total 24 (Moderado).
+    assert score_scale("pss10", [4] * 10) == (24, "Moderado", "orange", False)
+    # Tudo "nunca" (0): os 4 reversos viram 4 → 16; negativos 0 → total 16 (Moderado).
+    assert score_scale("pss10", [0] * 10) == (16, "Moderado", "orange", False)
+
+
 async def _doctor(client: httpx.AsyncClient, email: str = "dra.ana@clinica.com") -> dict:
     r = await client.post("/api/v1/auth/register", json={
         "email": email, "password": "senhaforte123", "name": "Dra. Ana"})

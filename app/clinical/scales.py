@@ -32,6 +32,9 @@ class Scale:
     # Direção clínica: em PHQ-9/GAD-7 pontuação maior = pior. Guardado
     # explicitamente para a tendência (↑ piora / ↓ melhora) não assumir a direção.
     higher_is_worse: bool = True
+    # Itens (0-based) com pontuação reversa: valor = (max_opção - resposta).
+    # Ex.: PSS-10 inverte os itens positivos.
+    reverse_items: tuple[int, ...] = ()
 
     @property
     def max_score(self) -> int:
@@ -98,7 +101,78 @@ GAD7 = Scale(
     flag_note=None,
 )
 
-SCALES: dict[str, Scale] = {s.code: s for s in (PHQ9, GAD7)}
+_WHO5_OPTS = (
+    "Em nenhum momento",
+    "De vez em quando",
+    "Menos da metade do tempo",
+    "Mais da metade do tempo",
+    "A maior parte do tempo",
+    "O tempo todo",
+)
+
+WHO5 = Scale(
+    code="who5",
+    name="WHO-5 — Bem-estar",
+    description="Índice de bem-estar da OMS (últimas 2 semanas). Pontuação maior = melhor.",
+    period="Nas últimas duas semanas…",
+    items=(
+        "Eu me senti alegre e de bom humor",
+        "Eu me senti calmo(a) e relaxado(a)",
+        "Eu me senti ativo(a) e com vigor",
+        "Eu me senti descansado(a) ao acordar",
+        "Meu dia a dia foi preenchido com coisas que me interessam",
+    ),
+    options=_WHO5_OPTS,
+    bands=(
+        Band(0, 7, "Muito baixo", "red"),
+        Band(8, 12, "Baixo", "orange"),
+        Band(13, 17, "Moderado", "yellow"),
+        Band(18, 25, "Bom", "green"),
+    ),
+    flag_item=None,
+    flag_note=None,
+    higher_is_worse=False,
+)
+
+_PSS_OPTS = (
+    "Nunca",
+    "Quase nunca",
+    "Às vezes",
+    "Frequentemente",
+    "Muito frequentemente",
+)
+
+PSS10 = Scale(
+    code="pss10",
+    name="PSS-10 — Estresse percebido",
+    description="Escala de estresse percebido no último mês.",
+    period="No último mês, com que frequência…",
+    items=(
+        "você ficou aborrecido(a) por causa de algo que aconteceu inesperadamente?",
+        "você se sentiu incapaz de controlar as coisas importantes da sua vida?",
+        "você se sentiu nervoso(a) e estressado(a)?",
+        "você se sentiu confiante na sua capacidade de lidar com seus problemas pessoais?",
+        "você sentiu que as coisas estavam acontecendo como você esperava?",
+        "você achou que não conseguiria lidar com tudo o que tinha para fazer?",
+        "você conseguiu controlar as irritações da sua vida?",
+        "você sentiu que tinha tudo sob controle?",
+        "você ficou irritado(a) por coisas que estavam fora do seu controle?",
+        "você sentiu que as dificuldades se acumulavam a ponto de você não conseguir superá-las?",
+    ),
+    options=_PSS_OPTS,
+    bands=(
+        Band(0, 13, "Baixo", "green"),
+        Band(14, 26, "Moderado", "orange"),
+        Band(27, 40, "Alto", "red"),
+    ),
+    flag_item=None,
+    flag_note=None,
+    higher_is_worse=True,
+    # Itens 4, 5, 7 e 8 (1-based) são positivos → pontuação reversa.
+    reverse_items=(3, 4, 6, 7),
+)
+
+SCALES: dict[str, Scale] = {s.code: s for s in (PHQ9, GAD7, WHO5, PSS10)}
 
 
 def get_scale(code: str) -> Scale | None:
@@ -128,7 +202,9 @@ def score_scale(code: str, answers: list[int]) -> tuple[int, str, str, bool]:
     for a in answers:
         if not isinstance(a, int) or a < 0 or a > hi:
             raise ValueError(f"Resposta fora do intervalo 0–{hi}: {a!r}")
-    total = sum(answers)
+    # Pontuação reversa nos itens marcados (ex.: PSS-10): valor = hi - resposta.
+    scored = [(hi - a if i in scale.reverse_items else a) for i, a in enumerate(answers)]
+    total = sum(scored)
     band = band_for(scale, total)
     flagged = scale.flag_item is not None and answers[scale.flag_item] > 0
     return total, band.label, band.level, flagged
