@@ -145,6 +145,35 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 As migrações rodam sozinhas no boot. Faça um backup antes de atualizar.
 
+### 8.1 Deploy pelo GitHub Actions (CD manual)
+
+Em vez de rodar à mão na VPS, o deploy pode ser disparado pelo workflow
+**`.github/workflows/deploy.yml`** (aba **Actions → Deploy (manual) → Run workflow**).
+Ele faz o mesmo que a seção 8 — por SSH, com backup antes — e ainda cuida do build
+mobile. É disparo **manual** (`workflow_dispatch`): nada vai a produção sozinho.
+
+**Segredos** (Settings → Secrets and variables → Actions):
+
+| Segredo | Para quê |
+|---|---|
+| `VPS_SSH_HOST` | IP/host da VPS |
+| `VPS_SSH_USER` | usuário de deploy (com acesso ao Docker e a `/opt/flowra`) |
+| `VPS_SSH_KEY` | **chave privada** de deploy (a pública vai no `~/.ssh/authorized_keys` da VPS) |
+| `VPS_SSH_PORT` | opcional (padrão `22`) |
+| `VPS_SSH_KNOWN_HOSTS` | opcional, **recomendado**: saída de `ssh-keyscan SEU_HOST` (fixa a identidade do host) |
+| `DEPLOY_PATH` | opcional (padrão `/opt/flowra`) |
+| `EXPO_TOKEN` | token da conta Expo (só para o alvo `mobile`) |
+
+**Disparo:** escolha o **alvo** (`vps`, `mobile` ou `both`), a **ref** (branch/tag/SHA),
+o **compose** (`prod` ou `behind-proxy`) e se o mobile deve **enviar às lojas**
+(`eas submit`) além de buildar.
+
+**Freio humano (recomendado):** em **Settings → Environments → `production`** adicione
+*Required reviewers* — aí cada deploy na VPS pede aprovação antes de rodar.
+
+O deploy remoto é o script versionado **`deploy/vps-deploy.sh`** (também roda à mão na
+VPS: `./deploy/vps-deploy.sh docker-compose.prod.yml <ref>`).
+
 ## 9. Integrações (para um produto de verdade)
 
 No modo padrão, notificações caem em **log**. Configure no `.env` conforme o uso

@@ -1,0 +1,123 @@
+name: Deploy (manual)
+
+# Deploy sob demanda (workflow_dispatch): você escolhe o alvo e aperta "Run workflow".
+# O GitHub alcança a VPS (por SSH) e as lojas (via EAS) — o que este ambiente não faz.
+#
+# Segredos necessários (Settings -> Secrets and variables -> Actions):
+#   VPS  : VPS_SSH_HOST, VPS_SSH_USER, VPS_SSH_KEY (chave privada de deploy)
+#          VPS_SSH_PORT (opcional, padrão 22), VPS_SSH_KNOWN_HOSTS (opcional, recomendado
+#          para fixar a identidade do host), DEPLOY_PATH (opcional, padrão /opt/flowra)
+#   MOBILE: EXPO_TOKEN (token de acesso da conta Expo)
+#
+# Dica de segurança: em Settings -> Environments -> "production", adicione "Required
+# reviewers" para exigir aprovação humana antes de cada deploy na VPS.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "O que publicar"
+        type: choice
+        default: both
+        options: [both, vps, mobile]
+      ref:
+        description: "Branch/tag/SHA a publicar"
+        required: true
+        default: claude/mvp-psiquiatria-backend-7hoako
+      compose_file:
+        description: "Arquivo compose de produção (VPS)"
+        type: choice
+        default: docker-compose.prod.yml
+        options: [docker-compose.prod.yml, docker-compose.behind-proxy.yml]
+      mobile_submit:
+        description: "Mobile: enviar às lojas após o build (eas submit)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-vps:
+    if: ${{ inputs.target == 'vps' || inputs.target == 'both' }}
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout (para o script de deploy)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Configurar chave SSH
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+          HOST: ${{ secrets.VPS_SSH_HOST }}
+          PORT: ${{ secrets.VPS_SSH_PORT }}
+        run: |
+          test -n "$SSH_KEY" || { echo "Falta o segredo VPS_SSH_KEY"; exit 1; }
+          test -n "$HOST" || { echo "Falta o segredo VPS_SSH_HOST"; exit 1; }
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          if [ -n "$KNOWN_HOSTS" ]; then
+            printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            echo "AVISO: sem VPS_SSH_KNOWN_HOSTS — confiando na chave do host no 1º acesso (TOFU)."
+            ssh-keyscan -p "${PORT:-22}" -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          fi
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy na VPS (backup + up + verificação)
+        env:
+          HOST: ${{ secrets.VPS_SSH_HOST }}
+          SSH_USER: ${{ secrets.VPS_SSH_USER }}
+          PORT: ${{ secrets.VPS_SSH_PORT }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          REF: ${{ inputs.ref }}
+          COMPOSE_FILE: ${{ inputs.compose_file }}
+        run: |
+          ssh -i ~/.ssh/id_deploy -p "${PORT:-22}" -o BatchMode=yes "$SSH_USER@$HOST" \
+            "DEPLOY_PATH='${DEPLOY_PATH:-/opt/flowra}' bash -s -- '$COMPOSE_FILE' '$REF'" \
+            < deploy/vps-deploy.sh
+
+  deploy-mobile:
+    if: ${{ inputs.target == 'mobile' || inputs.target == 'both' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: EAS build (produção)
+        run: |
+          if [ "${{ inputs.mobile_submit }}" = "true" ]; then
+            eas build --profile production --platform all --non-interactive
+          else
+            eas build --profile production --platform all --non-interactive --no-wait
+          fi
+
+      - name: EAS submit (lojas)
+        if: ${{ inputs.mobile_submit }}
+        run: eas submit --profile production --platform all --non-interactive --latest
