@@ -194,6 +194,14 @@ class Settings(BaseSettings):
     evolution_api_url: str | None = None       # ex.: http://IP_DO_HOST:8080
     evolution_api_key: str | None = None       # a EVOLUTION_API_KEY da instalação
     evolution_instance: str | None = None      # nome da instância pareada (ex.: flowra-care)
+    # Confirmação de mão dupla: o paciente responde no WhatsApp e a Evolution
+    # entrega a mensagem neste webhook. O token vai na URL (/webhooks/evolution/{token})
+    # e é validado. Sem token, o webhook fica desligado (não recebe respostas).
+    evolution_webhook_token: str | None = None
+    # URL pública da API (base), usada para registrar o webhook na Evolution ao
+    # conectar. Ex.: https://care.flowraai.com.br . Sem ela, configure o webhook
+    # manualmente na Evolution apontando para /api/v1/webhooks/evolution/{token}.
+    evolution_webhook_public_url: str | None = None
 
     @field_validator(
         "cors_origins", "notification_channels", "upload_allowed_types", "admin_emails",

@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_doctor
+from app.core.config import settings
 from app.db.session import get_db
 from app.models.doctor import Doctor
 from app.schemas.whatsapp import WhatsAppConnect, WhatsAppStatus
@@ -68,6 +69,15 @@ async def whatsapp_connect(
         raise _bad_gateway("conectar o WhatsApp")
     doctor.whatsapp_instance = name  # persiste o vínculo
     await session.flush()
+    # Registra o webhook (confirmação de mão dupla) se configurado. Best-effort:
+    # falha aqui não impede o pareamento — dá para configurar na Evolution à mão.
+    if settings.evolution_webhook_token and settings.evolution_webhook_public_url:
+        base = settings.evolution_webhook_public_url.rstrip("/")
+        url = f"{base}/api/v1/webhooks/evolution/{settings.evolution_webhook_token}"
+        try:
+            await evolution.set_webhook(name, url)
+        except Exception:  # noqa: BLE001
+            logger.warning("Falha ao registrar o webhook da Evolution (seguindo)")
     return WhatsAppConnect(
         state=result.get("state"), qr=result.get("qr"), pairing_code=result.get("pairing_code")
     )

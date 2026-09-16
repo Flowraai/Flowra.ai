@@ -121,3 +121,25 @@ async def send_text(name: str, number: str, text: str) -> None:
     await _request(
         "POST", f"/message/sendText/{name}", json={"number": normalize_msisdn(number), "text": text}
     )
+
+
+async def set_webhook(name: str, url: str) -> None:
+    """Registra o webhook da instância para receber as mensagens recebidas.
+
+    Best-effort: o formato do corpo varia entre versões da Evolution, então
+    tentamos o mais recente e caímos no legado se preciso.
+    """
+    events = ["MESSAGES_UPSERT"]
+    payloads = (
+        {"webhook": {"enabled": True, "url": url, "events": events}},
+        {"url": url, "webhook_by_events": False, "events": events},
+    )
+    last_exc: Exception | None = None
+    for body in payloads:
+        try:
+            await _request("POST", f"/webhook/set/{name}", json=body)
+            return
+        except httpx.HTTPStatusError as exc:  # tenta o próximo formato
+            last_exc = exc
+    if last_exc is not None:
+        raise last_exc

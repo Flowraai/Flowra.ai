@@ -33,6 +33,7 @@ from app.api.routes import (
     terra_webhook,
     wearable,
     whatsapp,
+    whatsapp_webhook,
 )
 
 api_router = APIRouter()
@@ -55,6 +56,7 @@ v1.include_router(scales.router)
 v1.include_router(wearable.router)
 v1.include_router(terra_webhook.router)
 v1.include_router(whatsapp.router)
+v1.include_router(whatsapp_webhook.router)
 
 # Telas clínicas do médico: exigem assinatura ativa do tenant quando
 # BILLING_ENABLED=true (no-op caso contrário).
