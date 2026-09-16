@@ -9,6 +9,8 @@ const DEFAULTS: MessagePrefs = {
   send_medication_reminder: true,
   send_appointment_reminder: true,
   send_checkin_reminder: true,
+  send_appointment_confirmation: true,
+  appointment_confirmation_template: null,
   signature: null,
   quick_replies: [],
 };

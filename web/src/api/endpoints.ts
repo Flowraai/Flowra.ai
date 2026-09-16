@@ -214,6 +214,8 @@ export const appointments = {
     id: string,
     patch: { status?: AppointmentStatus; scheduled_at?: string; location?: string | null },
   ) => api<Appointment>(`/appointments/${id}`, { method: "PATCH", body: patch }),
+  sendConfirmation: (id: string) =>
+    api<Appointment>(`/appointments/${id}/confirmation`, { method: "POST" }),
 };
 
 export const exams = {

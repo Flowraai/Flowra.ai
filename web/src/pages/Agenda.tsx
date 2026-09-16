@@ -92,6 +92,19 @@ export function Agenda() {
     setWhen(toLocalInput(a.scheduled_at));
   }
 
+  async function sendConfirmation(a: Appointment) {
+    setBusy(a.id);
+    setError(null);
+    try {
+      const updated = await apptApi.sendConfirmation(a.id);
+      apply(updated);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Não foi possível enviar a confirmação.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function saveReschedule(a: Appointment) {
     if (!when) return;
     setBusy(a.id);
@@ -166,6 +179,9 @@ export function Agenda() {
                           {wantsReschedule ? <span className="chip alert">quer remarcar</span> : null}
                         </div>
                         {a.location ? <div className="agenda-loc">📍 {a.location}</div> : null}
+                        {a.confirmation_sent_at ? (
+                          <div className="agenda-sent">✓ confirmação enviada {timeOf(a.confirmation_sent_at)}</div>
+                        ) : null}
                         {a.reschedule_note ? (
                           <div className="agenda-note">"{a.reschedule_note}"</div>
                         ) : null}
@@ -191,6 +207,9 @@ export function Agenda() {
                         <div className="agenda-actions">
                           <button className="mini" disabled={busy === a.id} onClick={() => startEdit(a)}>
                             Remarcar
+                          </button>
+                          <button className="mini" disabled={busy === a.id} onClick={() => sendConfirmation(a)}>
+                            {a.confirmation_sent_at ? "Reenviar confirmação" : "Enviar confirmação"}
                           </button>
                           {a.status !== "confirmed" ? (
                             <button className="mini" disabled={busy === a.id} onClick={() => setStatus(a, "confirmed")}>

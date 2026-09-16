@@ -15,6 +15,8 @@ export interface MessagePrefs {
   send_medication_reminder: boolean;
   send_appointment_reminder: boolean;
   send_checkin_reminder: boolean;
+  send_appointment_confirmation: boolean;
+  appointment_confirmation_template: string | null;
   signature: string | null;
   quick_replies: string[];
 }
@@ -333,6 +335,7 @@ export interface Appointment {
   notes: string | null;
   reschedule_requested_at: string | null;
   reschedule_note: string | null;
+  confirmation_sent_at: string | null;
 }
 
 export interface AppointmentInput {

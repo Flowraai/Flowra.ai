@@ -45,6 +45,10 @@ class Appointment(UUIDMixin, TimestampMixin, Base):
     reminder_sent_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Quando a mensagem de confirmação foi enviada (ao agendar ou pelo botão da Agenda).
+    confirmation_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # Quando o paciente pediu para remarcar (pelo app). None = sem pedido pendente.
     reschedule_requested_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

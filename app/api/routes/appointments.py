@@ -16,7 +16,9 @@ from app.models.doctor import Doctor
 from app.models.enums import AppointmentStatus
 from app.models.patient import Patient
 from app.schemas.appointment import AppointmentCreate, AppointmentRead, AppointmentUpdate
+from app.services.appointment_confirmation_service import send_confirmation
 from app.services.consultation_charge_service import generate_for_appointment
+from app.services.message_prefs import prefs_of
 
 router = APIRouter(tags=["appointments"])
 
@@ -62,6 +64,25 @@ async def create_appointment(
     )
     session.add(appt)
     await session.flush()
+    # Confirmação ao agendar (se o médico não desligou). Falha de envio não impede
+    # o agendamento — o médico pode reenviar pela Agenda.
+    if prefs_of(doctor).send_appointment_confirmation:
+        try:
+            await send_confirmation(session, appt, patient)
+        except Exception:  # noqa: BLE001 — envio é best-effort
+            pass
+    return appt
+
+
+@router.post("/appointments/{appointment_id}/confirmation", response_model=AppointmentRead)
+async def send_appointment_confirmation(
+    appointment_id: uuid.UUID,
+    doctor: Doctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db),
+) -> Appointment:
+    """Envia (ou reenvia) a mensagem de confirmação da consulta ao paciente."""
+    appt = await _owned_appointment(session, doctor, appointment_id)
+    await send_confirmation(session, appt)
     return appt
 
 

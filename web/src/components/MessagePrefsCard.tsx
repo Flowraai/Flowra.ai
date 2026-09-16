@@ -9,6 +9,8 @@ const DEFAULTS: MessagePrefs = {
   send_medication_reminder: true,
   send_appointment_reminder: true,
   send_checkin_reminder: true,
+  send_appointment_confirmation: true,
+  appointment_confirmation_template: null,
   signature: null,
   quick_replies: [],
 };
@@ -34,6 +36,11 @@ const TOGGLES: { key: keyof MessagePrefs; label: string; hint: string }[] = [
     label: "Lembrete diário de check-in",
     hint: "Avisa quem ainda não fez o check-in do dia (no fim da tarde).",
   },
+  {
+    key: "send_appointment_confirmation",
+    label: "Confirmação ao agendar",
+    hint: "Envia a confirmação da consulta assim que você agenda (também dá para reenviar pela Agenda).",
+  },
 ];
 
 export function MessagePrefsCard() {
@@ -55,7 +62,11 @@ export function MessagePrefsCard() {
     setSaved(false);
     try {
       await auth.updateMe({
-        message_prefs: { ...prefs, signature: prefs.signature?.trim() || null },
+        message_prefs: {
+          ...prefs,
+          signature: prefs.signature?.trim() || null,
+          appointment_confirmation_template: prefs.appointment_confirmation_template?.trim() || null,
+        },
       });
       await refresh();
       setSaved(true);
@@ -91,6 +102,21 @@ export function MessagePrefsCard() {
           </label>
         ))}
       </div>
+
+      <label style={{ marginTop: 14 }}>
+        Mensagem de confirmação da consulta <span className="muted">(opcional)</span>
+        <textarea
+          value={prefs.appointment_confirmation_template ?? ""}
+          maxLength={600}
+          rows={3}
+          placeholder={"Olá {paciente}! Sua {tipo} está marcada para {data} às {hora}. {local}\nResponda SIM para confirmar."}
+          onChange={(e) => set("appointment_confirmation_template", e.target.value)}
+        />
+      </label>
+      <p className="muted set-hint">
+        Placeholders: <code>{"{paciente}"}</code> <code>{"{tipo}"}</code> <code>{"{data}"}</code>{" "}
+        <code>{"{hora}"}</code> <code>{"{local}"}</code>. Em branco, usa o texto padrão do sistema.
+      </p>
 
       <label style={{ marginTop: 14 }}>
         Assinatura das mensagens <span className="muted">(opcional)</span>

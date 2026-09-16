@@ -14,6 +14,10 @@ class MessagePrefs(BaseModel):
     send_medication_reminder: bool = True   # lembrete "hora do medicamento"
     send_appointment_reminder: bool = True  # lembrete de consulta (24h antes)
     send_checkin_reminder: bool = True      # lembrete diário "faça seu check-in"
+    send_appointment_confirmation: bool = True  # confirma a consulta ao agendar
+    # Modelo da mensagem de confirmação. Placeholders: {paciente} {tipo} {data}
+    # {hora} {local}. Vazio = usa o texto padrão do sistema.
+    appointment_confirmation_template: str | None = Field(default=None, max_length=600)
     # Assinatura opcional acrescentada ao fim das mensagens (ex.: "Dra. Ana — CRM 000").
     signature: str | None = Field(default=None, max_length=120)
     # Respostas rápidas (modelos) que o médico insere no chat com um toque.

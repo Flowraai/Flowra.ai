@@ -44,3 +44,4 @@ class AppointmentRead(BaseModel):
     notes: str | None = None
     reschedule_requested_at: datetime | None = None
     reschedule_note: str | None = None
+    confirmation_sent_at: datetime | None = None
