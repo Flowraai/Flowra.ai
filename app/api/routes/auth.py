@@ -220,6 +220,14 @@ async def _profile_response(session: AsyncSession, doctor: Doctor) -> DoctorProf
     user = await session.get(User, doctor.user_id)
     tenant = await session.get(Tenant, doctor.tenant_id)
     pack = get_pack(doctor.specialty)
+    membership = (
+        await session.execute(
+            select(Membership).where(
+                Membership.user_id == doctor.user_id,
+                Membership.tenant_id == doctor.tenant_id,
+            )
+        )
+    ).scalar_one_or_none()
     return DoctorProfile(
         id=doctor.id,
         tenant_id=doctor.tenant_id,
@@ -235,6 +243,7 @@ async def _profile_response(session: AsyncSession, doctor: Doctor) -> DoctorProf
         message_prefs=MessagePrefs(**(doctor.message_prefs or {})),
         email=user.email if user else "",
         is_admin=settings.is_admin_email(user.email) if user else False,
+        clinic_role=membership.role.value if membership else None,
         care=CareInfo(specialty=pack.specialty, label=pack.label, features=dict(pack.features)),
     )
 

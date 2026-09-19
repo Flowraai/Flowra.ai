@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { auth } from "../api/endpoints";
+import { auth, clinic } from "../api/endpoints";
 import { getToken, setToken } from "../api/client";
 import type { DoctorProfile } from "../api/types";
 
@@ -8,6 +8,7 @@ interface AuthState {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string, specialty?: string) => Promise<void>;
+  acceptInvite: (token: string, name: string, password: string) => Promise<void>;
   refresh: () => Promise<void>;
   logout: () => void;
 }
@@ -51,6 +52,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async register(email, password, name, specialty) {
         const pair = await auth.register(email, password, name, specialty);
+        setToken(pair.access_token);
+        setDoctor(await auth.me());
+      },
+      async acceptInvite(token, name, password) {
+        const pair = await clinic.accept({ token, name, password });
         setToken(pair.access_token);
         setDoctor(await auth.me());
       },

@@ -17,6 +17,9 @@ import type {
   BillingBatch,
   ChargeSummary,
   ChargeUpdateInput,
+  ClinicInvitation,
+  ClinicMember,
+  ClinicRoleName,
   ConsultationCharge,
   PixCode,
   ClinicalNote,
@@ -169,6 +172,18 @@ export const charges = {
   update: (id: string, patch: ChargeUpdateInput) =>
     api<ConsultationCharge>(`/charges/${id}`, { method: "PATCH", body: patch }),
   pix: (id: string) => api<PixCode>(`/charges/${id}/pix`),
+};
+
+export const clinic = {
+  members: () => api<ClinicMember[]>("/clinic/members"),
+  updateMember: (id: string, patch: { role?: ClinicRoleName; is_active?: boolean; can_view_finance?: boolean }) =>
+    api<ClinicMember>(`/clinic/members/${id}`, { method: "PATCH", body: patch }),
+  invitations: () => api<ClinicInvitation[]>("/clinic/invitations"),
+  invite: (input: { email: string; role: ClinicRoleName; can_view_finance?: boolean }) =>
+    api<ClinicInvitation>("/clinic/invitations", { method: "POST", body: input }),
+  revokeInvite: (id: string) => api<void>(`/clinic/invitations/${id}`, { method: "DELETE" }),
+  accept: (input: { token: string; name: string; password: string }) =>
+    api<TokenPair>("/clinic/invitations/accept", { method: "POST", auth: false, body: input }),
 };
 
 export const billingBatches = {

@@ -147,6 +147,18 @@ async def require_finance_member(
     return member
 
 
+async def require_owner(
+    member: CurrentMember = Depends(get_current_member),
+) -> CurrentMember:
+    """Exige o papel de dono/gestor do tenant (gestão de equipe e convites)."""
+    if member.role is not ClinicRole.OWNER:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Restrito ao dono da clínica.",
+        )
+    return member
+
+
 def scope_query(stmt: Select, model, member: CurrentMember) -> Select:
     """Aplica o filtro de visibilidade por papel a uma query.
 

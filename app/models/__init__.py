@@ -18,6 +18,7 @@ from app.models.device_token import DeviceToken
 from app.models.doctor import Doctor
 from app.models.exam import Exam
 from app.models.health_plan import HealthPlan
+from app.models.invitation import Invitation
 from app.models.enums import (
     AlertStatus,
     AlertUrgency,
@@ -68,6 +69,7 @@ __all__ = [
     "Doctor",
     "Exam",
     "HealthPlan",
+    "Invitation",
     "MedicationIntake",
     "MedicationPlan",
     "Membership",

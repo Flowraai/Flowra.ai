@@ -35,8 +35,32 @@ export interface DoctorProfile {
   email: string;
   tenant_name: string | null;
   is_admin: boolean;
+  clinic_role?: string | null;
   message_prefs: MessagePrefs;
   care?: CareInfo | null;
+}
+
+export type ClinicRoleName = "owner" | "doctor" | "reception";
+
+export interface ClinicMember {
+  id: string;
+  user_id: string;
+  email: string;
+  name: string | null;
+  role: ClinicRoleName;
+  is_active: boolean;
+  can_view_finance: boolean;
+  is_self: boolean;
+}
+
+export interface ClinicInvitation {
+  id: string;
+  email: string;
+  role: ClinicRoleName;
+  can_view_finance: boolean;
+  expires_at: string;
+  accepted_at: string | null;
+  created_at: string;
 }
 
 export interface CareInfo {

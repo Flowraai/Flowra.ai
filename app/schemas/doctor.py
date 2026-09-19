@@ -63,6 +63,7 @@ class DoctorProfile(DoctorRead):
     email: EmailStr
     tenant_name: str | None = None
     is_admin: bool = False
+    clinic_role: str | None = None  # papel na clínica: owner|doctor|reception
     message_prefs: MessagePrefs = Field(default_factory=MessagePrefs)
     care: CareInfo | None = None
 

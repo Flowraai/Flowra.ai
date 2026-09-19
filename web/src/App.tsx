@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes, useNavigate } from "react-route
 import { useEffect, type ReactNode } from "react";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { Login } from "./pages/Login";
+import { AcceptInvite } from "./pages/AcceptInvite";
 import { Dashboard } from "./pages/Dashboard";
 import { PatientDetail } from "./pages/PatientDetail";
 import { PatientReport } from "./pages/PatientReport";
@@ -64,6 +65,7 @@ export default function App() {
               </RedirectIfAuthed>
             }
           />
+          <Route path="/convite" element={<AcceptInvite />} />
           <Route
             path="/"
             element={

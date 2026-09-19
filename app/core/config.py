@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     password_reset_expire_minutes: int = 30
     # Base do link de redefinição de senha (painel). Se vazio, envia só o token.
     password_reset_url_base: str | None = None
+    # Convites de equipe (clínica): validade e base do link de aceite (painel).
+    invite_expire_hours: int = 168  # 7 dias
+    invite_url_base: str | None = None
 
     # Rate limiting (janela deslizante em memória) dos endpoints sensíveis
     login_rate_limit_attempts: int = 5
