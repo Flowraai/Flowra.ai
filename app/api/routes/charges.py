@@ -14,11 +14,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_doctor
+from app.api.deps import CurrentMember, require_finance_member, scope_query
 from app.db.session import get_db
 from app.models.appointment import Appointment
 from app.models.consultation_charge import ConsultationCharge
 from app.models.doctor import Doctor
+from app.models.enums import ClinicRole
 from app.models.health_plan import HealthPlan
 from app.models.patient import Patient
 from app.schemas.consultation_charge import (
@@ -36,18 +37,30 @@ from app.services.pix import build_pix_payload
 router = APIRouter(tags=["charges"])
 
 
-async def _owned_patient(session: AsyncSession, doctor: Doctor, patient_id: uuid.UUID) -> Patient:
+def _scope_ok(row, member: CurrentMember) -> bool:
+    """A linha (paciente/consulta/cobrança) está no escopo do membro?
+
+    Médico vê o que é dele (doctor_id); gestão/recepção veem o tenant inteiro.
+    """
+    if member.role is ClinicRole.DOCTOR and member.doctor is not None:
+        return row.doctor_id == member.doctor.id
+    return row.tenant_id == member.tenant_id
+
+
+async def _owned_patient(
+    session: AsyncSession, member: CurrentMember, patient_id: uuid.UUID
+) -> Patient:
     patient = await session.get(Patient, patient_id)
-    if patient is None or patient.doctor_id != doctor.id:
+    if patient is None or not _scope_ok(patient, member):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente não encontrado.")
     return patient
 
 
 async def _owned_charge(
-    session: AsyncSession, doctor: Doctor, charge_id: uuid.UUID
+    session: AsyncSession, member: CurrentMember, charge_id: uuid.UUID
 ) -> ConsultationCharge:
     charge = await session.get(ConsultationCharge, charge_id)
-    if charge is None or charge.doctor_id != doctor.id:
+    if charge is None or not _scope_ok(charge, member):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lançamento não encontrado.")
     return charge
 
@@ -61,10 +74,10 @@ def _read(charge: ConsultationCharge, plan_name: str | None = None) -> ChargeRea
 @router.get("/patients/{patient_id}/charges", response_model=list[ChargeRead])
 async def list_patient_charges(
     patient_id: uuid.UUID,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_finance_member),
     session: AsyncSession = Depends(get_db),
 ) -> list[ChargeRead]:
-    await _owned_patient(session, doctor, patient_id)
+    await _owned_patient(session, member, patient_id)
     rows = list(
         (
             await session.execute(
@@ -85,11 +98,12 @@ async def list_doctor_charges(
     status_filter: str | None = Query(default=None, alias="status"),
     start: datetime | None = None,
     end: datetime | None = None,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_finance_member),
     session: AsyncSession = Depends(get_db),
 ) -> list[ChargeRead]:
-    """Lançamentos do médico (painel financeiro), com filtro por status e período."""
-    stmt = select(ConsultationCharge).where(ConsultationCharge.doctor_id == doctor.id)
+    """Lançamentos do painel financeiro, com filtro por status e período. O escopo
+    segue o papel: médico vê os seus; gestão/recepção veem os da clínica."""
+    stmt = scope_query(select(ConsultationCharge), ConsultationCharge, member)
     if status_filter:
         stmt = stmt.where(ConsultationCharge.status == status_filter)
     if start is not None:
@@ -112,12 +126,12 @@ async def list_doctor_charges(
 async def charges_summary(
     start: datetime | None = None,
     end: datetime | None = None,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_finance_member),
     session: AsyncSession = Depends(get_db),
 ) -> ChargeSummary:
     """Agrega o financeiro do período: a receber × recebido, por tipo/convênio e
     a série mensal para o gráfico. Recorte por competência (created_at)."""
-    stmt = select(ConsultationCharge).where(ConsultationCharge.doctor_id == doctor.id)
+    stmt = scope_query(select(ConsultationCharge), ConsultationCharge, member)
     if start is not None:
         stmt = stmt.where(ConsultationCharge.created_at >= start)
     if end is not None:
@@ -191,13 +205,13 @@ async def export_charges_csv(
     start: datetime | None = None,
     end: datetime | None = None,
     status_filter: str | None = Query(default=None, alias="status"),
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_finance_member),
     session: AsyncSession = Depends(get_db),
 ) -> Response:
     """Exporta o movimento financeiro em CSV (para o contador). Recorte por
     período e status, como no painel. Separador ';' e decimais com vírgula
     (padrão do Excel em pt-BR)."""
-    stmt = select(ConsultationCharge).where(ConsultationCharge.doctor_id == doctor.id)
+    stmt = scope_query(select(ConsultationCharge), ConsultationCharge, member)
     if status_filter:
         stmt = stmt.where(ConsultationCharge.status == status_filter)
     if start is not None:
@@ -245,7 +259,7 @@ async def export_charges_csv(
 )
 async def generate_charge(
     appointment_id: uuid.UUID,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_finance_member),
     session: AsyncSession = Depends(get_db),
 ) -> ChargeRead:
     """Gera o lançamento de uma consulta manualmente (idempotente).
@@ -253,7 +267,7 @@ async def generate_charge(
     Útil para consultas realizadas antes de o financeiro existir.
     """
     appt = await session.get(Appointment, appointment_id)
-    if appt is None or appt.doctor_id != doctor.id:
+    if appt is None or not _scope_ok(appt, member):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Consulta não encontrada.")
     patient = await session.get(Patient, appt.patient_id)
     if patient is None:
@@ -267,10 +281,10 @@ async def generate_charge(
 async def update_charge(
     charge_id: uuid.UUID,
     payload: ChargeUpdate,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_finance_member),
     session: AsyncSession = Depends(get_db),
 ) -> ChargeRead:
-    charge = await _owned_charge(session, doctor, charge_id)
+    charge = await _owned_charge(session, member, charge_id)
     data = payload.model_dump(exclude_unset=True)
 
     if "gross_cents" in data:
@@ -307,16 +321,16 @@ async def update_charge(
 @router.get("/charges/{charge_id}/pix", response_model=PixCode)
 async def charge_pix(
     charge_id: uuid.UUID,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_finance_member),
     session: AsyncSession = Depends(get_db),
 ) -> PixCode:
     """Gera o PIX copia-e-cola de uma cobrança particular.
 
-    Só faz sentido para cobrança do próprio paciente (particular): convênio é
-    pago pelo plano, não pelo paciente. Exige a chave PIX e a cidade do médico
-    configuradas em Ajustes.
+    Só faz sentido para cobrança do paciente (particular): convênio é pago pelo
+    plano. Usa a chave PIX do médico DONO da cobrança (a recepção pode gerar o
+    código de qualquer médico da clínica).
     """
-    charge = await _owned_charge(session, doctor, charge_id)
+    charge = await _owned_charge(session, member, charge_id)
     if charge.kind != "particular":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -326,10 +340,11 @@ async def charge_pix(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Lançamento cancelado."
         )
-    if not doctor.pix_key or not doctor.pix_city:
+    doctor = await session.get(Doctor, charge.doctor_id)
+    if doctor is None or not doctor.pix_key or not doctor.pix_city:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Configure sua chave PIX e cidade em Ajustes para gerar a cobrança.",
+            detail="Configure a chave PIX e a cidade do médico em Ajustes para gerar a cobrança.",
         )
     # txid a partir do id da cobrança (rastreável na conciliação manual).
     txid = charge.id.hex[:25]

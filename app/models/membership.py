@@ -36,3 +36,7 @@ class Membership(UUIDMixin, TimestampMixin, Base):
         Enum(ClinicRole, name="clinic_role"), nullable=False,
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Permissão por usuário: recepção enxerga o financeiro (a receber/repasses)?
+    # O dono liga/desliga por pessoa. Ignorado para papéis que já veem o financeiro
+    # por padrão (owner/finance) ou só o próprio (doctor).
+    can_view_finance: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

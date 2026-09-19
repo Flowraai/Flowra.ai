@@ -9,11 +9,27 @@ import httpx
 from sqlalchemy import select
 
 from app.api.deps import CurrentMember, get_current_member, scope_query
+from app.core.security import create_access_token, hash_password
 from app.db.session import AsyncSessionLocal
-from app.models.enums import ClinicRole
+from app.models.enums import ClinicRole, UserRole
 from app.models.membership import Membership
 from app.models.patient import Patient
 from app.models.user import User
+
+
+async def _reception_headers(tenant_id: uuid.UUID, email: str, can_view_finance: bool) -> dict:
+    """Cria um usuário de recepção no tenant e devolve o header com o token."""
+    async with AsyncSessionLocal() as s:
+        user = User(email=email, hashed_password=hash_password("x"), role=UserRole.DOCTOR)
+        s.add(user)
+        await s.flush()
+        s.add(Membership(
+            user_id=user.id, tenant_id=tenant_id,
+            role=ClinicRole.RECEPTION, can_view_finance=can_view_finance,
+        ))
+        await s.commit()
+        uid = user.id
+    return {"Authorization": f"Bearer {create_access_token(str(uid))}"}
 
 
 async def _register(client: httpx.AsyncClient, email: str = "dra.ana@clinica.com") -> dict:
@@ -68,3 +84,39 @@ def test_scope_query_by_role():
     assert not recep.can_read_clinical
     q3 = str(scope_query(select(Patient), Patient, recep))
     assert "tenant_id" in q3.split("WHERE")[-1]
+
+
+def test_sees_finance_by_role():
+    tid = uuid.uuid4()
+    owner = CurrentMember(user=None, tenant_id=tid, role=ClinicRole.OWNER, doctor=None)
+    doctor = CurrentMember(user=None, tenant_id=tid, role=ClinicRole.DOCTOR, doctor=None)
+    rec_off = CurrentMember(user=None, tenant_id=tid, role=ClinicRole.RECEPTION, doctor=None)
+    rec_on = CurrentMember(
+        user=None, tenant_id=tid, role=ClinicRole.RECEPTION, doctor=None, can_view_finance=True
+    )
+    assert owner.sees_finance and doctor.sees_finance
+    assert not rec_off.sees_finance and rec_on.sees_finance
+
+
+async def test_reception_finance_gate(client: httpx.AsyncClient):
+    owner = await _register(client)
+    me = (await client.get("/api/v1/auth/me", headers=owner)).json()
+    tid = uuid.UUID(me["tenant_id"])
+
+    # Sem permissão de financeiro: 403 no painel de cobranças.
+    rec_off = await _reception_headers(tid, "recep.off@a.com", can_view_finance=False)
+    assert (await client.get("/api/v1/charges", headers=rec_off)).status_code == 403
+
+    # Com permissão: enxerga o financeiro da clínica (lista, ainda que vazia).
+    rec_on = await _reception_headers(tid, "recep.on@a.com", can_view_finance=True)
+    r = await client.get("/api/v1/charges", headers=rec_on)
+    assert r.status_code == 200 and isinstance(r.json(), list)
+
+
+async def test_reception_blocked_from_clinical(client: httpx.AsyncClient):
+    owner = await _register(client)
+    me = (await client.get("/api/v1/auth/me", headers=owner)).json()
+    tid = uuid.UUID(me["tenant_id"])
+    rec = await _reception_headers(tid, "recep.clin@a.com", can_view_finance=True)
+    # /patients ainda exige perfil médico — recepção não lê dado clínico.
+    assert (await client.get("/api/v1/patients", headers=rec)).status_code in (401, 403)

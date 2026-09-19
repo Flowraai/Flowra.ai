@@ -79,6 +79,7 @@ class CurrentMember:
     tenant_id: uuid.UUID
     role: ClinicRole
     doctor: Doctor | None
+    can_view_finance: bool = False
 
     @property
     def is_management(self) -> bool:
@@ -89,6 +90,14 @@ class CurrentMember:
     def can_read_clinical(self) -> bool:
         """Pode ler dado clínico (evolução, risco). Recepção/financeiro não."""
         return self.role in (ClinicRole.OWNER, ClinicRole.DOCTOR)
+
+    @property
+    def sees_finance(self) -> bool:
+        """Pode ver o financeiro. Owner/finance sempre; médico o seu; recepção só
+        se o dono liberou (can_view_finance)."""
+        if self.role in (ClinicRole.OWNER, ClinicRole.FINANCE, ClinicRole.DOCTOR):
+            return True
+        return self.can_view_finance
 
 
 async def get_current_member(
@@ -118,8 +127,24 @@ async def get_current_member(
         )
     ).scalar_one_or_none()
     return CurrentMember(
-        user=user, tenant_id=membership.tenant_id, role=membership.role, doctor=doctor
+        user=user,
+        tenant_id=membership.tenant_id,
+        role=membership.role,
+        doctor=doctor,
+        can_view_finance=membership.can_view_finance,
     )
+
+
+async def require_finance_member(
+    member: CurrentMember = Depends(get_current_member),
+) -> CurrentMember:
+    """Exige que o membro possa ver o financeiro (senão 403)."""
+    if not member.sees_finance:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Sem acesso ao financeiro.",
+        )
+    return member
 
 
 def scope_query(stmt: Select, model, member: CurrentMember) -> Select:
@@ -154,24 +179,23 @@ def _subscription_grants_access(sub: Subscription) -> bool:
 
 
 async def require_active_subscription(
-    user: User = Depends(get_current_user),
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(get_current_member),
     session: AsyncSession = Depends(get_db),
-) -> Doctor:
-    """Exige assinatura ativa do tenant para as telas clínicas.
+) -> None:
+    """Exige assinatura ativa do tenant para o painel (gate, não injeta perfil).
 
-    No-op quando BILLING_ENABLED=false (comportamento atual). Admins da
-    plataforma são isentos. Sem assinatura válida, retorna 402 para o painel
-    redirecionar à tela de planos.
+    Baseado no tenant do membro — vale para médico, dono ou recepção. No-op
+    quando BILLING_ENABLED=false (comportamento atual). Admins da plataforma são
+    isentos. Sem assinatura válida, retorna 402 para o painel ir aos planos.
     """
-    if not settings.billing_enabled or settings.is_admin_email(user.email):
-        return doctor
+    if not settings.billing_enabled or settings.is_admin_email(member.user.email):
+        return
     result = await session.execute(
-        select(Subscription).where(Subscription.tenant_id == doctor.tenant_id)
+        select(Subscription).where(Subscription.tenant_id == member.tenant_id)
     )
     sub = result.scalar_one_or_none()
     if sub is not None and _subscription_grants_access(sub):
-        return doctor
+        return
     raise HTTPException(
         status_code=status.HTTP_402_PAYMENT_REQUIRED,
         detail="Assinatura necessária para acessar o painel.",
