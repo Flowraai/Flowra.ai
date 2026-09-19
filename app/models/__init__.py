@@ -24,6 +24,7 @@ from app.models.enums import (
     AppointmentKind,
     AppointmentStatus,
     AuditAction,
+    ClinicRole,
     DeviceOwnerType,
     ExamStatus,
     MedicationIntakeStatus,
@@ -39,6 +40,7 @@ from app.models.enums import (
     UserRole,
 )
 from app.models.medication import MedicationIntake, MedicationPlan
+from app.models.membership import Membership
 from app.models.message import Message
 from app.models.notification import Notification
 from app.models.patient import Patient
@@ -68,6 +70,7 @@ __all__ = [
     "HealthPlan",
     "MedicationIntake",
     "MedicationPlan",
+    "Membership",
     "Message",
     "Notification",
     "PasswordResetToken",
@@ -89,6 +92,7 @@ __all__ = [
     "AppointmentKind",
     "AppointmentStatus",
     "AuditAction",
+    "ClinicRole",
     "DeviceOwnerType",
     "ExamStatus",
     "MedicationIntakeStatus",

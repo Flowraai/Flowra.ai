@@ -14,7 +14,8 @@ from app.core.rate_limit import rate_limit
 from app.core.security import hash_password, verify_password
 from app.db.session import get_db
 from app.models.doctor import Doctor
-from app.models.enums import TenantKind, UserRole
+from app.models.enums import ClinicRole, TenantKind, UserRole
+from app.models.membership import Membership
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.schemas.auth import (
@@ -102,6 +103,8 @@ async def register_doctor(
             notification_phone=payload.notification_phone,
         )
     )
+    # Quem cria a conta é o dono (gestor) do tenant. Conta solo = tenant de 1 pessoa.
+    session.add(Membership(user_id=user.id, tenant_id=tenant.id, role=ClinicRole.OWNER))
 
     access, refresh = await auth_service.issue_token_pair(session, user)
     return TokenPair(access_token=access, refresh_token=refresh)

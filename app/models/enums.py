@@ -19,6 +19,19 @@ class TenantKind(str, enum.Enum):
     SOLO = "solo"
 
 
+class ClinicRole(str, enum.Enum):
+    """Papel de um usuário DENTRO de um tenant (clínica).
+
+    Distinto de UserRole (perfil global da plataforma). Um usuário pode ter
+    papéis diferentes em clínicas diferentes via Membership.
+    """
+
+    OWNER = "owner"          # dono/gestor: vê tudo da clínica e administra a equipe
+    DOCTOR = "doctor"        # profissional de saúde: seus pacientes e agenda
+    RECEPTION = "reception"  # recepção/secretaria: agenda e cadastro, sem dado clínico
+    FINANCE = "finance"      # financeiro: cobranças e repasses, sem dado clínico
+
+
 class DeviceOwnerType(str, enum.Enum):
     """Dono de um device token de push."""
 

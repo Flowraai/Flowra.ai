@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import select
+from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -15,7 +16,8 @@ from app.core.config import settings
 from app.core.security import decode_access_token, hash_patient_token
 from app.db.session import get_db
 from app.models.doctor import Doctor
-from app.models.enums import SubscriptionStatus, UserRole
+from app.models.enums import ClinicRole, SubscriptionStatus, UserRole
+from app.models.membership import Membership
 from app.models.patient import Patient
 from app.models.subscription import Subscription
 from app.models.user import User
@@ -64,6 +66,72 @@ async def get_current_doctor(
     if doctor is None:
         raise _CREDENTIALS_EXC
     return doctor
+
+
+@dataclass
+class CurrentMember:
+    """Quem está logado, dentro de qual clínica (tenant) e com qual papel.
+
+    `doctor` é None para papéis sem perfil clínico (recepção/financeiro).
+    """
+
+    user: User
+    tenant_id: uuid.UUID
+    role: ClinicRole
+    doctor: Doctor | None
+
+    @property
+    def is_management(self) -> bool:
+        """Vê o tenant inteiro (dono/financeiro)."""
+        return self.role in (ClinicRole.OWNER, ClinicRole.FINANCE)
+
+    @property
+    def can_read_clinical(self) -> bool:
+        """Pode ler dado clínico (evolução, risco). Recepção/financeiro não."""
+        return self.role in (ClinicRole.OWNER, ClinicRole.DOCTOR)
+
+
+async def get_current_member(
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+) -> CurrentMember:
+    """Resolve o vínculo do usuário com a clínica (Membership) e o papel.
+
+    Hoje um usuário tem um único membership (conta solo); quando houver mais de
+    uma clínica, entra um seletor de tenant. Sem membership ativo → 401.
+    """
+    membership = (
+        await session.execute(
+            select(Membership)
+            .where(Membership.user_id == user.id, Membership.is_active.is_(True))
+            .order_by(Membership.created_at)
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if membership is None:
+        raise _CREDENTIALS_EXC
+    doctor = (
+        await session.execute(
+            select(Doctor).where(
+                Doctor.user_id == user.id, Doctor.tenant_id == membership.tenant_id
+            )
+        )
+    ).scalar_one_or_none()
+    return CurrentMember(
+        user=user, tenant_id=membership.tenant_id, role=membership.role, doctor=doctor
+    )
+
+
+def scope_query(stmt: Select, model, member: CurrentMember) -> Select:
+    """Aplica o filtro de visibilidade por papel a uma query.
+
+    Médico vê o que é dele (`doctor_id`); gestão/recepção veem o tenant inteiro
+    (`tenant_id`). O corte de dado clínico (recepção não lê evolução) é feito na
+    rota, via `can_read_clinical`.
+    """
+    if member.role is ClinicRole.DOCTOR and member.doctor is not None:
+        return stmt.where(model.doctor_id == member.doctor.id)
+    return stmt.where(model.tenant_id == member.tenant_id)
 
 
 async def get_current_admin(user: User = Depends(get_current_user)) -> User:
