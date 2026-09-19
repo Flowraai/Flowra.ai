@@ -115,7 +115,7 @@ export function AgendaCalendar({
               <div className="cal-appts">
                 {appts.slice(0, 3).map((a) => (
                   <span key={a.id} className={`cal-chip ${STATUS_CLS[a.status]}`}>
-                    <b>{timeOf(a.scheduled_at)}</b> {nameOf(a.patient_id)}
+                    <b>{timeOf(a.scheduled_at)}</b> {a.patient_name ?? nameOf(a.patient_id)}
                   </span>
                 ))}
                 {appts.length > 3 ? <span className="cal-more">+{appts.length - 3}</span> : null}
@@ -138,7 +138,7 @@ export function AgendaCalendar({
             selectedAppts.map((a) => (
               <button key={a.id} className="cal-day-row" onClick={() => onOpenPatient(a.patient_id)}>
                 <b className="tnum">{timeOf(a.scheduled_at)}</b>
-                <span className="pt-link">{nameOf(a.patient_id)}</span>
+                <span className="pt-link">{a.patient_name ?? nameOf(a.patient_id)}</span>
                 <span className={`appt-status ${STATUS_CLS[a.status].replace("c-", "s-")}`}>
                   {a.status === "confirmed" ? "Confirmada" : a.status === "cancelled" ? "Cancelada"
                     : a.status === "completed" ? "Concluída" : "Agendada"}

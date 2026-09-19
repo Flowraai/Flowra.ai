@@ -360,6 +360,7 @@ export interface Appointment {
   reschedule_requested_at: string | null;
   reschedule_note: string | null;
   confirmation_sent_at: string | null;
+  patient_name: string | null;
 }
 
 export interface AppointmentInput {

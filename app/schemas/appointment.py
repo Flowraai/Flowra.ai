@@ -45,3 +45,5 @@ class AppointmentRead(BaseModel):
     reschedule_requested_at: datetime | None = None
     reschedule_note: str | None = None
     confirmation_sent_at: datetime | None = None
+    # Preenchido pela rota (não é coluna) — nome do paciente para a Agenda.
+    patient_name: str | None = None

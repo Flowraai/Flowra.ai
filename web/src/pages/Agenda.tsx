@@ -172,7 +172,7 @@ export function Agenda() {
                       <div className="agenda-main">
                         <div className="agenda-top">
                           <button className="pt-link" onClick={() => navigate(`/pacientes/${a.patient_id}`)}>
-                            {nameOf(a.patient_id)}
+                            {a.patient_name ?? nameOf(a.patient_id)}
                           </button>
                           <span className="agenda-kind">{KIND[a.kind]}</span>
                           <span className={`appt-status ${st.cls}`}>{st.label}</span>
