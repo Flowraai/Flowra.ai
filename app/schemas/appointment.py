@@ -25,6 +25,13 @@ class AppointmentUpdate(BaseModel):
     notes: str | None = None
 
 
+class PatientDirectoryItem(BaseModel):
+    """Item mínimo (id + nome) para agendar pela Agenda, sem dado clínico."""
+
+    id: uuid.UUID
+    name: str
+
+
 class RescheduleRequest(BaseModel):
     """Pedido de remarcação feito pelo paciente (observação opcional)."""
 

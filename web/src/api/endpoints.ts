@@ -47,6 +47,7 @@ import type {
   PatientCreateInput,
   PatientExport,
   PatientOnboarding,
+  PatientDirectoryItem,
   PatientPanelItem,
   PatientSummary,
   PatientUpdateInput,
@@ -232,6 +233,9 @@ export const medications = {
 
 export const appointments = {
   upcoming: (limit = 100) => api<Appointment[]>(`/appointments/upcoming?limit=${limit}`),
+  patientDirectory: () => api<PatientDirectoryItem[]>("/appointments/patient-directory"),
+  create: (patientId: string, input: AppointmentInput) =>
+    api<Appointment>(`/patients/${patientId}/appointments`, { method: "POST", body: input }),
   range: (startIso: string, endIso: string) =>
     api<Appointment[]>(
       `/appointments/range?start=${encodeURIComponent(startIso)}&end=${encodeURIComponent(endIso)}`,

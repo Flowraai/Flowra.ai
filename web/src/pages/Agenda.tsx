@@ -7,6 +7,7 @@ import { ApiError } from "../api/client";
 import { useAsync } from "../lib/useAsync";
 import type { Appointment, AppointmentKind, AppointmentStatus } from "../api/types";
 import { AgendaCalendar } from "../components/AgendaCalendar";
+import { NewAppointmentModal } from "../components/NewAppointmentModal";
 import "./Agenda.css";
 
 const KIND: Record<AppointmentKind, string> = { consultation: "Consulta", return: "Retorno" };
@@ -40,6 +41,8 @@ export function Agenda() {
   const [editing, setEditing] = useState<string | null>(null);
   const [when, setWhen] = useState("");
   const [view, setView] = useState<"list" | "calendar">("list");
+  const [showNew, setShowNew] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   function load() {
     setError(null);
@@ -126,7 +129,12 @@ export function Agenda() {
     <AppShell
       title="Agenda"
       subtitle={`${(list ?? []).length} consulta(s) à frente`}
-      actions={<ThemeToggle />}
+      actions={
+        <>
+          <button className="btn sm" onClick={() => setShowNew(true)}>➕ Nova consulta</button>
+          <ThemeToggle />
+        </>
+      }
     >
       <div className="panel">
         <div className="panel-head">
@@ -147,7 +155,7 @@ export function Agenda() {
         </div>
 
         {view === "calendar" ? (
-          <AgendaCalendar nameOf={nameOf} onOpenPatient={(id) => navigate(`/pacientes/${id}`)} />
+          <AgendaCalendar key={reloadKey} nameOf={nameOf} onOpenPatient={(id) => navigate(`/pacientes/${id}`)} />
         ) : error ? (
           <div className="state">
             <span className="err">{error}</span>
@@ -232,6 +240,16 @@ export function Agenda() {
           </div>
         )}
       </div>
+      {showNew ? (
+        <NewAppointmentModal
+          onClose={() => setShowNew(false)}
+          onCreated={() => {
+            setShowNew(false);
+            load();
+            setReloadKey((k) => k + 1);
+          }}
+        />
+      ) : null}
     </AppShell>
   );
 }

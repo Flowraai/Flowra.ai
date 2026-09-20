@@ -66,6 +66,11 @@ export interface ClinicMember {
   is_self: boolean;
 }
 
+export interface PatientDirectoryItem {
+  id: string;
+  name: string;
+}
+
 export interface CareTeamMember {
   doctor_id: string;
   name: string;

@@ -95,6 +95,24 @@ async def test_shared_agenda_scope_by_role(client: httpx.AsyncClient):
     assert (await client.get("/api/v1/patients", headers=rec)).status_code in (401, 403)
 
 
+async def test_patient_directory_and_reception_booking(client: httpx.AsyncClient):
+    owner = await _owner(client)
+    tid = await _tenant_id(client, owner)
+    p1 = await _patient(client, owner, "Ana P1")
+    rec = await _reception_headers(tid, "recep.book@clinica.com")
+
+    # Diretório: recepção vê o paciente, só id + nome (sem dado clínico).
+    dirr = (await client.get("/api/v1/appointments/patient-directory", headers=rec)).json()
+    assert {d["name"] for d in dirr} == {"Ana P1"}
+    assert set(dirr[0].keys()) == {"id", "name"}
+
+    # Recepção agenda pela Agenda (endpoint de criação).
+    when = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
+    r = await client.post(f"/api/v1/patients/{p1['id']}/appointments", headers=rec,
+                          json={"scheduled_at": when})
+    assert r.status_code == 201
+
+
 async def test_reception_can_manage_appointment(client: httpx.AsyncClient):
     owner = await _owner(client)
     tid = await _tenant_id(client, owner)

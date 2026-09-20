@@ -10,12 +10,18 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentMember, get_current_member, scope_query
+from app.api.patient_access import patient_visible_clause
 from app.db.session import get_db
 from app.models.appointment import Appointment
 from app.models.doctor import Doctor
 from app.models.enums import AppointmentStatus, ClinicRole
 from app.models.patient import Patient
-from app.schemas.appointment import AppointmentCreate, AppointmentRead, AppointmentUpdate
+from app.schemas.appointment import (
+    AppointmentCreate,
+    AppointmentRead,
+    AppointmentUpdate,
+    PatientDirectoryItem,
+)
 from app.services.appointment_confirmation_service import send_confirmation
 from app.services.consultation_charge_service import generate_for_appointment
 from app.services.message_prefs import prefs_of
@@ -152,6 +158,29 @@ async def upcoming_appointments(
     ).order_by(Appointment.scheduled_at).limit(limit)
     result = await session.execute(stmt)
     return await _with_names(session, list(result.scalars().all()))
+
+
+@router.get("/appointments/patient-directory", response_model=list[PatientDirectoryItem])
+async def patient_directory(
+    member: CurrentMember = Depends(get_current_member),
+    session: AsyncSession = Depends(get_db),
+) -> list[PatientDirectoryItem]:
+    """Lista mínima (id + nome) de pacientes para agendar pela Agenda — inclusive
+    para a recepção, sem expor dado clínico. Escopo por papel."""
+    rows = list(
+        (
+            await session.execute(
+                select(Patient).where(
+                    patient_visible_clause(member), Patient.is_active.is_(True)
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    items = [PatientDirectoryItem(id=p.id, name=p.name) for p in rows]
+    items.sort(key=lambda i: i.name.lower())
+    return items
 
 
 @router.get("/appointments/range", response_model=list[AppointmentRead])
