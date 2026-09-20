@@ -43,8 +43,8 @@ export function ManagerPanel() {
             <Kpi label="Precisam de atenção" value={String(data.attention_count)} stripe="var(--risk-orange)" />
             <Kpi label="Consultas no mês" value={String(data.appointments_completed)} note={`${data.appointments_cancelled} cancelada(s)`} />
             <Kpi label="Próximas consultas" value={String(data.appointments_upcoming)} />
-            <Kpi label="Recebido no mês" value={brl(data.received_cents)} stripe="var(--fin-received)" />
-            <Kpi label="A receber" value={brl(data.to_receive_cents)} stripe="var(--fin-pending)" />
+            <Kpi label="Repasse médicos (recebido)" value={brl(data.received_cents)} stripe="var(--fin-received)" note={`${brl(data.to_receive_cents)} a receber`} />
+            <Kpi label="Fatia da clínica (recebida)" value={brl(data.clinic_received_cents)} stripe="var(--accent)" note={`${brl(data.clinic_to_receive_cents)} a receber`} />
           </div>
 
           <div className="card mg-card">
@@ -83,8 +83,9 @@ export function ManagerPanel() {
                     <th>Médico</th>
                     <th className="tnum">Pacientes</th>
                     <th className="tnum">Consultas</th>
-                    <th className="tnum">Recebido</th>
+                    <th className="tnum">Repasse</th>
                     <th className="tnum">A receber</th>
+                    <th className="tnum">Clínica</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -95,6 +96,7 @@ export function ManagerPanel() {
                       <td className="tnum">{d.appointments_completed}</td>
                       <td className="tnum ok">{brl(d.received_cents)}</td>
                       <td className="tnum warn">{brl(d.to_receive_cents)}</td>
+                      <td className="tnum">{brl(d.clinic_cents)}</td>
                     </tr>
                   ))}
                 </tbody>

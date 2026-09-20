@@ -136,6 +136,22 @@ export function TeamCard() {
                       financeiro
                     </label>
                   ) : null}
+                  {m.role === "doctor" ? (
+                    <label className="team-share" title="Percentual das consultas que fica com a clínica">
+                      Clínica
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        defaultValue={m.clinic_share_percent}
+                        onBlur={(e) => {
+                          const v = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                          if (v !== m.clinic_share_percent) patchMember(m, { clinic_share_percent: v });
+                        }}
+                      />
+                      %
+                    </label>
+                  ) : null}
                   <button className="mini" onClick={() => patchMember(m, { is_active: !m.is_active })}>
                     {m.is_active ? "Desativar" : "Reativar"}
                   </button>

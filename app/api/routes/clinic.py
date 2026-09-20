@@ -133,9 +133,9 @@ async def list_members(
             )
         ).all()
     )
-    # Nomes dos médicos do tenant (para exibir junto).
-    names = {
-        d.user_id: d.name
+    # Médicos do tenant (nome + rateio) para exibir junto.
+    docs = {
+        d.user_id: d
         for d in (
             await session.execute(select(Doctor).where(Doctor.tenant_id == member.tenant_id))
         )
@@ -144,9 +144,11 @@ async def list_members(
     }
     out = []
     for m, email in rows:
+        d = docs.get(m.user_id)
         out.append(MemberRead(
-            id=m.id, user_id=m.user_id, email=email, name=names.get(m.user_id),
+            id=m.id, user_id=m.user_id, email=email, name=d.name if d else None,
             role=m.role.value, is_active=m.is_active, can_view_finance=m.can_view_finance,
+            clinic_share_percent=d.clinic_share_percent if d else 0,
             is_self=(m.user_id == member.user.id),
         ))
     return out
@@ -199,10 +201,14 @@ async def update_member(
             )
         )
     ).scalar_one_or_none()
+    # Rateio: percentual da clínica sobre as consultas deste médico.
+    if "clinic_share_percent" in data and data["clinic_share_percent"] is not None and doctor:
+        doctor.clinic_share_percent = data["clinic_share_percent"]
     return MemberRead(
         id=target.id, user_id=target.user_id, email=email,
         name=doctor.name if doctor else None, role=target.role.value,
         is_active=target.is_active, can_view_finance=target.can_view_finance,
+        clinic_share_percent=doctor.clinic_share_percent if doctor else 0,
         is_self=(target.user_id == member.user.id),
     )
 
@@ -314,17 +320,23 @@ async def clinic_dashboard(
     )
     received_cents = 0
     to_receive_cents = 0
+    clinic_received = 0
+    clinic_to_receive = 0
     received_by_doctor: dict[uuid.UUID, int] = {}
     to_receive_by_doctor: dict[uuid.UUID, int] = {}
+    clinic_by_doctor: dict[uuid.UUID, int] = {}
     for c in charges:
         if c.status in ("cancelled", "denied"):
             continue
         if c.status == "received":
             received_cents += c.doctor_cents
             received_by_doctor[c.doctor_id] = received_by_doctor.get(c.doctor_id, 0) + c.doctor_cents
+            clinic_received += c.clinic_cents
+            clinic_by_doctor[c.doctor_id] = clinic_by_doctor.get(c.doctor_id, 0) + c.clinic_cents
         else:  # pending / billed
             to_receive_cents += c.doctor_cents
             to_receive_by_doctor[c.doctor_id] = to_receive_by_doctor.get(c.doctor_id, 0) + c.doctor_cents
+            clinic_to_receive += c.clinic_cents
 
     # --- Comparativo por médico ---
     doctors = list(
@@ -338,6 +350,7 @@ async def clinic_dashboard(
             appointments_completed=completed_by_doctor.get(d.id, 0),
             received_cents=received_by_doctor.get(d.id, 0),
             to_receive_cents=to_receive_by_doctor.get(d.id, 0),
+            clinic_cents=clinic_by_doctor.get(d.id, 0),
         )
         for d in doctors
     ]
@@ -357,5 +370,7 @@ async def clinic_dashboard(
         appointments_cancelled=appointments_cancelled,
         received_cents=received_cents,
         to_receive_cents=to_receive_cents,
+        clinic_received_cents=clinic_received,
+        clinic_to_receive_cents=clinic_to_receive,
         doctors=doctor_stats,
     )

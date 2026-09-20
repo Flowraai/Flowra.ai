@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, ForeignKey, String
+from sqlalchemy import JSON, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -52,6 +52,9 @@ class Doctor(UUIDMixin, TimestampMixin, Base):
     # repouso (pode ser CPF/telefone). A cidade é exigida pelo BR Code.
     pix_key: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)
     pix_city: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    # Rateio: percentual das consultas deste médico que fica com a CLÍNICA (0–100).
+    # 0 = médico recebe tudo (padrão solo). Definido pelo dono na equipe.
+    clinic_share_percent: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     # Preferências das mensagens automáticas ao paciente: o que é enviado (convite,
     # lembrete de medicação, lembrete de consulta) e a assinatura opcional. JSON de
     # configuração (não é dado clínico). None = padrões (tudo ligado, sem assinatura).

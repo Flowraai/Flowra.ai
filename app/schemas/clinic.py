@@ -45,6 +45,7 @@ class MemberRead(BaseModel):
     role: str
     is_active: bool
     can_view_finance: bool
+    clinic_share_percent: int = 0   # rateio: % das consultas que fica com a clínica
     is_self: bool = False
 
 
@@ -52,6 +53,7 @@ class MemberUpdate(BaseModel):
     role: str | None = Field(default=None, pattern="^(doctor|reception)$")
     is_active: bool | None = None
     can_view_finance: bool | None = None
+    clinic_share_percent: int | None = Field(default=None, ge=0, le=100)
 
 
 class RiskCounts(BaseModel):
@@ -68,8 +70,9 @@ class DoctorStat(BaseModel):
     name: str
     patients: int = 0
     appointments_completed: int = 0
-    received_cents: int = 0
+    received_cents: int = 0        # líquido do médico
     to_receive_cents: int = 0
+    clinic_cents: int = 0          # fatia da clínica gerada por este médico (recebida)
 
 
 class ClinicDashboard(BaseModel):
@@ -84,4 +87,6 @@ class ClinicDashboard(BaseModel):
     appointments_cancelled: int = 0
     received_cents: int = 0
     to_receive_cents: int = 0
+    clinic_received_cents: int = 0      # fatia da clínica recebida no período
+    clinic_to_receive_cents: int = 0
     doctors: list[DoctorStat] = Field(default_factory=list)

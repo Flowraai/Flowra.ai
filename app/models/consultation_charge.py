@@ -58,7 +58,10 @@ class ConsultationCharge(UUIDMixin, TimestampMixin, Base):
 
     kind: Mapped[str] = mapped_column(String(12), nullable=False)
     gross_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # Repasse líquido ao médico (após a fatia da clínica) e a fatia da clínica.
+    # Em consultório solo, clinic_cents=0 e doctor_cents = base (nada muda).
     doctor_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    clinic_cents: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     status: Mapped[str] = mapped_column(String(12), default="pending", nullable=False)
     payment_method: Mapped[str | None] = mapped_column(String(12), nullable=True)
     received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

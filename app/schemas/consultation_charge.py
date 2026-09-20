@@ -25,6 +25,7 @@ class ChargeRead(BaseModel):
     kind: str
     gross_cents: int
     doctor_cents: int
+    clinic_cents: int = 0
     status: str
     payment_method: str | None = None
     received_at: datetime | None = None
@@ -65,6 +66,9 @@ class ChargeMonth(BaseModel):
 class ChargeSummary(BaseModel):
     to_receive_cents: int = 0
     received_cents: int = 0
+    # Fatia da clínica (rateio) no período — a receber e recebida.
+    clinic_to_receive_cents: int = 0
+    clinic_received_cents: int = 0
     denied_cents: int = 0
     cancelled_count: int = 0
     denied_count: int = 0

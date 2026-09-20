@@ -62,6 +62,7 @@ export interface ClinicMember {
   role: ClinicRoleName;
   is_active: boolean;
   can_view_finance: boolean;
+  clinic_share_percent: number;
   is_self: boolean;
 }
 
@@ -86,6 +87,7 @@ export interface DoctorStat {
   appointments_completed: number;
   received_cents: number;
   to_receive_cents: number;
+  clinic_cents: number;
 }
 
 export interface ClinicDashboard {
@@ -100,6 +102,8 @@ export interface ClinicDashboard {
   appointments_cancelled: number;
   received_cents: number;
   to_receive_cents: number;
+  clinic_received_cents: number;
+  clinic_to_receive_cents: number;
   doctors: DoctorStat[];
 }
 
@@ -201,6 +205,7 @@ export interface ConsultationCharge {
   kind: "particular" | "convenio";
   gross_cents: number;
   doctor_cents: number;
+  clinic_cents: number;
   status: ChargeStatus;
   payment_method: string | null;
   received_at: string | null;
@@ -245,6 +250,8 @@ export interface ChargeMonth {
 export interface ChargeSummary {
   to_receive_cents: number;
   received_cents: number;
+  clinic_to_receive_cents: number;
+  clinic_received_cents: number;
   denied_cents: number;
   cancelled_count: number;
   denied_count: number;

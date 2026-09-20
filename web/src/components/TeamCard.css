@@ -12,3 +12,5 @@
 .team-off { color: var(--risk-red, #c0392b); font-size: 12px; font-weight: 600; }
 .team-item .mini { border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 4px 10px; border-radius: 8px; }
 .team-item .mini:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink); }
+.team-share { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.team-share input { width: 46px; padding: 3px 5px; font-size: 12px; text-align: right; }

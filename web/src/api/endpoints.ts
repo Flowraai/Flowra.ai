@@ -187,7 +187,7 @@ export const clinic = {
   dashboard: () => api<ClinicDashboard>("/clinic/dashboard"),
   doctors: () => api<CareTeamMember[]>("/clinic/doctors"),
   members: () => api<ClinicMember[]>("/clinic/members"),
-  updateMember: (id: string, patch: { role?: ClinicRoleName; is_active?: boolean; can_view_finance?: boolean }) =>
+  updateMember: (id: string, patch: { role?: ClinicRoleName; is_active?: boolean; can_view_finance?: boolean; clinic_share_percent?: number }) =>
     api<ClinicMember>(`/clinic/members/${id}`, { method: "PATCH", body: patch }),
   invitations: () => api<ClinicInvitation[]>("/clinic/invitations"),
   invite: (input: { email: string; role: ClinicRoleName; can_view_finance?: boolean }) =>

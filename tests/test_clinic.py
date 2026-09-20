@@ -146,6 +146,48 @@ async def test_dashboard_aggregates(client: httpx.AsyncClient):
     assert d["doctors"][0]["patients"] == 1 and d["doctors"][0]["received_cents"] == 20000
 
 
+async def test_rateio_split_and_totals(client: httpx.AsyncClient):
+    from datetime import datetime, timedelta, timezone
+
+    owner = await _owner(client)
+    # Segundo médico via convite.
+    _tid, raw = await _invite_raw("dr.rateio@x.com", "doctor")
+    acc = await client.post("/api/v1/clinic/invitations/accept",
+                            json={"token": raw, "name": "Dr. Rateio", "password": "outrasenha1"})
+    d2 = {"Authorization": f"Bearer {acc.json()['access_token']}"}
+
+    # Dono define 30% de rateio da clínica sobre as consultas do médico.
+    members = (await client.get("/api/v1/clinic/members", headers=owner)).json()
+    m = next(x for x in members if x["email"] == "dr.rateio@x.com")
+    upd = await client.patch(f"/api/v1/clinic/members/{m['id']}", headers=owner,
+                             json={"clinic_share_percent": 30})
+    assert upd.status_code == 200 and upd.json()["clinic_share_percent"] == 30
+
+    # Médico atende um particular de R$ 200 e recebe.
+    p = (await client.post("/api/v1/patients", headers=d2, json={
+        "name": "Ana", "contact": "+5543988580825", "consent_given": True})).json()
+    when = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    appt = (await client.post(f"/api/v1/patients/{p['id']}/appointments", headers=d2,
+                              json={"scheduled_at": when})).json()
+    await client.patch(f"/api/v1/appointments/{appt['id']}", headers=d2, json={"status": "completed"})
+    ch = (await client.get(f"/api/v1/patients/{p['id']}/charges", headers=d2)).json()[0]
+    upd2 = await client.patch(f"/api/v1/charges/{ch['id']}", headers=d2, json={"gross_cents": 20000})
+    # 70% médico, 30% clínica.
+    assert upd2.json()["doctor_cents"] == 14000 and upd2.json()["clinic_cents"] == 6000
+    await client.patch(f"/api/v1/charges/{ch['id']}", headers=d2,
+                       json={"status": "received", "payment_method": "pix"})
+
+    # Resumo do médico mostra a fatia da clínica.
+    s = (await client.get("/api/v1/charges/summary", headers=d2)).json()
+    assert s["received_cents"] == 14000 and s["clinic_received_cents"] == 6000
+
+    # Painel do gestor consolida a fatia da clínica.
+    d = (await client.get("/api/v1/clinic/dashboard", headers=owner)).json()
+    assert d["clinic_received_cents"] == 6000
+    stat = next(x for x in d["doctors"] if x["name"] == "Dr. Rateio")
+    assert stat["received_cents"] == 14000 and stat["clinic_cents"] == 6000
+
+
 async def test_dashboard_owner_only(client: httpx.AsyncClient):
     headers = await _owner(client)
     tid = await _tenant_id(client, headers)

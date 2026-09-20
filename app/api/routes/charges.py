@@ -31,7 +31,11 @@ from app.schemas.consultation_charge import (
     ChargeUpdate,
     PixCode,
 )
-from app.services.consultation_charge_service import compute_doctor_cents, generate_for_appointment
+from app.services.consultation_charge_service import (
+    compute_doctor_cents,
+    compute_split,
+    generate_for_appointment,
+)
 from app.services.pix import build_pix_payload
 
 router = APIRouter(tags=["charges"])
@@ -144,6 +148,8 @@ async def charges_summary(
     cancelled = 0
     denied_count = 0
     denied_cents = 0
+    clinic_received = 0
+    clinic_to_receive = 0
     by_plan: dict[uuid.UUID | None, ChargePlanBucket] = {}
     months: dict[str, ChargeMonth] = {}
 
@@ -155,6 +161,10 @@ async def charges_summary(
             denied_count += 1
             denied_cents += c.doctor_cents
             continue
+        if c.status == "received":
+            clinic_received += c.clinic_cents
+        else:
+            clinic_to_receive += c.clinic_cents
         bucket = convenio if c.kind == "convenio" else particular
         pkey = c.health_plan_id
         if pkey not in by_plan:
@@ -180,6 +190,8 @@ async def charges_summary(
     return ChargeSummary(
         to_receive_cents=particular.to_receive_cents + convenio.to_receive_cents,
         received_cents=particular.received_cents + convenio.received_cents,
+        clinic_to_receive_cents=clinic_to_receive,
+        clinic_received_cents=clinic_received,
         denied_cents=denied_cents,
         cancelled_count=cancelled,
         denied_count=denied_count,
@@ -287,19 +299,29 @@ async def update_charge(
     charge = await _owned_charge(session, member, charge_id)
     data = payload.model_dump(exclude_unset=True)
 
+    async def _base_cents() -> int:
+        plan = (
+            await session.get(HealthPlan, charge.health_plan_id)
+            if charge.health_plan_id
+            else None
+        )
+        return compute_doctor_cents(charge.kind, charge.gross_cents, plan)
+
     if "gross_cents" in data:
         charge.gross_cents = data["gross_cents"]
-        # Recalcula o repasse pela regra do convênio (ou = valor cheio no particular),
-        # a menos que o médico informe doctor_cents explicitamente.
+        # Recalcula o repasse e a fatia da clínica (rateio do médico), a menos que
+        # o valor de repasse seja informado explicitamente.
         if "doctor_cents" not in data:
-            plan = (
-                await session.get(HealthPlan, charge.health_plan_id)
-                if charge.health_plan_id
-                else None
+            base = await _base_cents()
+            doctor = await session.get(Doctor, charge.doctor_id)
+            charge.doctor_cents, charge.clinic_cents = compute_split(
+                base, doctor.clinic_share_percent if doctor else 0
             )
-            charge.doctor_cents = compute_doctor_cents(charge.kind, charge.gross_cents, plan)
     if "doctor_cents" in data:
+        # Repasse informado à mão: a clínica fica com o restante da base.
         charge.doctor_cents = data["doctor_cents"]
+        base = await _base_cents()
+        charge.clinic_cents = max(0, base - charge.doctor_cents)
     if "notes" in data:
         charge.notes = data["notes"]
     if "payment_method" in data:
