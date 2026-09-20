@@ -56,6 +56,33 @@ class MemberUpdate(BaseModel):
     clinic_share_percent: int | None = Field(default=None, ge=0, le=100)
 
 
+class MemberDoctorRead(BaseModel):
+    """Cadastro profissional de um médico, visto/editado pelo dono."""
+
+    membership_id: uuid.UUID
+    doctor_id: uuid.UUID
+    email: str
+    name: str
+    specialty: str
+    clinic: str | None = None
+    council_id: str | None = None          # registro no conselho (ex.: CRM)
+    notification_email: str | None = None
+    notification_phone: str | None = None
+    clinic_share_percent: int = 0
+
+
+class MemberDoctorUpdate(BaseModel):
+    """Campos do cadastro do médico que o dono pode alterar. Chave PIX e credenciais
+    de receita/WhatsApp ficam com o próprio médico (não editáveis aqui)."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    specialty: str | None = Field(default=None, max_length=120)
+    clinic: str | None = Field(default=None, max_length=255)
+    council_id: str | None = Field(default=None, max_length=60)
+    notification_email: EmailStr | None = None
+    notification_phone: str | None = Field(default=None, max_length=30)
+
+
 class RiskCounts(BaseModel):
     green: int = 0
     yellow: int = 0

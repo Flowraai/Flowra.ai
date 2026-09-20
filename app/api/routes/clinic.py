@@ -25,6 +25,8 @@ from app.schemas.clinic import (
     InvitationAccept,
     InvitationCreate,
     InvitationRead,
+    MemberDoctorRead,
+    MemberDoctorUpdate,
     MemberRead,
     MemberUpdate,
     RiskCounts,
@@ -211,6 +213,72 @@ async def update_member(
         clinic_share_percent=doctor.clinic_share_percent if doctor else 0,
         is_self=(target.user_id == member.user.id),
     )
+
+
+def _doctor_out(membership_id: uuid.UUID, email: str, doctor: Doctor) -> MemberDoctorRead:
+    return MemberDoctorRead(
+        membership_id=membership_id,
+        doctor_id=doctor.id,
+        email=email,
+        name=doctor.name,
+        specialty=doctor.specialty,
+        clinic=doctor.clinic,
+        council_id=doctor.council_id,
+        notification_email=doctor.notification_email,
+        notification_phone=doctor.notification_phone,
+        clinic_share_percent=doctor.clinic_share_percent,
+    )
+
+
+async def _owner_member_doctor(
+    session: AsyncSession, member: CurrentMember, membership_id: uuid.UUID
+) -> tuple[User, Doctor]:
+    """Resolve o médico de um integrante do tenant do dono (404 se não houver)."""
+    target = await session.get(Membership, membership_id)
+    if target is None or target.tenant_id != member.tenant_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Integrante não encontrado.")
+    doctor = (
+        await session.execute(
+            select(Doctor).where(
+                Doctor.user_id == target.user_id, Doctor.tenant_id == target.tenant_id
+            )
+        )
+    ).scalar_one_or_none()
+    if doctor is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Este integrante não tem cadastro de médico.",
+        )
+    user = await session.get(User, target.user_id)
+    return user, doctor
+
+
+@router.get("/members/{membership_id}/doctor", response_model=MemberDoctorRead)
+async def get_member_doctor(
+    membership_id: uuid.UUID,
+    member: CurrentMember = Depends(require_owner),
+    session: AsyncSession = Depends(get_db),
+) -> MemberDoctorRead:
+    """Cadastro profissional de um médico da clínica (só o dono)."""
+    user, doctor = await _owner_member_doctor(session, member, membership_id)
+    return _doctor_out(membership_id, user.email if user else "", doctor)
+
+
+@router.patch("/members/{membership_id}/doctor", response_model=MemberDoctorRead)
+async def update_member_doctor(
+    membership_id: uuid.UUID,
+    payload: MemberDoctorUpdate,
+    member: CurrentMember = Depends(require_owner),
+    session: AsyncSession = Depends(get_db),
+) -> MemberDoctorRead:
+    """Edita o cadastro profissional de um médico (só o dono)."""
+    user, doctor = await _owner_member_doctor(session, member, membership_id)
+    data = payload.model_dump(exclude_unset=True)
+    for field in ("name", "specialty", "clinic", "council_id",
+                  "notification_email", "notification_phone"):
+        if field in data:
+            setattr(doctor, field, data[field])
+    return _doctor_out(membership_id, user.email if user else "", doctor)
 
 
 _OPEN = (AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED)

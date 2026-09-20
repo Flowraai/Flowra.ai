@@ -22,6 +22,8 @@ import type {
   ClinicInvitation,
   ClinicMember,
   ClinicRoleName,
+  MemberDoctor,
+  MemberDoctorUpdate,
   ConsultationCharge,
   PixCode,
   ClinicalNote,
@@ -190,6 +192,9 @@ export const clinic = {
   members: () => api<ClinicMember[]>("/clinic/members"),
   updateMember: (id: string, patch: { role?: ClinicRoleName; is_active?: boolean; can_view_finance?: boolean; clinic_share_percent?: number }) =>
     api<ClinicMember>(`/clinic/members/${id}`, { method: "PATCH", body: patch }),
+  memberDoctor: (id: string) => api<MemberDoctor>(`/clinic/members/${id}/doctor`),
+  updateMemberDoctor: (id: string, patch: MemberDoctorUpdate) =>
+    api<MemberDoctor>(`/clinic/members/${id}/doctor`, { method: "PATCH", body: patch }),
   invitations: () => api<ClinicInvitation[]>("/clinic/invitations"),
   invite: (input: { email: string; role: ClinicRoleName; can_view_finance?: boolean }) =>
     api<ClinicInvitation>("/clinic/invitations", { method: "POST", body: input }),

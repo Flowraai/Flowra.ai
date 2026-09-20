@@ -66,6 +66,28 @@ export interface ClinicMember {
   is_self: boolean;
 }
 
+export interface MemberDoctor {
+  membership_id: string;
+  doctor_id: string;
+  email: string;
+  name: string;
+  specialty: string;
+  clinic: string | null;
+  council_id: string | null;
+  notification_email: string | null;
+  notification_phone: string | null;
+  clinic_share_percent: number;
+}
+
+export interface MemberDoctorUpdate {
+  name?: string;
+  specialty?: string;
+  clinic?: string | null;
+  council_id?: string | null;
+  notification_email?: string | null;
+  notification_phone?: string | null;
+}
+
 export interface PatientDirectoryItem {
   id: string;
   name: string;

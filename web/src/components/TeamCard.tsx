@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { clinic } from "../api/endpoints";
 import { ApiError } from "../api/client";
 import type { ClinicInvitation, ClinicMember, ClinicRoleName } from "../api/types";
+import { MemberDoctorModal } from "./MemberDoctorModal";
 import "./TeamCard.css";
 
 const ROLE_LABEL: Record<ClinicRoleName, string> = {
@@ -19,6 +20,7 @@ export function TeamCard() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [editingDoctor, setEditingDoctor] = useState<string | null>(null);
 
   function load() {
     clinic.members().then(setMembers).catch(() => setMembers([]));
@@ -152,6 +154,11 @@ export function TeamCard() {
                       %
                     </label>
                   ) : null}
+                  {m.role === "doctor" ? (
+                    <button className="mini" onClick={() => setEditingDoctor(m.id)}>
+                      Cadastro
+                    </button>
+                  ) : null}
                   <button className="mini" onClick={() => patchMember(m, { is_active: !m.is_active })}>
                     {m.is_active ? "Desativar" : "Reativar"}
                   </button>
@@ -161,6 +168,18 @@ export function TeamCard() {
           ))}
         </ul>
       )}
+
+      {editingDoctor ? (
+        <MemberDoctorModal
+          membershipId={editingDoctor}
+          onClose={() => setEditingDoctor(null)}
+          onSaved={(name) => {
+            setEditingDoctor(null);
+            setNotice(`Cadastro de ${name} atualizado.`);
+            load();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

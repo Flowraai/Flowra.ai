@@ -188,6 +188,50 @@ async def test_rateio_split_and_totals(client: httpx.AsyncClient):
     assert stat["received_cents"] == 14000 and stat["clinic_cents"] == 6000
 
 
+async def test_owner_views_and_edits_doctor_cadastro(client: httpx.AsyncClient):
+    owner = await _owner(client)
+    _tid, raw = await _invite_raw("dr.cad@x.com", "doctor")
+    await client.post("/api/v1/clinic/invitations/accept",
+                      json={"token": raw, "name": "Dr. Cadastro", "password": "outrasenha1"})
+
+    members = (await client.get("/api/v1/clinic/members", headers=owner)).json()
+    m = next(x for x in members if x["email"] == "dr.cad@x.com")
+
+    # Dono lê o cadastro profissional do médico.
+    got = await client.get(f"/api/v1/clinic/members/{m['id']}/doctor", headers=owner)
+    assert got.status_code == 200
+    body = got.json()
+    assert body["email"] == "dr.cad@x.com" and body["name"] == "Dr. Cadastro"
+
+    # Dono edita especialidade, CRM e clínica.
+    upd = await client.patch(f"/api/v1/clinic/members/{m['id']}/doctor", headers=owner,
+                             json={"specialty": "psicologia", "council_id": "CRP 01/1234",
+                                   "clinic": "Unidade Centro"})
+    assert upd.status_code == 200
+    assert upd.json()["specialty"] == "psicologia"
+    assert upd.json()["council_id"] == "CRP 01/1234"
+    assert upd.json()["clinic"] == "Unidade Centro"
+
+
+async def test_doctor_cadastro_reception_and_scope_guards(client: httpx.AsyncClient):
+    owner = await _owner(client)
+    tid = await _tenant_id(client, owner)
+
+    # Recepção não tem cadastro de médico → 404.
+    members = (await client.get("/api/v1/clinic/members", headers=owner)).json()
+    await _reception_headers(tid, "recep.cad@x.com")
+    members = (await client.get("/api/v1/clinic/members", headers=owner)).json()
+    rec_m = next(x for x in members if x["email"] == "recep.cad@x.com")
+    r = await client.get(f"/api/v1/clinic/members/{rec_m['id']}/doctor", headers=owner)
+    assert r.status_code == 404
+
+    # Recepção não pode ler o cadastro de ninguém (só o dono).
+    rec = await _reception_headers(tid, "recep.cad2@x.com")
+    owner_m = next(x for x in members if x["role"] == "owner")
+    assert (await client.get(f"/api/v1/clinic/members/{owner_m['id']}/doctor",
+                             headers=rec)).status_code == 403
+
+
 async def test_dashboard_owner_only(client: httpx.AsyncClient):
     headers = await _owner(client)
     tid = await _tenant_id(client, headers)
