@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentMember, require_clinical_member
+from app.api.patient_access import can_access_patient, can_access_resource
 from app.db.session import get_db
 from app.models.doctor import Doctor
 from app.models.enums import ClinicRole, PrescriptionStatus
@@ -99,7 +100,7 @@ async def _owned_patient(
     session: AsyncSession, member: CurrentMember, patient_id: uuid.UUID
 ) -> Patient:
     patient = await session.get(Patient, patient_id)
-    if patient is None or not _scope_ok(patient, member):
+    if not await can_access_patient(session, member, patient):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente não encontrado.")
     return patient
 
@@ -108,7 +109,7 @@ async def _owned_prescription(
     session: AsyncSession, member: CurrentMember, prescription_id: uuid.UUID
 ) -> Prescription:
     presc = await session.get(Prescription, prescription_id)
-    if presc is None or not _scope_ok(presc, member):
+    if not await can_access_resource(session, member, presc):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Receita não encontrada.")
     return presc
 

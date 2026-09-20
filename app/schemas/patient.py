@@ -146,3 +146,16 @@ class PatientExport(BaseModel):
     patient: PatientRead
     checkins: list[CheckInRead]
     alerts: list[AlertRead]
+
+
+class CareTeamMemberRead(BaseModel):
+    """Um profissional na equipe de cuidado do paciente."""
+
+    doctor_id: uuid.UUID
+    name: str
+    specialty: str | None = None
+    is_primary: bool = False
+
+
+class CareTeamAdd(BaseModel):
+    doctor_id: uuid.UUID

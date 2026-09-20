@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentMember, require_clinical_member
+from app.api.patient_access import can_access_patient
 from app.db.session import get_db
 from app.models.medication import MedicationPlan
 from app.models.enums import ClinicRole
@@ -35,7 +36,7 @@ async def _owned_patient(
     session: AsyncSession, member: CurrentMember, patient_id: uuid.UUID
 ) -> Patient:
     patient = await session.get(Patient, patient_id)
-    if patient is None or not _scope_ok(patient, member):
+    if not await can_access_patient(session, member, patient):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente não encontrado.")
     return patient
 
@@ -44,7 +45,7 @@ async def _owned_plan(session: AsyncSession, member: CurrentMember, plan_id: uui
     plan = await session.get(MedicationPlan, plan_id)
     if plan is not None:
         patient = await session.get(Patient, plan.patient_id)
-        if patient is not None and _scope_ok(patient, member):
+        if patient is not None and await can_access_patient(session, member, patient):
             return plan
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plano não encontrado.")
 

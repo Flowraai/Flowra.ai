@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentMember, require_clinical_member
+from app.api.patient_access import can_access_patient, can_access_resource
 from app.db.session import get_db
 from app.models.certificate import Certificate
 from app.models.enums import ClinicRole
@@ -30,7 +31,7 @@ async def _owned_patient(
     session: AsyncSession, member: CurrentMember, patient_id: uuid.UUID
 ) -> Patient:
     patient = await session.get(Patient, patient_id)
-    if patient is None or not _scope_ok(patient, member):
+    if not await can_access_patient(session, member, patient):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente não encontrado.")
     return patient
 
@@ -89,6 +90,6 @@ async def get_certificate(
     session: AsyncSession = Depends(get_db),
 ) -> Certificate:
     cert = await session.get(Certificate, certificate_id)
-    if cert is None or not _scope_ok(cert, member):
+    if not await can_access_resource(session, member, cert):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Atestado não encontrado.")
     return cert

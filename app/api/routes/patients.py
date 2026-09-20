@@ -13,8 +13,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import (
     CurrentMember,
     require_clinical_member,
-    scope_query,
 )
+from app.api.patient_access import (
+    can_access_patient,
+    is_primary_or_manager,
+    patient_visible_clause,
+)
+from app.models.care_team import CareTeamMember
 from app.core.security import (
     generate_patient_token,
     hash_patient_token,
@@ -28,8 +33,11 @@ from app.models.health_plan import HealthPlan
 from app.models.patient import Patient
 from app.schemas.alert import AlertRead
 from app.schemas.checkin import CheckInRead
+from app.models.doctor import Doctor
 from app.schemas.patient import (
     AttentionItem,
+    CareTeamAdd,
+    CareTeamMemberRead,
     PatientCreate,
     PatientCreated,
     PatientExport,
@@ -64,8 +72,20 @@ def _scope_ok(row, member: CurrentMember) -> bool:
 async def _get_owned_patient(
     session: AsyncSession, member: CurrentMember, patient_id: uuid.UUID
 ) -> Patient:
+    """Acesso ao paciente (responsável, equipe de cuidado ou gestão)."""
     patient = await session.get(Patient, patient_id)
-    if patient is None or not _scope_ok(patient, member):
+    if not await can_access_patient(session, member, patient):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente não encontrado.")
+    return patient
+
+
+async def _get_admin_patient(
+    session: AsyncSession, member: CurrentMember, patient_id: uuid.UUID
+) -> Patient:
+    """Ações administrativas do paciente (editar, excluir, token, exportar) — só o
+    responsável ou a gestão, não um membro qualquer da equipe."""
+    patient = await session.get(Patient, patient_id)
+    if patient is None or not is_primary_or_manager(member, patient):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente não encontrado.")
     return patient
 
@@ -123,6 +143,12 @@ async def create_patient(
     session.add(patient)
     await session.flush()
 
+    # O responsável entra como membro primário da equipe de cuidado.
+    session.add(CareTeamMember(
+        tenant_id=patient.tenant_id, patient_id=patient.id,
+        doctor_id=member.doctor.id, is_primary=True,
+    ))
+
     await audit.record(
         session,
         action=AuditAction.PATIENT_CREATED,
@@ -146,9 +172,10 @@ async def list_patients(
     member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> list[PatientPanelItem]:
-    """Painel de pacientes ordenados por risco. Médico vê os seus; dono vê a clínica."""
+    """Painel de pacientes ordenados por risco. Médico vê os seus e os que
+    acompanha (equipe de cuidado); dono vê a clínica."""
     result = await session.execute(
-        scope_query(select(Patient), Patient, member).where(Patient.is_active.is_(True))
+        select(Patient).where(patient_visible_clause(member), Patient.is_active.is_(True))
     )
     patients = list(result.scalars().all())
 
@@ -229,7 +256,7 @@ async def update_patient(
     session: AsyncSession = Depends(get_db),
 ) -> Patient:
     """Edita dados do paciente e ativa/desativa (is_active)."""
-    patient = await _get_owned_patient(session, member, patient_id)
+    patient = await _get_admin_patient(session, member, patient_id)
     data = payload.model_dump(exclude_unset=True)
     if data.get("name") is not None:
         patient.name = data["name"]
@@ -281,7 +308,7 @@ async def export_patient_data(
     session: AsyncSession = Depends(get_db),
 ) -> PatientExport:
     """Portabilidade LGPD: exporta todos os dados do paciente (paciente + histórico)."""
-    patient = await _get_owned_patient(session, member, patient_id)
+    patient = await _get_admin_patient(session, member, patient_id)
     checkins = (
         await session.execute(
             select(CheckIn).where(CheckIn.patient_id == patient_id).order_by(CheckIn.created_at)
@@ -319,7 +346,7 @@ async def delete_patient(
     Cascata no banco remove check-ins, alertas e notificações. O log de auditoria
     é preservado (referencia apenas IDs — proteção jurídica da plataforma/médico).
     """
-    patient = await _get_owned_patient(session, member, patient_id)
+    patient = await _get_admin_patient(session, member, patient_id)
 
     # LGPD-3 — coletar as chaves de storage dos anexos ANTES do cascade apagar as
     # linhas; senão os bytes (áudios/imagens clínicas) ficam órfãos no storage após
@@ -380,7 +407,7 @@ async def rotate_patient_token(
     member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> PatientTokenRead:
-    patient = await _get_owned_patient(session, member, patient_id)
+    patient = await _get_admin_patient(session, member, patient_id)
     token = generate_patient_token()
     patient.access_token_hash = hash_patient_token(token)
     await audit.record(
@@ -400,7 +427,7 @@ async def resend_onboarding(
     session: AsyncSession = Depends(get_db),
 ) -> PatientOnboarding:
     """Gera um novo token de acesso e reenvia o link de onboarding ao paciente."""
-    patient = await _get_owned_patient(session, member, patient_id)
+    patient = await _get_admin_patient(session, member, patient_id)
     token = generate_patient_token()
     patient.access_token_hash = hash_patient_token(token)
     await audit.record(
@@ -423,3 +450,97 @@ async def scan_patient_inactivity(
 ) -> list[Alert]:
     """Gera alertas de não-adesão para os pacientes deste médico sem check-in recente."""
     return await scan_inactivity(session, doctor_id=member.doctor.id)
+
+
+# ---- Equipe de cuidado (profissionais que atendem o paciente) ----
+@router.get("/{patient_id}/care-team", response_model=list[CareTeamMemberRead])
+async def list_care_team(
+    patient_id: uuid.UUID,
+    member: CurrentMember = Depends(require_clinical_member),
+    session: AsyncSession = Depends(get_db),
+) -> list[CareTeamMemberRead]:
+    await _get_owned_patient(session, member, patient_id)
+    rows = list(
+        (
+            await session.execute(
+                select(CareTeamMember).where(CareTeamMember.patient_id == patient_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    doctors = {
+        d.id: d
+        for d in (
+            await session.execute(
+                select(Doctor).where(Doctor.id.in_([r.doctor_id for r in rows] or [uuid.uuid4()]))
+            )
+        )
+        .scalars()
+        .all()
+    }
+    out = []
+    for r in rows:
+        d = doctors.get(r.doctor_id)
+        out.append(CareTeamMemberRead(
+            doctor_id=r.doctor_id,
+            name=d.name if d else "—",
+            specialty=d.specialty if d else None,
+            is_primary=r.is_primary,
+        ))
+    out.sort(key=lambda m: (not m.is_primary, m.name))
+    return out
+
+
+@router.post("/{patient_id}/care-team", response_model=list[CareTeamMemberRead], status_code=status.HTTP_201_CREATED)
+async def add_care_team_member(
+    patient_id: uuid.UUID,
+    payload: CareTeamAdd,
+    member: CurrentMember = Depends(require_clinical_member),
+    session: AsyncSession = Depends(get_db),
+) -> list[CareTeamMemberRead]:
+    """Adiciona um profissional à equipe do paciente (responsável ou gestão)."""
+    patient = await _get_admin_patient(session, member, patient_id)
+    doctor = await session.get(Doctor, payload.doctor_id)
+    if doctor is None or doctor.tenant_id != patient.tenant_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profissional não encontrado.")
+    exists_row = (
+        await session.execute(
+            select(CareTeamMember).where(
+                CareTeamMember.patient_id == patient_id,
+                CareTeamMember.doctor_id == payload.doctor_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if exists_row is None:
+        session.add(CareTeamMember(
+            tenant_id=patient.tenant_id, patient_id=patient_id, doctor_id=payload.doctor_id,
+        ))
+        await session.flush()
+    return await list_care_team(patient_id, member, session)
+
+
+@router.delete("/{patient_id}/care-team/{doctor_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_care_team_member(
+    patient_id: uuid.UUID,
+    doctor_id: uuid.UUID,
+    member: CurrentMember = Depends(require_clinical_member),
+    session: AsyncSession = Depends(get_db),
+) -> None:
+    """Remove um profissional da equipe (não o responsável primário)."""
+    await _get_admin_patient(session, member, patient_id)
+    row = (
+        await session.execute(
+            select(CareTeamMember).where(
+                CareTeamMember.patient_id == patient_id,
+                CareTeamMember.doctor_id == doctor_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Membro não encontrado.")
+    if row.is_primary:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="O responsável não pode ser removido."
+        )
+    await session.delete(row)

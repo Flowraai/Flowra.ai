@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentMember, require_clinical_member
+from app.api.patient_access import can_access_patient, can_access_resource
 from app.db.session import get_db
 from app.models.appointment import Appointment
 from app.models.clinical_note import ClinicalNote
@@ -30,14 +31,14 @@ async def _owned_patient(
     session: AsyncSession, member: CurrentMember, patient_id: uuid.UUID
 ) -> Patient:
     patient = await session.get(Patient, patient_id)
-    if patient is None or not _scope_ok(patient, member):
+    if not await can_access_patient(session, member, patient):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente não encontrado.")
     return patient
 
 
 async def _owned_note(session: AsyncSession, member: CurrentMember, note_id: uuid.UUID) -> ClinicalNote:
     note = await session.get(ClinicalNote, note_id)
-    if note is None or not _scope_ok(note, member):
+    if not await can_access_resource(session, member, note):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Anotação não encontrada.")
     return note
 

@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentMember, get_current_patient, require_clinical_member
 from app.clinical.packs import get_pack
 from app.clinical.scales import Scale, get_scale, score_scale
+from app.api.patient_access import can_access_patient, can_access_resource
 from app.db.session import get_db
 from app.models.alert import Alert
 from app.models.enums import AlertUrgency, ClinicRole, RiskLevel
@@ -84,7 +85,7 @@ async def _owned_patient(
     session: AsyncSession, member: CurrentMember, patient_id: uuid.UUID
 ) -> Patient:
     patient = await session.get(Patient, patient_id)
-    if patient is None or not _scope_ok(patient, member):
+    if not await can_access_patient(session, member, patient):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente não encontrado.")
     return patient
 
@@ -154,7 +155,7 @@ async def cancel_scale(
     session: AsyncSession = Depends(get_db),
 ) -> None:
     entry = await session.get(ScaleEntry, entry_id)
-    if entry is None or not _scope_ok(entry, member):
+    if not await can_access_resource(session, member, entry):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aplicação não encontrada.")
     if entry.status != "pending":
         raise HTTPException(

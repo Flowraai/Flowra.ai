@@ -15,6 +15,7 @@ import type {
   BatchCreateInput,
   BatchDetail,
   BillingBatch,
+  CareTeamMember,
   ChargeSummary,
   ChargeUpdateInput,
   ClinicDashboard,
@@ -143,6 +144,11 @@ export const patients = {
   charges: (id: string) => api<ConsultationCharge[]>(`/patients/${id}/charges`),
   generateCharge: (appointmentId: string) =>
     api<ConsultationCharge>(`/appointments/${appointmentId}/charge`, { method: "POST" }),
+  careTeam: (id: string) => api<CareTeamMember[]>(`/patients/${id}/care-team`),
+  addCareTeam: (id: string, doctorId: string) =>
+    api<CareTeamMember[]>(`/patients/${id}/care-team`, { method: "POST", body: { doctor_id: doctorId } }),
+  removeCareTeam: (id: string, doctorId: string) =>
+    api<void>(`/patients/${id}/care-team/${doctorId}`, { method: "DELETE" }),
   scaleTargets: (id: string) => api<ScaleTarget[]>(`/patients/${id}/scale-targets`),
   setScaleTarget: (id: string, scaleCode: string, targetScore: number) =>
     api<ScaleTarget>(`/patients/${id}/scale-targets/${scaleCode}`, {
@@ -179,6 +185,7 @@ export const charges = {
 
 export const clinic = {
   dashboard: () => api<ClinicDashboard>("/clinic/dashboard"),
+  doctors: () => api<CareTeamMember[]>("/clinic/doctors"),
   members: () => api<ClinicMember[]>("/clinic/members"),
   updateMember: (id: string, patch: { role?: ClinicRoleName; is_active?: boolean; can_view_finance?: boolean }) =>
     api<ClinicMember>(`/clinic/members/${id}`, { method: "PATCH", body: patch }),

@@ -65,6 +65,13 @@ export interface ClinicMember {
   is_self: boolean;
 }
 
+export interface CareTeamMember {
+  doctor_id: string;
+  name: string;
+  specialty: string | null;
+  is_primary: boolean;
+}
+
 export interface RiskCounts {
   green: number;
   yellow: number;

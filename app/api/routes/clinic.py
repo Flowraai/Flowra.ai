@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentMember, require_owner
+from app.api.deps import CurrentMember, require_clinical_member, require_owner
 from app.db.session import get_db
 from app.models.appointment import Appointment
 from app.models.consultation_charge import ConsultationCharge
@@ -30,6 +30,7 @@ from app.schemas.clinic import (
     RiskCounts,
 )
 from app.models.user import User
+from app.schemas.patient import CareTeamMemberRead
 from app.services import clinic_service
 from app.services.attention_service import compute_attention
 
@@ -98,6 +99,23 @@ async def accept_invitation(
     user = await clinic_service.accept_invitation(session, payload)
     access, refresh = await clinic_service.issue_tokens(session, user)
     return TokenPair(access_token=access, refresh_token=refresh)
+
+
+@router.get("/doctors", response_model=list[CareTeamMemberRead])
+async def list_clinic_doctors(
+    member: CurrentMember = Depends(require_clinical_member),
+    session: AsyncSession = Depends(get_db),
+) -> list[CareTeamMemberRead]:
+    """Médicos da clínica (para montar a equipe de cuidado de um paciente)."""
+    rows = list(
+        (await session.execute(select(Doctor).where(Doctor.tenant_id == member.tenant_id)))
+        .scalars()
+        .all()
+    )
+    return [
+        CareTeamMemberRead(doctor_id=d.id, name=d.name, specialty=d.specialty, is_primary=False)
+        for d in rows
+    ]
 
 
 @router.get("/members", response_model=list[MemberRead])
