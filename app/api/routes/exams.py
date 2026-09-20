@@ -9,10 +9,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_doctor
+from app.api.deps import CurrentMember, require_clinical_member
 from app.db.session import get_db
-from app.models.doctor import Doctor
-from app.models.enums import ExamStatus
+from app.models.enums import ClinicRole, ExamStatus
 from app.models.exam import Exam
 from app.models.patient import Patient
 from app.schemas.exam import ExamCreate, ExamRead, ExamUpdate
@@ -22,16 +21,25 @@ from app.services.push_service import push_to_patient
 router = APIRouter(tags=["exams"])
 
 
-async def _owned_patient(session: AsyncSession, doctor: Doctor, patient_id: uuid.UUID) -> Patient:
+def _scope_ok(row, member: CurrentMember) -> bool:
+    """No escopo do membro? Médico vê o que é dele; dono vê a clínica inteira."""
+    if member.role is ClinicRole.DOCTOR and member.doctor is not None:
+        return row.doctor_id == member.doctor.id
+    return row.tenant_id == member.tenant_id
+
+
+async def _owned_patient(
+    session: AsyncSession, member: CurrentMember, patient_id: uuid.UUID
+) -> Patient:
     patient = await session.get(Patient, patient_id)
-    if patient is None or patient.doctor_id != doctor.id:
+    if patient is None or not _scope_ok(patient, member):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente não encontrado.")
     return patient
 
 
-async def _owned_exam(session: AsyncSession, doctor: Doctor, exam_id: uuid.UUID) -> Exam:
+async def _owned_exam(session: AsyncSession, member: CurrentMember, exam_id: uuid.UUID) -> Exam:
     exam = await session.get(Exam, exam_id)
-    if exam is None or exam.doctor_id != doctor.id:
+    if exam is None or not _scope_ok(exam, member):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exame não encontrado.")
     return exam
 
@@ -42,14 +50,14 @@ async def _owned_exam(session: AsyncSession, doctor: Doctor, exam_id: uuid.UUID)
 async def create_exam(
     patient_id: uuid.UUID,
     payload: ExamCreate,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> Exam:
-    patient = await _owned_patient(session, doctor, patient_id)
+    patient = await _owned_patient(session, member, patient_id)
     exam = Exam(
         tenant_id=patient.tenant_id,
         patient_id=patient.id,
-        doctor_id=doctor.id,
+        doctor_id=member.doctor.id,
         name=payload.name,
         notes=payload.notes,
     )
@@ -61,10 +69,10 @@ async def create_exam(
 @router.get("/patients/{patient_id}/exams", response_model=list[ExamRead])
 async def list_exams(
     patient_id: uuid.UUID,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> list[Exam]:
-    await _owned_patient(session, doctor, patient_id)
+    await _owned_patient(session, member, patient_id)
     result = await session.execute(
         select(Exam).where(Exam.patient_id == patient_id).order_by(Exam.created_at.desc())
     )
@@ -75,10 +83,10 @@ async def list_exams(
 async def update_exam(
     exam_id: uuid.UUID,
     payload: ExamUpdate,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> Exam:
-    exam = await _owned_exam(session, doctor, exam_id)
+    exam = await _owned_exam(session, member, exam_id)
     was_available = exam.status is ExamStatus.AVAILABLE
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(exam, field, value)

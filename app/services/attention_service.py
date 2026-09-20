@@ -46,20 +46,27 @@ def _scale_short_name(code: str) -> str:
 
 
 async def compute_attention(
-    session: AsyncSession, doctor_id: uuid.UUID, now: datetime | None = None
+    session: AsyncSession,
+    doctor_id: uuid.UUID | None = None,
+    now: datetime | None = None,
+    tenant_id: uuid.UUID | None = None,
 ) -> list[dict]:
-    """Pacientes do médico que precisam de atenção, ordenados por urgência.
+    """Pacientes que precisam de atenção, ordenados por urgência.
 
-    Só inclui quem tem ao menos um motivo (score > 0). Cada item traz
-    ``score`` e ``reasons`` (código, texto e severidade para a cor).
+    Escopo: por médico (`doctor_id`) ou, para gestão da clínica, por `tenant_id`
+    (todos os médicos). Só inclui quem tem ao menos um motivo (score > 0); cada
+    item traz ``score`` e ``reasons`` (código, texto e severidade para a cor).
     """
     now = now or datetime.now(timezone.utc)
+    scope = (
+        Patient.tenant_id == tenant_id
+        if tenant_id is not None
+        else Patient.doctor_id == doctor_id
+    )
     patients = list(
         (
             await session.execute(
-                select(Patient).where(
-                    Patient.doctor_id == doctor_id, Patient.is_active.is_(True)
-                )
+                select(Patient).where(scope, Patient.is_active.is_(True))
             )
         )
         .scalars()

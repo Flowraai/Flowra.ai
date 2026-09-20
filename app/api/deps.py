@@ -159,6 +159,22 @@ async def require_owner(
     return member
 
 
+async def require_clinical_member(
+    member: CurrentMember = Depends(get_current_member),
+) -> CurrentMember:
+    """Exige acesso a dado clínico (médico ou dono). Recepção/financeiro: 403.
+
+    Membros clínicos sempre têm um perfil Doctor no tenant (o dono também é
+    médico), então `member.doctor` está presente aqui.
+    """
+    if not member.can_read_clinical or member.doctor is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso restrito à equipe clínica.",
+        )
+    return member
+
+
 def scope_query(stmt: Select, model, member: CurrentMember) -> Select:
     """Aplica o filtro de visibilidade por papel a uma query.
 

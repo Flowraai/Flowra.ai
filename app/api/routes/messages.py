@@ -9,10 +9,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_doctor
+from app.api.deps import CurrentMember, require_clinical_member
 from app.db.session import get_db
-from app.models.doctor import Doctor
-from app.models.enums import MessageSender, MessageThread
+from app.models.enums import ClinicRole, MessageSender, MessageThread
 from app.models.message import Message
 from app.models.patient import Patient
 from app.schemas.message import MessageCreate, MessageRead
@@ -22,9 +21,18 @@ from app.services.push_service import push_to_patient
 router = APIRouter(tags=["chat"])
 
 
-async def _owned_patient(session: AsyncSession, doctor: Doctor, patient_id: uuid.UUID) -> Patient:
+def _scope_ok(row, member: CurrentMember) -> bool:
+    """No escopo do membro? Médico vê o que é dele; dono vê a clínica inteira."""
+    if member.role is ClinicRole.DOCTOR and member.doctor is not None:
+        return row.doctor_id == member.doctor.id
+    return row.tenant_id == member.tenant_id
+
+
+async def _owned_patient(
+    session: AsyncSession, member: CurrentMember, patient_id: uuid.UUID
+) -> Patient:
     patient = await session.get(Patient, patient_id)
-    if patient is None or patient.doctor_id != doctor.id:
+    if patient is None or not _scope_ok(patient, member):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente não encontrado.")
     return patient
 
@@ -36,12 +44,12 @@ async def _owned_patient(session: AsyncSession, doctor: Doctor, patient_id: uuid
 async def send_message(
     patient_id: uuid.UUID,
     payload: MessageCreate,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> Message:
-    patient = await _owned_patient(session, doctor, patient_id)
+    patient = await _owned_patient(session, member, patient_id)
     message = Message(
-        tenant_id=patient.tenant_id, patient_id=patient.id, doctor_id=doctor.id,
+        tenant_id=patient.tenant_id, patient_id=patient.id, doctor_id=member.doctor.id,
         sender=MessageSender.DOCTOR, body=payload.body, attachments=payload.attachments,
     )
     session.add(message)
@@ -75,15 +83,14 @@ async def list_messages(
     patient_id: uuid.UUID,
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> list[Message]:
-    await _owned_patient(session, doctor, patient_id)
+    await _owned_patient(session, member, patient_id)
     result = await session.execute(
         select(Message)
         .where(
             Message.patient_id == patient_id,
-            Message.doctor_id == doctor.id,
             Message.thread == MessageThread.CARE,
         )
         .order_by(Message.created_at.desc())

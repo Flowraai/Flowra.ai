@@ -10,7 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_doctor
+from app.api.deps import (
+    CurrentMember,
+    require_clinical_member,
+    scope_query,
+)
 from app.core.security import (
     generate_patient_token,
     hash_patient_token,
@@ -19,8 +23,7 @@ from app.db.session import get_db
 from app.models.alert import Alert
 from app.models.attachment import Attachment
 from app.models.checkin import CheckIn
-from app.models.doctor import Doctor
-from app.models.enums import AlertStatus, AuditAction
+from app.models.enums import AlertStatus, AuditAction, ClinicRole
 from app.models.health_plan import HealthPlan
 from app.models.patient import Patient
 from app.schemas.alert import AlertRead
@@ -50,23 +53,31 @@ logger = logging.getLogger("flowra_care.patients")
 router = APIRouter(prefix="/patients", tags=["patients"])
 
 
+def _scope_ok(row, member: CurrentMember) -> bool:
+    """A linha (paciente/convênio) está no escopo do membro? Médico vê o que é
+    dele; dono (gestão clínica) vê a clínica inteira."""
+    if member.role is ClinicRole.DOCTOR and member.doctor is not None:
+        return row.doctor_id == member.doctor.id
+    return row.tenant_id == member.tenant_id
+
+
 async def _get_owned_patient(
-    session: AsyncSession, doctor: Doctor, patient_id: uuid.UUID
+    session: AsyncSession, member: CurrentMember, patient_id: uuid.UUID
 ) -> Patient:
     patient = await session.get(Patient, patient_id)
-    if patient is None or patient.doctor_id != doctor.id:
+    if patient is None or not _scope_ok(patient, member):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente não encontrado.")
     return patient
 
 
 async def _validate_health_plan(
-    session: AsyncSession, doctor: Doctor, health_plan_id: uuid.UUID | None
+    session: AsyncSession, member: CurrentMember, health_plan_id: uuid.UUID | None
 ) -> HealthPlan | None:
-    """Valida que o convênio existe e é do próprio médico; devolve-o (ou None)."""
+    """Valida que o convênio existe e está no escopo do membro; devolve-o (ou None)."""
     if health_plan_id is None:
         return None
     plan = await session.get(HealthPlan, health_plan_id)
-    if plan is None or plan.doctor_id != doctor.id:
+    if plan is None or not _scope_ok(plan, member):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Convênio não encontrado.")
     return plan
 
@@ -74,7 +85,7 @@ async def _validate_health_plan(
 @router.post("", response_model=PatientCreated, status_code=status.HTTP_201_CREATED)
 async def create_patient(
     payload: PatientCreate,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> PatientCreated:
     # LGPD: consentimento explícito é pré-requisito para dado de saúde.
@@ -84,18 +95,20 @@ async def create_patient(
             detail="Consentimento LGPD explícito é obrigatório para cadastrar o paciente.",
         )
 
-    health_plan = await _validate_health_plan(session, doctor, payload.health_plan_id)
+    health_plan = await _validate_health_plan(session, member, payload.health_plan_id)
 
     # Usa a pesquisa configurada pelo médico (cria a cópia editável na 1ª vez).
-    protocol = await get_or_create_tenant_protocol(session, doctor.tenant_id, doctor.specialty)
+    protocol = await get_or_create_tenant_protocol(
+        session, member.doctor.tenant_id, member.doctor.specialty
+    )
     token = generate_patient_token()
 
     patient = Patient(
         name=payload.name,
         contact=payload.contact,
         birth_date=payload.birth_date,
-        tenant_id=doctor.tenant_id,
-        doctor_id=doctor.id,
+        tenant_id=member.doctor.tenant_id,
+        doctor_id=member.doctor.id,
         active_protocol_id=protocol.id if protocol else None,
         access_token_hash=hash_patient_token(token),
         consent_given_at=datetime.now(timezone.utc),
@@ -113,7 +126,7 @@ async def create_patient(
     await audit.record(
         session,
         action=AuditAction.PATIENT_CREATED,
-        actor=f"doctor:{doctor.id}",
+        actor=f"doctor:{member.doctor.id}",
         entity_type="patient",
         entity_id=patient.id,
         metadata={"consent_version": payload.consent_version},
@@ -130,12 +143,12 @@ async def create_patient(
 async def list_patients(
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> list[PatientPanelItem]:
-    """Painel do médico: pacientes ordenados por risco (maior primeiro)."""
+    """Painel de pacientes ordenados por risco. Médico vê os seus; dono vê a clínica."""
     result = await session.execute(
-        select(Patient).where(Patient.doctor_id == doctor.id, Patient.is_active.is_(True))
+        scope_query(select(Patient), Patient, member).where(Patient.is_active.is_(True))
     )
     patients = list(result.scalars().all())
 
@@ -176,28 +189,32 @@ async def list_patients(
 @router.get("/attention", response_model=list[AttentionItem])
 async def attention_panel(
     limit: int = Query(20, ge=1, le=100),
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> list[AttentionItem]:
     """Quem precisa de atenção hoje: pacientes priorizados por urgência, com os
     motivos explícitos (alertas, risco, escala sinalizada, inatividade, adesão)."""
-    items = await compute_attention(session, doctor.id)
+    # Médico: os seus pacientes; dono/gestão: a clínica inteira.
+    if member.role is ClinicRole.DOCTOR and member.doctor is not None:
+        items = await compute_attention(session, member.doctor.id)
+    else:
+        items = await compute_attention(session, tenant_id=member.tenant_id)
     return [AttentionItem(**item) for item in items[:limit]]
 
 
 @router.get("/{patient_id}", response_model=PatientRead)
 async def get_patient(
     patient_id: uuid.UUID,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> Patient:
-    patient = await _get_owned_patient(session, doctor, patient_id)
+    patient = await _get_owned_patient(session, member, patient_id)
     # LGPD-5 — accountability: registra QUEM abriu o prontuário de QUEM. Sem
     # conteúdo clínico (só IDs), como o resto da auditoria.
     await audit.record(
         session,
         action=AuditAction.PATIENT_VIEWED,
-        actor=f"doctor:{doctor.id}",
+        actor=f"doctor:{member.doctor.id}",
         entity_type="patient",
         entity_id=patient_id,
     )
@@ -208,11 +225,11 @@ async def get_patient(
 async def update_patient(
     patient_id: uuid.UUID,
     payload: PatientUpdate,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> Patient:
     """Edita dados do paciente e ativa/desativa (is_active)."""
-    patient = await _get_owned_patient(session, doctor, patient_id)
+    patient = await _get_owned_patient(session, member, patient_id)
     data = payload.model_dump(exclude_unset=True)
     if data.get("name") is not None:
         patient.name = data["name"]
@@ -227,7 +244,7 @@ async def update_patient(
         patient.ai_consent_at = datetime.now(timezone.utc) if data["ai_consent"] else None
     if "health_plan_id" in data:
         # Presente com None = tornar particular.
-        plan = await _validate_health_plan(session, doctor, data["health_plan_id"])
+        plan = await _validate_health_plan(session, member, data["health_plan_id"])
         patient.health_plan = plan
         patient.health_plan_id = data["health_plan_id"]
     if "insurance_card" in data:
@@ -238,7 +255,7 @@ async def update_patient(
     await audit.record(
         session,
         action=AuditAction.PATIENT_UPDATED,
-        actor=f"doctor:{doctor.id}",
+        actor=f"doctor:{member.doctor.id}",
         entity_type="patient",
         entity_id=patient.id,
         metadata={"fields": sorted(data.keys())},
@@ -249,22 +266,22 @@ async def update_patient(
 @router.get("/{patient_id}/summary", response_model=PatientSummary)
 async def patient_ai_summary(
     patient_id: uuid.UUID,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> PatientSummary:
     """Resumo da situação do paciente para o painel (LLM, com fallback determinístico)."""
-    patient = await _get_owned_patient(session, doctor, patient_id)
+    patient = await _get_owned_patient(session, member, patient_id)
     return PatientSummary(**await patient_summary(session, patient))
 
 
 @router.get("/{patient_id}/export", response_model=PatientExport)
 async def export_patient_data(
     patient_id: uuid.UUID,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> PatientExport:
     """Portabilidade LGPD: exporta todos os dados do paciente (paciente + histórico)."""
-    patient = await _get_owned_patient(session, doctor, patient_id)
+    patient = await _get_owned_patient(session, member, patient_id)
     checkins = (
         await session.execute(
             select(CheckIn).where(CheckIn.patient_id == patient_id).order_by(CheckIn.created_at)
@@ -279,7 +296,7 @@ async def export_patient_data(
     await audit.record(
         session,
         action=AuditAction.PATIENT_EXPORTED,
-        actor=f"doctor:{doctor.id}",
+        actor=f"doctor:{member.doctor.id}",
         entity_type="patient",
         entity_id=patient_id,
     )
@@ -294,7 +311,7 @@ async def export_patient_data(
 @router.delete("/{patient_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_patient(
     patient_id: uuid.UUID,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> Response:
     """Direito de eliminação (LGPD): apaga o paciente e seus dados de saúde.
@@ -302,7 +319,7 @@ async def delete_patient(
     Cascata no banco remove check-ins, alertas e notificações. O log de auditoria
     é preservado (referencia apenas IDs — proteção jurídica da plataforma/médico).
     """
-    patient = await _get_owned_patient(session, doctor, patient_id)
+    patient = await _get_owned_patient(session, member, patient_id)
 
     # LGPD-3 — coletar as chaves de storage dos anexos ANTES do cascade apagar as
     # linhas; senão os bytes (áudios/imagens clínicas) ficam órfãos no storage após
@@ -317,7 +334,7 @@ async def delete_patient(
     await audit.record(
         session,
         action=AuditAction.PATIENT_DELETED,
-        actor=f"doctor:{doctor.id}",
+        actor=f"doctor:{member.doctor.id}",
         entity_type="patient",
         entity_id=patient_id,
     )
@@ -343,10 +360,10 @@ async def patient_checkins(
     patient_id: uuid.UUID,
     limit: int = Query(30, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> list[CheckIn]:
-    await _get_owned_patient(session, doctor, patient_id)
+    await _get_owned_patient(session, member, patient_id)
     result = await session.execute(
         select(CheckIn)
         .where(CheckIn.patient_id == patient_id)
@@ -360,16 +377,16 @@ async def patient_checkins(
 @router.post("/{patient_id}/rotate-token", response_model=PatientTokenRead)
 async def rotate_patient_token(
     patient_id: uuid.UUID,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> PatientTokenRead:
-    patient = await _get_owned_patient(session, doctor, patient_id)
+    patient = await _get_owned_patient(session, member, patient_id)
     token = generate_patient_token()
     patient.access_token_hash = hash_patient_token(token)
     await audit.record(
         session,
         action=AuditAction.PATIENT_TOKEN_ROTATED,
-        actor=f"doctor:{doctor.id}",
+        actor=f"doctor:{member.doctor.id}",
         entity_type="patient",
         entity_id=patient.id,
     )
@@ -379,17 +396,17 @@ async def rotate_patient_token(
 @router.post("/{patient_id}/resend-onboarding", response_model=PatientOnboarding)
 async def resend_onboarding(
     patient_id: uuid.UUID,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> PatientOnboarding:
     """Gera um novo token de acesso e reenvia o link de onboarding ao paciente."""
-    patient = await _get_owned_patient(session, doctor, patient_id)
+    patient = await _get_owned_patient(session, member, patient_id)
     token = generate_patient_token()
     patient.access_token_hash = hash_patient_token(token)
     await audit.record(
         session,
         action=AuditAction.PATIENT_TOKEN_ROTATED,
-        actor=f"doctor:{doctor.id}",
+        actor=f"doctor:{member.doctor.id}",
         entity_type="patient",
         entity_id=patient.id,
     )
@@ -401,8 +418,8 @@ async def resend_onboarding(
 
 @router.post("/scan-inactivity", response_model=list[AlertRead])
 async def scan_patient_inactivity(
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> list[Alert]:
     """Gera alertas de não-adesão para os pacientes deste médico sem check-in recente."""
-    return await scan_inactivity(session, doctor_id=doctor.id)
+    return await scan_inactivity(session, doctor_id=member.doctor.id)

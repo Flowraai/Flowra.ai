@@ -8,10 +8,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_doctor
+from app.api.deps import CurrentMember, require_clinical_member
 from app.db.session import get_db
-from app.models.doctor import Doctor
 from app.models.medication import MedicationPlan
+from app.models.enums import ClinicRole
 from app.models.patient import Patient
 from app.schemas.medication import (
     MedicationAdherence,
@@ -24,18 +24,27 @@ from app.services.medication_service import adherence_summary
 router = APIRouter(tags=["medications"])
 
 
-async def _owned_patient(session: AsyncSession, doctor: Doctor, patient_id: uuid.UUID) -> Patient:
+def _scope_ok(row, member: CurrentMember) -> bool:
+    """No escopo do membro? Médico vê o que é dele; dono vê a clínica inteira."""
+    if member.role is ClinicRole.DOCTOR and member.doctor is not None:
+        return row.doctor_id == member.doctor.id
+    return row.tenant_id == member.tenant_id
+
+
+async def _owned_patient(
+    session: AsyncSession, member: CurrentMember, patient_id: uuid.UUID
+) -> Patient:
     patient = await session.get(Patient, patient_id)
-    if patient is None or patient.doctor_id != doctor.id:
+    if patient is None or not _scope_ok(patient, member):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente não encontrado.")
     return patient
 
 
-async def _owned_plan(session: AsyncSession, doctor: Doctor, plan_id: uuid.UUID) -> MedicationPlan:
+async def _owned_plan(session: AsyncSession, member: CurrentMember, plan_id: uuid.UUID) -> MedicationPlan:
     plan = await session.get(MedicationPlan, plan_id)
     if plan is not None:
         patient = await session.get(Patient, plan.patient_id)
-        if patient is not None and patient.doctor_id == doctor.id:
+        if patient is not None and _scope_ok(patient, member):
             return plan
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plano não encontrado.")
 
@@ -48,10 +57,10 @@ async def _owned_plan(session: AsyncSession, doctor: Doctor, plan_id: uuid.UUID)
 async def create_plan(
     patient_id: uuid.UUID,
     payload: MedicationPlanCreate,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> MedicationPlan:
-    patient = await _owned_patient(session, doctor, patient_id)
+    patient = await _owned_patient(session, member, patient_id)
     plan = MedicationPlan(
         tenant_id=patient.tenant_id,
         patient_id=patient.id,
@@ -70,10 +79,10 @@ async def create_plan(
 @router.get("/patients/{patient_id}/medications", response_model=list[MedicationPlanRead])
 async def list_plans(
     patient_id: uuid.UUID,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> list[MedicationPlan]:
-    await _owned_patient(session, doctor, patient_id)
+    await _owned_patient(session, member, patient_id)
     result = await session.execute(
         select(MedicationPlan)
         .where(MedicationPlan.patient_id == patient_id)
@@ -86,10 +95,10 @@ async def list_plans(
 async def update_plan(
     plan_id: uuid.UUID,
     payload: MedicationPlanUpdate,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> MedicationPlan:
-    plan = await _owned_plan(session, doctor, plan_id)
+    plan = await _owned_plan(session, member, plan_id)
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(plan, field, value)
     return plan
@@ -101,8 +110,8 @@ async def update_plan(
 async def patient_adherence(
     patient_id: uuid.UUID,
     days: int = 30,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> MedicationAdherence:
-    await _owned_patient(session, doctor, patient_id)
+    await _owned_patient(session, member, patient_id)
     return MedicationAdherence(**await adherence_summary(session, patient_id, min(days, 365)))

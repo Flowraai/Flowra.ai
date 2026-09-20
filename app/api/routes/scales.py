@@ -9,13 +9,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_doctor, get_current_patient
+from app.api.deps import CurrentMember, get_current_patient, require_clinical_member
 from app.clinical.packs import get_pack
 from app.clinical.scales import Scale, get_scale, score_scale
 from app.db.session import get_db
 from app.models.alert import Alert
-from app.models.doctor import Doctor
-from app.models.enums import AlertUrgency, RiskLevel
+from app.models.enums import AlertUrgency, ClinicRole, RiskLevel
 from app.models.patient import Patient
 from app.models.scale_entry import ScaleEntry
 from app.models.scale_target import ScaleTarget
@@ -74,28 +73,37 @@ def _read(entry: ScaleEntry) -> ScaleEntryRead:
     )
 
 
-async def _owned_patient(session: AsyncSession, doctor: Doctor, patient_id: uuid.UUID) -> Patient:
+def _scope_ok(row, member: CurrentMember) -> bool:
+    """No escopo do membro? Médico vê o que é dele; dono vê a clínica inteira."""
+    if member.role is ClinicRole.DOCTOR and member.doctor is not None:
+        return row.doctor_id == member.doctor.id
+    return row.tenant_id == member.tenant_id
+
+
+async def _owned_patient(
+    session: AsyncSession, member: CurrentMember, patient_id: uuid.UUID
+) -> Patient:
     patient = await session.get(Patient, patient_id)
-    if patient is None or patient.doctor_id != doctor.id:
+    if patient is None or not _scope_ok(patient, member):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente não encontrado.")
     return patient
 
 
 # ---- Catálogo (médico) ----
 @router.get("/scales", response_model=list[ScaleDef])
-async def list_scales(doctor: Doctor = Depends(get_current_doctor)) -> list[ScaleDef]:
+async def list_scales(member: CurrentMember = Depends(require_clinical_member)) -> list[ScaleDef]:
     # Catálogo da especialidade do médico (default psiquiatria: PHQ-9 + GAD-7).
-    return [_def(s) for s in get_pack(doctor.specialty).scales()]
+    return [_def(s) for s in get_pack(member.doctor.specialty).scales()]
 
 
 # ---- Aplicações de um paciente (médico) ----
 @router.get("/patients/{patient_id}/scales", response_model=list[ScaleEntryRead])
 async def patient_scales(
     patient_id: uuid.UUID,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> list[ScaleEntryRead]:
-    await _owned_patient(session, doctor, patient_id)
+    await _owned_patient(session, member, patient_id)
     rows = list(
         (
             await session.execute(
@@ -117,17 +125,17 @@ async def patient_scales(
 async def request_scale(
     patient_id: uuid.UUID,
     payload: ScaleRequestIn,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> ScaleEntryRead:
-    patient = await _owned_patient(session, doctor, patient_id)
+    patient = await _owned_patient(session, member, patient_id)
     scale = get_scale(payload.scale_code)
     if scale is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Escala inválida.")
     entry = ScaleEntry(
         tenant_id=patient.tenant_id,
         patient_id=patient.id,
-        doctor_id=doctor.id,
+        doctor_id=member.doctor.id,
         scale_code=payload.scale_code,
         status="pending",
         recurring_days=payload.recurring_days,
@@ -142,11 +150,11 @@ async def request_scale(
 @router.delete("/scales/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def cancel_scale(
     entry_id: uuid.UUID,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> None:
     entry = await session.get(ScaleEntry, entry_id)
-    if entry is None or entry.doctor_id != doctor.id:
+    if entry is None or not _scope_ok(entry, member):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aplicação não encontrada.")
     if entry.status != "pending":
         raise HTTPException(
@@ -159,10 +167,10 @@ async def cancel_scale(
 @router.get("/patients/{patient_id}/scale-targets", response_model=list[ScaleTargetRead])
 async def list_scale_targets(
     patient_id: uuid.UUID,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> list[ScaleTargetRead]:
-    await _owned_patient(session, doctor, patient_id)
+    await _owned_patient(session, member, patient_id)
     rows = list(
         (
             await session.execute(
@@ -187,10 +195,10 @@ async def set_scale_target(
     patient_id: uuid.UUID,
     scale_code: str,
     payload: ScaleTargetIn,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> ScaleTargetRead:
-    patient = await _owned_patient(session, doctor, patient_id)
+    patient = await _owned_patient(session, member, patient_id)
     scale = get_scale(scale_code)
     if scale is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Escala desconhecida.")
@@ -208,7 +216,7 @@ async def set_scale_target(
         target = ScaleTarget(
             tenant_id=patient.tenant_id,
             patient_id=patient_id,
-            doctor_id=doctor.id,
+            doctor_id=member.doctor.id,
             scale_code=scale_code,
             target_score=payload.target_score,
         )
@@ -226,10 +234,10 @@ async def set_scale_target(
 async def delete_scale_target(
     patient_id: uuid.UUID,
     scale_code: str,
-    doctor: Doctor = Depends(get_current_doctor),
+    member: CurrentMember = Depends(require_clinical_member),
     session: AsyncSession = Depends(get_db),
 ) -> None:
-    await _owned_patient(session, doctor, patient_id)
+    await _owned_patient(session, member, patient_id)
     target = await session.scalar(
         select(ScaleTarget).where(
             ScaleTarget.patient_id == patient_id, ScaleTarget.scale_code == scale_code
