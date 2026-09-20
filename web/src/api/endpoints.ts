@@ -20,6 +20,8 @@ import type {
   ChargeUpdateInput,
   ClinicDashboard,
   ClinicInvitation,
+  ClinicBilling,
+  ClinicBillingUpdate,
   ClinicMember,
   ClinicRoleName,
   MemberDoctor,
@@ -195,6 +197,9 @@ export const clinic = {
   memberDoctor: (id: string) => api<MemberDoctor>(`/clinic/members/${id}/doctor`),
   updateMemberDoctor: (id: string, patch: MemberDoctorUpdate) =>
     api<MemberDoctor>(`/clinic/members/${id}/doctor`, { method: "PATCH", body: patch }),
+  billing: () => api<ClinicBilling>("/clinic/billing"),
+  updateBilling: (patch: ClinicBillingUpdate) =>
+    api<ClinicBilling>("/clinic/billing", { method: "PATCH", body: patch }),
   invitations: () => api<ClinicInvitation[]>("/clinic/invitations"),
   invite: (input: { email: string; role: ClinicRoleName; can_view_finance?: boolean }) =>
     api<ClinicInvitation>("/clinic/invitations", { method: "POST", body: input }),

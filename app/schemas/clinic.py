@@ -83,6 +83,22 @@ class MemberDoctorUpdate(BaseModel):
     notification_phone: str | None = Field(default=None, max_length=30)
 
 
+class ClinicBillingRead(BaseModel):
+    """Configuração de cobrança da clínica (só o dono vê/edita)."""
+
+    pix_centralized: bool = False
+    pix_key: str | None = None
+    pix_city: str | None = None
+    pix_receiver_name: str | None = None
+
+
+class ClinicBillingUpdate(BaseModel):
+    pix_centralized: bool | None = None
+    pix_key: str | None = Field(default=None, max_length=140)
+    pix_city: str | None = Field(default=None, max_length=60)
+    pix_receiver_name: str | None = Field(default=None, max_length=120)
+
+
 class RiskCounts(BaseModel):
     green: int = 0
     yellow: int = 0

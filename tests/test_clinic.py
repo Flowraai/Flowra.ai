@@ -232,6 +232,51 @@ async def test_doctor_cadastro_reception_and_scope_guards(client: httpx.AsyncCli
                              headers=rec)).status_code == 403
 
 
+async def test_clinic_centralized_pix(client: httpx.AsyncClient):
+    from datetime import datetime, timedelta, timezone
+
+    owner = await _owner(client)
+
+    # Não dá para centralizar sem chave configurada.
+    bad = await client.patch("/api/v1/clinic/billing", headers=owner,
+                             json={"pix_centralized": True})
+    assert bad.status_code == 400
+
+    # Configura o PIX da clínica e liga o recebimento centralizado.
+    ok = await client.patch("/api/v1/clinic/billing", headers=owner, json={
+        "pix_centralized": True, "pix_key": "clinica@pix.com",
+        "pix_city": "São Paulo", "pix_receiver_name": "Clinica Teste"})
+    assert ok.status_code == 200 and ok.json()["pix_centralized"] is True
+    assert ok.json()["pix_key"] == "clinica@pix.com"
+
+    # Cobrança particular de um paciente (o dono não tem PIX próprio).
+    p = (await client.post("/api/v1/patients", headers=owner, json={
+        "name": "Ana", "contact": "+5543988580825", "consent_given": True})).json()
+    when = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    appt = (await client.post(f"/api/v1/patients/{p['id']}/appointments", headers=owner,
+                              json={"scheduled_at": when})).json()
+    await client.patch(f"/api/v1/appointments/{appt['id']}", headers=owner,
+                       json={"status": "completed"})
+    ch = (await client.get(f"/api/v1/patients/{p['id']}/charges", headers=owner)).json()[0]
+    await client.patch(f"/api/v1/charges/{ch['id']}", headers=owner, json={"gross_cents": 20000})
+
+    # O PIX gerado usa a chave/recebedor da CLÍNICA.
+    pix = await client.get(f"/api/v1/charges/{ch['id']}/pix", headers=owner)
+    assert pix.status_code == 200
+    body = pix.json()
+    assert body["receiver"] == "Clinica Teste" and body["city"] == "São Paulo"
+    assert "clinica@pix.com" in body["payload"]
+
+
+async def test_clinic_billing_owner_only(client: httpx.AsyncClient):
+    owner = await _owner(client)
+    tid = await _tenant_id(client, owner)
+    rec = await _reception_headers(tid, "recep.bill@x.com")
+    assert (await client.get("/api/v1/clinic/billing", headers=rec)).status_code == 403
+    assert (await client.patch("/api/v1/clinic/billing", headers=rec,
+                               json={"pix_centralized": False})).status_code == 403
+
+
 async def test_dashboard_owner_only(client: httpx.AsyncClient):
     headers = await _owner(client)
     tid = await _tenant_id(client, headers)

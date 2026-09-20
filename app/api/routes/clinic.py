@@ -18,8 +18,11 @@ from app.models.enums import AppointmentStatus, ClinicRole, RiskLevel
 from app.models.invitation import Invitation
 from app.models.membership import Membership
 from app.models.patient import Patient
+from app.models.tenant import Tenant
 from app.schemas.auth import TokenPair
 from app.schemas.clinic import (
+    ClinicBillingRead,
+    ClinicBillingUpdate,
     ClinicDashboard,
     DoctorStat,
     InvitationAccept,
@@ -279,6 +282,53 @@ async def update_member_doctor(
         if field in data:
             setattr(doctor, field, data[field])
     return _doctor_out(membership_id, user.email if user else "", doctor)
+
+
+def _billing_out(tenant: Tenant) -> ClinicBillingRead:
+    return ClinicBillingRead(
+        pix_centralized=tenant.pix_centralized,
+        pix_key=tenant.pix_key,
+        pix_city=tenant.pix_city,
+        pix_receiver_name=tenant.pix_receiver_name,
+    )
+
+
+@router.get("/billing", response_model=ClinicBillingRead)
+async def get_billing(
+    member: CurrentMember = Depends(require_owner),
+    session: AsyncSession = Depends(get_db),
+) -> ClinicBillingRead:
+    """Configuração de cobrança da clínica (só o dono): recebimento centralizado."""
+    tenant = await session.get(Tenant, member.tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Clínica não encontrada.")
+    return _billing_out(tenant)
+
+
+@router.patch("/billing", response_model=ClinicBillingRead)
+async def update_billing(
+    payload: ClinicBillingUpdate,
+    member: CurrentMember = Depends(require_owner),
+    session: AsyncSession = Depends(get_db),
+) -> ClinicBillingRead:
+    """Liga/desliga o recebimento centralizado e define a chave PIX da clínica."""
+    tenant = await session.get(Tenant, member.tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Clínica não encontrada.")
+    data = payload.model_dump(exclude_unset=True)
+    if "pix_centralized" in data and data["pix_centralized"] is not None:
+        tenant.pix_centralized = data["pix_centralized"]
+    for field in ("pix_key", "pix_city", "pix_receiver_name"):
+        if field in data:
+            value = data[field]
+            setattr(tenant, field, value.strip() if isinstance(value, str) and value.strip() else None)
+    # Não deixa ligar o centralizado sem uma chave configurada.
+    if tenant.pix_centralized and not (tenant.pix_key and tenant.pix_city):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Para centralizar o recebimento, configure a chave PIX e a cidade da clínica.",
+        )
+    return _billing_out(tenant)
 
 
 _OPEN = (AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED)

@@ -88,6 +88,20 @@ export interface MemberDoctorUpdate {
   notification_phone?: string | null;
 }
 
+export interface ClinicBilling {
+  pix_centralized: boolean;
+  pix_key: string | null;
+  pix_city: string | null;
+  pix_receiver_name: string | null;
+}
+
+export interface ClinicBillingUpdate {
+  pix_centralized?: boolean;
+  pix_key?: string | null;
+  pix_city?: string | null;
+  pix_receiver_name?: string | null;
+}
+
 export interface PatientDirectoryItem {
   id: string;
   name: string;

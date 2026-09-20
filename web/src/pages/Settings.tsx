@@ -7,6 +7,7 @@ import { MessagePrefsCard } from "../components/MessagePrefsCard";
 import { QuickRepliesCard } from "../components/QuickRepliesCard";
 import { HealthPlansCard } from "../components/HealthPlansCard";
 import { TeamCard } from "../components/TeamCard";
+import { ClinicBillingCard } from "../components/ClinicBillingCard";
 import { useAuth } from "../auth/AuthContext";
 import { auth } from "../api/endpoints";
 import { ApiError } from "../api/client";
@@ -148,6 +149,7 @@ export function Settings() {
       </div>
 
       {doctor?.clinic_role === "owner" ? <TeamCard /> : null}
+      {doctor?.clinic_role === "owner" ? <ClinicBillingCard /> : null}
       <HealthPlansCard />
       <WhatsAppConnectCard />
       <MessagePrefsCard />

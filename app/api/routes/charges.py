@@ -22,6 +22,7 @@ from app.models.doctor import Doctor
 from app.models.enums import ClinicRole
 from app.models.health_plan import HealthPlan
 from app.models.patient import Patient
+from app.models.tenant import Tenant
 from app.schemas.consultation_charge import (
     ChargeBucket,
     ChargeMonth,
@@ -362,26 +363,37 @@ async def charge_pix(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Lançamento cancelado."
         )
-    doctor = await session.get(Doctor, charge.doctor_id)
-    if doctor is None or not doctor.pix_key or not doctor.pix_city:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Configure a chave PIX e a cidade do médico em Ajustes para gerar a cobrança.",
-        )
+    # Recebimento centralizado: se a clínica ligou o PIX centralizado e tem chave
+    # configurada, a cobrança usa o PIX da CLÍNICA; senão, o PIX do médico dono.
+    tenant = await session.get(Tenant, charge.tenant_id)
+    if tenant is not None and tenant.pix_centralized and tenant.pix_key and tenant.pix_city:
+        key = tenant.pix_key
+        city = tenant.pix_city
+        receiver = tenant.pix_receiver_name or tenant.name
+    else:
+        doctor = await session.get(Doctor, charge.doctor_id)
+        if doctor is None or not doctor.pix_key or not doctor.pix_city:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Configure a chave PIX e a cidade do médico em Ajustes para gerar a cobrança.",
+            )
+        key = doctor.pix_key
+        city = doctor.pix_city
+        receiver = doctor.name
     # txid a partir do id da cobrança (rastreável na conciliação manual).
     txid = charge.id.hex[:25]
     payload = build_pix_payload(
-        key=doctor.pix_key,
-        receiver_name=doctor.name,
-        city=doctor.pix_city,
+        key=key,
+        receiver_name=receiver,
+        city=city,
         amount_cents=charge.gross_cents,
         txid=txid,
     )
     return PixCode(
         payload=payload,
         amount_cents=charge.gross_cents,
-        receiver=doctor.name,
-        city=doctor.pix_city,
+        receiver=receiver,
+        city=city,
     )
 
 

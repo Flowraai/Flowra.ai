@@ -13,6 +13,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDMixin
+from app.db.types import EncryptedText
 from app.models.enums import TenantKind
 
 
@@ -28,3 +29,10 @@ class Tenant(UUIDMixin, TimestampMixin, Base):
     # Configuração por tenant (limiares de risco, canais, especialidades, etc.).
     config: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Cobrança centralizada: quando ligado, o PIX das cobranças particulares usa a
+    # chave da CLÍNICA (não a do médico). Desligado = cada médico recebe no seu PIX.
+    pix_centralized: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Chave PIX da clínica (cifrada em repouso), cidade e nome do recebedor (BR Code).
+    pix_key: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)
+    pix_city: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    pix_receiver_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
