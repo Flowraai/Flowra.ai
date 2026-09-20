@@ -61,7 +61,6 @@ async def _patient(client, headers, name: str) -> dict:
 
 async def test_owner_sees_all_patients(client: httpx.AsyncClient):
     owner = await _owner(client)
-    tid = await _tenant_id(client, owner)
     d2 = await _second_doctor(client)
 
     p1 = await _patient(client, owner, "Ana P1")
