@@ -17,6 +17,7 @@ import type {
   BillingBatch,
   ChargeSummary,
   ChargeUpdateInput,
+  ClinicDashboard,
   ClinicInvitation,
   ClinicMember,
   ClinicRoleName,
@@ -177,6 +178,7 @@ export const charges = {
 };
 
 export const clinic = {
+  dashboard: () => api<ClinicDashboard>("/clinic/dashboard"),
   members: () => api<ClinicMember[]>("/clinic/members"),
   updateMember: (id: string, patch: { role?: ClinicRoleName; is_active?: boolean; can_view_finance?: boolean }) =>
     api<ClinicMember>(`/clinic/members/${id}`, { method: "PATCH", body: patch }),

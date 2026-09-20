@@ -65,6 +65,37 @@ export interface ClinicMember {
   is_self: boolean;
 }
 
+export interface RiskCounts {
+  green: number;
+  yellow: number;
+  orange: number;
+  red: number;
+}
+
+export interface DoctorStat {
+  doctor_id: string;
+  name: string;
+  patients: number;
+  appointments_completed: number;
+  received_cents: number;
+  to_receive_cents: number;
+}
+
+export interface ClinicDashboard {
+  period_start: string;
+  period_end: string;
+  patients_total: number;
+  doctors_total: number;
+  risk: RiskCounts;
+  attention_count: number;
+  appointments_upcoming: number;
+  appointments_completed: number;
+  appointments_cancelled: number;
+  received_cents: number;
+  to_receive_cents: number;
+  doctors: DoctorStat[];
+}
+
 export interface ClinicInvitation {
   id: string;
   email: string;

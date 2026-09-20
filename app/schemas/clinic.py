@@ -52,3 +52,36 @@ class MemberUpdate(BaseModel):
     role: str | None = Field(default=None, pattern="^(doctor|reception)$")
     is_active: bool | None = None
     can_view_finance: bool | None = None
+
+
+class RiskCounts(BaseModel):
+    green: int = 0
+    yellow: int = 0
+    orange: int = 0
+    red: int = 0
+
+
+class DoctorStat(BaseModel):
+    """Comparativo por médico para o painel do gestor."""
+
+    doctor_id: uuid.UUID
+    name: str
+    patients: int = 0
+    appointments_completed: int = 0
+    received_cents: int = 0
+    to_receive_cents: int = 0
+
+
+class ClinicDashboard(BaseModel):
+    period_start: datetime
+    period_end: datetime
+    patients_total: int = 0
+    doctors_total: int = 0
+    risk: RiskCounts
+    attention_count: int = 0
+    appointments_upcoming: int = 0
+    appointments_completed: int = 0
+    appointments_cancelled: int = 0
+    received_cents: int = 0
+    to_receive_cents: int = 0
+    doctors: list[DoctorStat] = Field(default_factory=list)

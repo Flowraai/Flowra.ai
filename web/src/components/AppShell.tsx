@@ -53,6 +53,14 @@ export function AppShell({
           </div>
         </div>
         <nav>
+          {session?.role === "owner" ? (
+            <>
+              <div className="nav-label">Gestão</div>
+              <NavLink to="/gestor" className="nav-item">
+                <IconChart width={17} height={17} /> Painel do gestor
+              </NavLink>
+            </>
+          ) : null}
           <div className="nav-label">Atendimento</div>
           {!isReception ? (
             <>

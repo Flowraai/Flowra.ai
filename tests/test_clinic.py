@@ -120,6 +120,39 @@ async def test_cannot_edit_owner(client: httpx.AsyncClient):
     assert r.status_code == 400
 
 
+async def test_dashboard_aggregates(client: httpx.AsyncClient):
+    from datetime import datetime, timedelta, timezone
+
+    headers = await _owner(client)
+    # Paciente + consulta concluída + cobrança recebida.
+    p = (await client.post("/api/v1/patients", headers=headers, json={
+        "name": "Ana", "contact": "+5543988580825", "consent_given": True})).json()
+    # No passado recente (dentro do mês, antes de agora) para entrar no período do painel.
+    when = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    appt = (await client.post(f"/api/v1/patients/{p['id']}/appointments", headers=headers,
+                              json={"scheduled_at": when})).json()
+    await client.patch(f"/api/v1/appointments/{appt['id']}", headers=headers,
+                       json={"status": "completed"})
+    ch = (await client.get(f"/api/v1/patients/{p['id']}/charges", headers=headers)).json()[0]
+    await client.patch(f"/api/v1/charges/{ch['id']}", headers=headers, json={"gross_cents": 20000})
+    await client.patch(f"/api/v1/charges/{ch['id']}", headers=headers,
+                       json={"status": "received", "payment_method": "pix"})
+
+    d = (await client.get("/api/v1/clinic/dashboard", headers=headers)).json()
+    assert d["patients_total"] == 1 and d["doctors_total"] == 1
+    assert d["appointments_completed"] == 1
+    assert d["received_cents"] == 20000
+    assert len(d["doctors"]) == 1
+    assert d["doctors"][0]["patients"] == 1 and d["doctors"][0]["received_cents"] == 20000
+
+
+async def test_dashboard_owner_only(client: httpx.AsyncClient):
+    headers = await _owner(client)
+    tid = await _tenant_id(client, headers)
+    rec = await _reception_headers(tid, "recep.dash@x.com")
+    assert (await client.get("/api/v1/clinic/dashboard", headers=rec)).status_code == 403
+
+
 async def test_duplicate_membership_conflict(client: httpx.AsyncClient):
     headers = await _owner(client)
     tid = await _tenant_id(client, headers)

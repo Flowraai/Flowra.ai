@@ -1,0 +1,30 @@
+.mg-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+@media (max-width: 780px) { .mg-kpis { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 480px) { .mg-kpis { grid-template-columns: 1fr; } }
+
+.mg-kpi {
+  position: relative; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 14px; padding: 14px 16px 14px 18px; overflow: hidden;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.mg-kpi-stripe { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+.mg-kpi-lab { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.mg-kpi-val { font-size: 23px; font-weight: 800; letter-spacing: -0.01em; }
+.mg-kpi-note { font-size: 11.5px; color: var(--muted); }
+
+.mg-card { margin-bottom: 16px; }
+
+.mg-riskbar { display: flex; height: 18px; border-radius: 9px; overflow: hidden; background: var(--surface-2); }
+.mg-riskbar span { display: block; height: 100%; }
+.mg-risklegend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; font-size: 13px; }
+.mg-risk-item { color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.mg-risk-item b { color: var(--ink); }
+.mg-risk-item .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+.mg-table { overflow-x: auto; }
+.mg-table table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.mg-table th, .mg-table td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+.mg-table th { color: var(--muted); font-size: 11.5px; font-weight: 600; }
+.mg-table th.tnum, .mg-table td.tnum { text-align: right; font-variant-numeric: tabular-nums; }
+.mg-table td.ok { color: var(--fin-received); font-weight: 600; }
+.mg-table td.warn { color: var(--fin-pending); font-weight: 600; }

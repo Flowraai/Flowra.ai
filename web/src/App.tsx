@@ -11,6 +11,7 @@ import { Alerts } from "./pages/Alerts";
 import { Agenda } from "./pages/Agenda";
 import { Messages } from "./pages/Messages";
 import { FinancialPanel } from "./pages/FinancialPanel";
+import { ManagerPanel } from "./pages/ManagerPanel";
 import { Settings } from "./pages/Settings";
 import { SurveyPage } from "./pages/Survey";
 import { Subscribe } from "./pages/Subscribe";
@@ -153,6 +154,14 @@ export default function App() {
               <RequireAuth>
                 <FinancialPanel />
               </RequireAuth>
+            }
+          />
+          <Route
+            path="/gestor"
+            element={
+              <RequireClinical>
+                <ManagerPanel />
+              </RequireClinical>
             }
           />
           <Route
