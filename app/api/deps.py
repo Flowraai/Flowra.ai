@@ -80,6 +80,7 @@ class CurrentMember:
     role: ClinicRole
     doctor: Doctor | None
     can_view_finance: bool = False
+    name: str | None = None
 
     @property
     def is_management(self) -> bool:
@@ -132,6 +133,7 @@ async def get_current_member(
         role=membership.role,
         doctor=doctor,
         can_view_finance=membership.can_view_finance,
+        name=membership.name or (doctor.name if doctor else None),
     )
 
 

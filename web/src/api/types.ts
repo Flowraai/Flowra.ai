@@ -42,6 +42,18 @@ export interface DoctorProfile {
 
 export type ClinicRoleName = "owner" | "doctor" | "reception";
 
+export interface SessionInfo {
+  user_id: string;
+  email: string;
+  tenant_id: string;
+  tenant_name: string | null;
+  is_admin: boolean;
+  role: ClinicRoleName;
+  name: string | null;
+  can_view_finance: boolean;
+  doctor: DoctorProfile | null;
+}
+
 export interface ClinicMember {
   id: string;
   user_id: string;

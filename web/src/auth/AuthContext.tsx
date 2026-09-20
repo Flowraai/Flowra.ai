@@ -1,10 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { auth, clinic } from "../api/endpoints";
 import { getToken, setToken } from "../api/client";
-import type { DoctorProfile } from "../api/types";
+import type { DoctorProfile, SessionInfo } from "../api/types";
 
 interface AuthState {
-  doctor: DoctorProfile | null;
+  session: SessionInfo | null;
+  doctor: DoctorProfile | null;   // derivado da sessão (null para recepção)
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string, specialty?: string) => Promise<void>;
@@ -16,7 +17,7 @@ interface AuthState {
 const AuthCtx = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [doctor, setDoctor] = useState<DoctorProfile | null>(null);
+  const [session, setSession] = useState<SessionInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,10 +28,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       try {
-        const me = await auth.me();
-        if (active) setDoctor(me);
+        const s = await auth.session();
+        if (active) setSession(s);
       } catch {
-        setToken(null);
+        if (active) setToken(null);
       } finally {
         if (active) setLoading(false);
       }
@@ -43,32 +44,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthState>(
     () => ({
-      doctor,
+      session,
+      doctor: session?.doctor ?? null,
       loading,
       async login(email, password) {
         const pair = await auth.login(email, password);
         setToken(pair.access_token);
-        setDoctor(await auth.me());
+        setSession(await auth.session());
       },
       async register(email, password, name, specialty) {
         const pair = await auth.register(email, password, name, specialty);
         setToken(pair.access_token);
-        setDoctor(await auth.me());
+        setSession(await auth.session());
       },
       async acceptInvite(token, name, password) {
         const pair = await clinic.accept({ token, name, password });
         setToken(pair.access_token);
-        setDoctor(await auth.me());
+        setSession(await auth.session());
       },
       async refresh() {
-        setDoctor(await auth.me());
+        setSession(await auth.session());
       },
       logout() {
         setToken(null);
-        setDoctor(null);
+        setSession(null);
       },
     }),
-    [doctor, loading],
+    [session, loading],
   );
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
@@ -76,6 +78,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth(): AuthState {
   const ctx = useContext(AuthCtx);
-  if (!ctx) throw new Error("useAuth deve ser usado dentro de <AuthProvider>");
+  if (!ctx) throw new Error("useAuth deve ser usado dentro de AuthProvider");
   return ctx;
 }

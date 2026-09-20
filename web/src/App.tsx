@@ -27,16 +27,25 @@ function FullScreenLoader() {
 }
 
 function RequireAuth({ children }: { children: ReactNode }) {
-  const { doctor, loading } = useAuth();
+  const { session, loading } = useAuth();
   if (loading) return <FullScreenLoader />;
-  if (!doctor) return <Navigate to="/login" replace />;
+  if (!session) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+/** Rotas clínicas: exige acesso a dado clínico. Recepção cai na Agenda. */
+function RequireClinical({ children }: { children: ReactNode }) {
+  const { session, loading } = useAuth();
+  if (loading) return <FullScreenLoader />;
+  if (!session) return <Navigate to="/login" replace />;
+  if (session.role === "reception") return <Navigate to="/agenda" replace />;
   return <>{children}</>;
 }
 
 function RedirectIfAuthed({ children }: { children: ReactNode }) {
-  const { doctor, loading } = useAuth();
+  const { session, loading } = useAuth();
   if (loading) return <FullScreenLoader />;
-  if (doctor) return <Navigate to="/" replace />;
+  if (session) return <Navigate to={session.role === "reception" ? "/agenda" : "/"} replace />;
   return <>{children}</>;
 }
 
@@ -69,41 +78,41 @@ export default function App() {
           <Route
             path="/"
             element={
-              <RequireAuth>
+              <RequireClinical>
                 <Dashboard />
-              </RequireAuth>
+              </RequireClinical>
             }
           />
           <Route
             path="/pacientes"
             element={
-              <RequireAuth>
+              <RequireClinical>
                 <Dashboard />
-              </RequireAuth>
+              </RequireClinical>
             }
           />
           <Route
             path="/pacientes/:id"
             element={
-              <RequireAuth>
+              <RequireClinical>
                 <PatientDetail />
-              </RequireAuth>
+              </RequireClinical>
             }
           />
           <Route
             path="/pacientes/:id/relatorio"
             element={
-              <RequireAuth>
+              <RequireClinical>
                 <PatientReport />
-              </RequireAuth>
+              </RequireClinical>
             }
           />
           <Route
             path="/pacientes/:id/atestado/:certId"
             element={
-              <RequireAuth>
+              <RequireClinical>
                 <CertificatePrint />
-              </RequireAuth>
+              </RequireClinical>
             }
           />
           <Route
@@ -117,25 +126,25 @@ export default function App() {
           <Route
             path="/alertas"
             element={
-              <RequireAuth>
+              <RequireClinical>
                 <Alerts />
-              </RequireAuth>
+              </RequireClinical>
             }
           />
           <Route
             path="/mensagens"
             element={
-              <RequireAuth>
+              <RequireClinical>
                 <Messages />
-              </RequireAuth>
+              </RequireClinical>
             }
           />
           <Route
             path="/pesquisa"
             element={
-              <RequireAuth>
+              <RequireClinical>
                 <SurveyPage />
-              </RequireAuth>
+              </RequireClinical>
             }
           />
           <Route
@@ -149,25 +158,25 @@ export default function App() {
           <Route
             path="/configuracoes"
             element={
-              <RequireAuth>
+              <RequireClinical>
                 <Settings />
-              </RequireAuth>
+              </RequireClinical>
             }
           />
           <Route
             path="/assinatura"
             element={
-              <RequireAuth>
+              <RequireClinical>
                 <Subscribe />
-              </RequireAuth>
+              </RequireClinical>
             }
           />
           <Route
             path="/admin/planos"
             element={
-              <RequireAuth>
+              <RequireClinical>
                 <AdminPlans />
-              </RequireAuth>
+              </RequireClinical>
             }
           />
           <Route path="/redefinir-senha" element={<ResetPassword />} />

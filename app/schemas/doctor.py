@@ -68,6 +68,21 @@ class DoctorProfile(DoctorRead):
     care: CareInfo | None = None
 
 
+class SessionInfo(BaseModel):
+    """Sessão do integrante logado — funciona para qualquer papel (inclui recepção,
+    que não tem perfil Doctor). O front decide menu/tela inicial pelo `role`."""
+
+    user_id: uuid.UUID
+    email: EmailStr
+    tenant_id: uuid.UUID
+    tenant_name: str | None = None
+    is_admin: bool = False
+    role: str                       # owner | doctor | reception
+    name: str | None = None
+    can_view_finance: bool = False
+    doctor: DoctorProfile | None = None  # presente para membros clínicos
+
+
 class DoctorUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     specialty: str | None = Field(default=None, max_length=120)

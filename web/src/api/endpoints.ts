@@ -30,6 +30,7 @@ import type {
   ScaleTarget,
   DoctorProfile,
   DoctorUpdateInput,
+  SessionInfo,
   SpecialtyOption,
   Exam,
   ExamInput,
@@ -83,6 +84,7 @@ export const auth = {
       body: { token, new_password: newPassword },
     }),
   me: () => api<DoctorProfile>("/auth/me"),
+  session: () => api<SessionInfo>("/auth/session"),
   updateMe: (patch: DoctorUpdateInput) =>
     api<DoctorProfile>("/auth/me", { method: "PATCH", body: patch }),
   careSpecialties: () => api<SpecialtyOption[]>("/auth/care/specialties", { auth: false }),

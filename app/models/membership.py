@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import Boolean, Enum, ForeignKey, UniqueConstraint
+from sqlalchemy import Boolean, Enum, ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -35,6 +35,9 @@ class Membership(UUIDMixin, TimestampMixin, Base):
     role: Mapped[ClinicRole] = mapped_column(
         Enum(ClinicRole, name="clinic_role"), nullable=False,
     )
+    # Nome de exibição do integrante nesta clínica (recepção não tem Doctor, então
+    # o nome fica aqui). Para médicos, espelha o nome do Doctor.
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     # Permissão por usuário: recepção enxerga o financeiro (a receber/repasses)?
     # O dono liga/desliga por pessoa. Ignorado para papéis que já veem o financeiro

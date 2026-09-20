@@ -113,6 +113,26 @@ async def test_reception_finance_gate(client: httpx.AsyncClient):
     assert r.status_code == 200 and isinstance(r.json(), list)
 
 
+async def test_session_owner_has_doctor(client: httpx.AsyncClient):
+    owner = await _register(client)
+    s = (await client.get("/api/v1/auth/session", headers=owner)).json()
+    assert s["role"] == "owner" and s["name"] == "Dra. Ana" and s["doctor"] is not None
+
+
+async def test_session_works_for_reception(client: httpx.AsyncClient):
+    owner = await _register(client)
+    me = (await client.get("/api/v1/auth/me", headers=owner)).json()
+    tid = uuid.UUID(me["tenant_id"])
+    rec = await _reception_headers(tid, "recep.session@a.com", can_view_finance=False)
+    # /me exige perfil médico — recepção não passa.
+    assert (await client.get("/api/v1/auth/me", headers=rec)).status_code in (401, 403)
+    # /session funciona para qualquer papel.
+    s = await client.get("/api/v1/auth/session", headers=rec)
+    assert s.status_code == 200
+    body = s.json()
+    assert body["role"] == "reception" and body["doctor"] is None
+
+
 async def test_reception_blocked_from_clinical(client: httpx.AsyncClient):
     owner = await _register(client)
     me = (await client.get("/api/v1/auth/me", headers=owner)).json()

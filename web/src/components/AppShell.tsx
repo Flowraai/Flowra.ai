@@ -30,8 +30,15 @@ export function AppShell({
   children: ReactNode;
   alertCount?: number;
 }) {
-  const { doctor, logout } = useAuth();
-  const clinic = doctor?.tenant_name ?? doctor?.clinic ?? "Consultório";
+  const { session, doctor, logout } = useAuth();
+  const clinic = session?.tenant_name ?? doctor?.clinic ?? "Consultório";
+  const isReception = session?.role === "reception";
+  const showFinance = !isReception || Boolean(session?.can_view_finance);
+  const displayName = session?.name ?? doctor?.name ?? "—";
+  const roleLabel =
+    session?.role === "owner" ? "Dono" :
+    session?.role === "reception" ? "Recepção" :
+    doctor?.specialty ?? "Médico";
 
   return (
     <div className="shell">
@@ -47,47 +54,63 @@ export function AppShell({
         </div>
         <nav>
           <div className="nav-label">Atendimento</div>
-          <NavLink to="/" end className="nav-item">
-            <IconGrid width={17} height={17} /> Painel
-          </NavLink>
-          <NavLink to="/alertas" className="nav-item">
-            <IconBell width={17} height={17} /> Alertas
-            {alertCount ? <span className="count">{alertCount}</span> : null}
-          </NavLink>
-          <NavLink to="/pacientes" className="nav-item">
-            <IconUsers width={17} height={17} /> Pacientes
-          </NavLink>
+          {!isReception ? (
+            <>
+              <NavLink to="/" end className="nav-item">
+                <IconGrid width={17} height={17} /> Painel
+              </NavLink>
+              <NavLink to="/alertas" className="nav-item">
+                <IconBell width={17} height={17} /> Alertas
+                {alertCount ? <span className="count">{alertCount}</span> : null}
+              </NavLink>
+              <NavLink to="/pacientes" className="nav-item">
+                <IconUsers width={17} height={17} /> Pacientes
+              </NavLink>
+            </>
+          ) : null}
           <NavLink to="/agenda" className="nav-item">
             <IconCalendar width={17} height={17} /> Agenda
           </NavLink>
-          <NavLink to="/mensagens" className="nav-item">
-            <IconChat width={17} height={17} /> Mensagens
-          </NavLink>
-          <NavLink to="/pesquisa" className="nav-item">
-            <IconClipboard width={17} height={17} /> Pesquisa
-          </NavLink>
-          <NavLink to="/financeiro" className="nav-item">
-            <IconChart width={17} height={17} /> Financeiro
-          </NavLink>
-          <NavLink to="/configuracoes" className="nav-item">
-            <IconSettings width={17} height={17} /> Configurações
-          </NavLink>
-
-          <div className="nav-label">Conta</div>
-          <NavLink to="/assinatura" className="nav-item">
-            <IconCard width={17} height={17} /> Assinatura
-          </NavLink>
-          {doctor?.is_admin ? (
-            <NavLink to="/admin/planos" className="nav-item">
-              <IconGrid width={17} height={17} /> Planos
+          {!isReception ? (
+            <>
+              <NavLink to="/mensagens" className="nav-item">
+                <IconChat width={17} height={17} /> Mensagens
+              </NavLink>
+              <NavLink to="/pesquisa" className="nav-item">
+                <IconClipboard width={17} height={17} /> Pesquisa
+              </NavLink>
+            </>
+          ) : null}
+          {showFinance ? (
+            <NavLink to="/financeiro" className="nav-item">
+              <IconChart width={17} height={17} /> Financeiro
             </NavLink>
+          ) : null}
+          {!isReception ? (
+            <NavLink to="/configuracoes" className="nav-item">
+              <IconSettings width={17} height={17} /> Configurações
+            </NavLink>
+          ) : null}
+
+          {!isReception ? (
+            <>
+              <div className="nav-label">Conta</div>
+              <NavLink to="/assinatura" className="nav-item">
+                <IconCard width={17} height={17} /> Assinatura
+              </NavLink>
+              {doctor?.is_admin ? (
+                <NavLink to="/admin/planos" className="nav-item">
+                  <IconGrid width={17} height={17} /> Planos
+                </NavLink>
+              ) : null}
+            </>
           ) : null}
         </nav>
         <div className="foot">
-          <div className="avatar">{doctor ? initials(doctor.name) : "—"}</div>
+          <div className="avatar">{displayName !== "—" ? initials(displayName) : "—"}</div>
           <div className="who">
-            <b>{doctor?.name ?? "—"}</b>
-            <span>{doctor?.specialty ?? "Médico"}</span>
+            <b>{displayName}</b>
+            <span>{roleLabel}</span>
           </div>
           <button className="logout" title="Sair" aria-label="Sair" onClick={logout}>
             <IconLogout width={16} height={16} />

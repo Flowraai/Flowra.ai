@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_doctor
+from app.api.deps import CurrentMember, get_current_doctor, get_current_member
 from app.core.config import settings
 from app.core.rate_limit import rate_limit
 from app.core.security import hash_password, verify_password
@@ -33,6 +33,7 @@ from app.schemas.doctor import (
     DoctorProfile,
     DoctorUpdate,
     MessagePrefs,
+    SessionInfo,
     SpecialtyOption,
 )
 from app.services import auth_service
@@ -104,7 +105,9 @@ async def register_doctor(
         )
     )
     # Quem cria a conta é o dono (gestor) do tenant. Conta solo = tenant de 1 pessoa.
-    session.add(Membership(user_id=user.id, tenant_id=tenant.id, role=ClinicRole.OWNER))
+    session.add(Membership(
+        user_id=user.id, tenant_id=tenant.id, role=ClinicRole.OWNER, name=payload.name,
+    ))
 
     access, refresh = await auth_service.issue_token_pair(session, user)
     return TokenPair(access_token=access, refresh_token=refresh)
@@ -199,6 +202,28 @@ async def me(
     doctor: Doctor = Depends(get_current_doctor), session: AsyncSession = Depends(get_db)
 ) -> DoctorProfile:
     return await _profile_response(session, doctor)
+
+
+@router.get("/session", response_model=SessionInfo)
+async def session_info(
+    member: CurrentMember = Depends(get_current_member),
+    session: AsyncSession = Depends(get_db),
+) -> SessionInfo:
+    """Sessão do integrante logado (qualquer papel). A recepção usa isto no lugar
+    de /me, que exige perfil médico."""
+    tenant = await session.get(Tenant, member.tenant_id)
+    doctor_profile = await _profile_response(session, member.doctor) if member.doctor else None
+    return SessionInfo(
+        user_id=member.user.id,
+        email=member.user.email,
+        tenant_id=member.tenant_id,
+        tenant_name=tenant.name if tenant else None,
+        is_admin=settings.is_admin_email(member.user.email),
+        role=member.role.value,
+        name=member.name,
+        can_view_finance=member.sees_finance,
+        doctor=doctor_profile,
+    )
 
 
 @router.patch("/me", response_model=DoctorProfile)

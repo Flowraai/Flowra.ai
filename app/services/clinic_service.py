@@ -118,6 +118,7 @@ async def accept_invitation(session: AsyncSession, data: InvitationAccept) -> Us
             tenant_id=invite.tenant_id,
             role=invite.role,
             can_view_finance=invite.can_view_finance,
+            name=data.name,
         )
     )
     # Papel médico ganha um perfil clínico (Doctor) no tenant, se ainda não tiver.
