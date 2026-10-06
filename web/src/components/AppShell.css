@@ -63,9 +63,39 @@
 
 .content { padding: 22px 24px 34px; display: flex; flex-direction: column; gap: 22px; max-width: 1180px; width: 100%; }
 
+/* Controles de menu móvel — escondidos no desktop (menu sempre visível). */
+.nav-toggle, .nav-close, .nav-backdrop { display: none; }
+
 @media (max-width: 860px) {
   .shell { grid-template-columns: 1fr; }
-  .sidebar { position: static; height: auto; flex-direction: row; align-items: center; overflow-x: auto; }
-  .sidebar nav, .nav-label, .sidebar .foot { display: none; }
+
+  /* Gaveta lateral: fica fora da tela e desliza quando aberta. */
+  .sidebar {
+    position: fixed; top: 0; left: 0; z-index: 40;
+    width: 82vw; max-width: 300px; height: 100vh;
+    flex-direction: column; align-items: stretch; overflow-y: auto;
+    transform: translateX(-100%); transition: transform 0.22s ease;
+    box-shadow: 2px 0 20px -8px rgba(0, 0, 0, 0.35);
+  }
+  .shell.menu-open .sidebar { transform: translateX(0); }
+
+  /* Fundo escuro atrás da gaveta. */
+  .nav-backdrop {
+    display: block; position: fixed; inset: 0; z-index: 30; border: 0;
+    background: rgba(0, 0, 0, 0.42); opacity: 0; pointer-events: none;
+    transition: opacity 0.22s ease;
+  }
+  .shell.menu-open .nav-backdrop { opacity: 1; pointer-events: auto; }
+
+  /* Botão de abrir (na topbar) e de fechar (dentro da gaveta). */
+  .nav-toggle {
+    display: grid; place-items: center; flex: none; border: 1px solid var(--line);
+    background: var(--surface-2); color: var(--ink); width: 38px; height: 38px;
+    border-radius: 10px; cursor: pointer;
+  }
+  .nav-close {
+    display: grid; place-items: center; margin-left: auto; flex: none; border: 0;
+    background: transparent; color: var(--muted); cursor: pointer; padding: 6px; border-radius: 8px;
+  }
   .search { min-width: 0; }
 }

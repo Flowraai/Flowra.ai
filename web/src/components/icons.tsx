@@ -126,3 +126,13 @@ export const IconLogout = (p: SVGProps<SVGSVGElement>) => (
     <path d="m16 17 5-5-5-5M21 12H9" />
   </svg>
 );
+export const IconMenu = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M3 6h18M3 12h18M3 18h18" />
+  </svg>
+);
+export const IconClose = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M18 6 6 18M6 6l12 12" />
+  </svg>
+);

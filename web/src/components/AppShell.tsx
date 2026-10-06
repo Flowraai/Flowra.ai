@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { NavLink } from "react-router-dom";
+import { useEffect, useState, type ReactNode } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { initials } from "../lib/format";
 import {
@@ -9,9 +9,11 @@ import {
   IconChart,
   IconChat,
   IconClipboard,
+  IconClose,
   IconFlower,
   IconGrid,
   IconLogout,
+  IconMenu,
   IconSettings,
   IconUsers,
 } from "./icons";
@@ -31,6 +33,10 @@ export function AppShell({
   alertCount?: number;
 }) {
   const { session, doctor, logout } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const location = useLocation();
+  // Fecha o menu ao trocar de rota (navegação no tablet/celular).
+  useEffect(() => setMenuOpen(false), [location.pathname]);
   const clinic = session?.tenant_name ?? doctor?.clinic ?? "Consultório";
   const isReception = session?.role === "reception";
   const showFinance = !isReception || Boolean(session?.can_view_finance);
@@ -41,7 +47,13 @@ export function AppShell({
     doctor?.specialty ?? "Médico";
 
   return (
-    <div className="shell">
+    <div className={`shell${menuOpen ? " menu-open" : ""}`}>
+      <button
+        className="nav-backdrop"
+        aria-hidden={!menuOpen}
+        tabIndex={-1}
+        onClick={() => setMenuOpen(false)}
+      />
       <aside className="sidebar">
         <div className="brand">
           <div className="mark">
@@ -51,6 +63,13 @@ export function AppShell({
             <b>Flowra Care</b>
             <span>{clinic}</span>
           </div>
+          <button
+            className="nav-close"
+            aria-label="Fechar menu"
+            onClick={() => setMenuOpen(false)}
+          >
+            <IconClose width={18} height={18} />
+          </button>
         </div>
         <nav>
           {session?.role === "owner" ? (
@@ -128,6 +147,14 @@ export function AppShell({
 
       <div className="main">
         <header className="topbar">
+          <button
+            className="nav-toggle"
+            aria-label="Abrir menu"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen(true)}
+          >
+            <IconMenu width={20} height={20} />
+          </button>
           <div className="titles">
             <h2>{title}</h2>
             {subtitle ? <div className="sub">{subtitle}</div> : null}
